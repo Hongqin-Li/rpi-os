@@ -6,11 +6,11 @@
 #include "peripherals/gpio.h"
 
 void
-uart_putchar(char c)
+uart_putchar(int c)
 {
   while(!(get32(AUX_MU_LSR_REG) & 0x20))
     ;
-  put32(AUX_MU_IO_REG, c);
+  put32(AUX_MU_IO_REG, c & 0xFF);
 }
 
 char

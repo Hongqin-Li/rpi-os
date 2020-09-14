@@ -1,5 +1,6 @@
-KERNBASE = 0xFFFF000000000000;
-KERNLINK = 0xFFFF000000080000;
+/* KERNBASE = 0xFFFF000000000000; */
+KERNBASE = 0;
+KERNLINK = KERNBASE + 80000;
 
 ENTRY(_start)
 /* Since we are actually booting a binary image, the entry
@@ -12,18 +13,19 @@ SECTIONS
 
   _kernel_start = .;
 
-  .text ALIGN (4K) : {
+  .text ALIGN (4K) : AT (ADDR(.text) - KERNBASE) {
     KEEP(*(.text.boot))
     *(.text)
   }
   PROVIDE(etext = .);
-  .rodata : { *(.rodata) }
+
+  .rodata : AT (ADDR(.rodata) - KERNBASE) { *(.rodata) }
 
   . = ALIGN(4K);
 
   PROVIDE(data = .);
-  .data : { *(.data) }
+  .data : AT (ADDR(.data) - KERNBASE) { *(.data) }
   PROVIDE(edata = .);
-  .bss : { *(.bss) }
+  .bss : AT (ADDR(.bss) - KERNBASE) { *(.bss) }
   PROVIDE(end = .);
 }

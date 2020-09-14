@@ -2,6 +2,7 @@
 
 #include "string.h"
 #include "uart.h"
+#include "console.h"
 
 extern char edata[], end[];
 
@@ -12,6 +13,7 @@ main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
 
   uart_init();
   uart_puts("Hello, kernel World!\r\n");
+  cprintf("CurrentEL: %d\n", (x1 >> 2) & 0x3);
  
   while (1)
     uart_putchar(uart_getchar());

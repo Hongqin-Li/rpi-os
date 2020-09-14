@@ -13,13 +13,13 @@ LD := $(CROSS)-ld
 OBJDUMP := $(CROSS)-objdump
 OBJCOPY := $(CROSS)-objcopy
 
-CC += -Wall
+CC += -Wall -g
 CC += -fno-pie -fno-pic -fno-stack-protector 
 CC += -static -fno-builtin -nostdlib -ffreestanding -nostartfiles
 CC += -fno-omit-frame-pointer
 CC += -Wl,--build-id=none
 CC += -mgeneral-regs-only
-CC += -O2
+# CC += -O2
 
 SRC_DIRS := kern
 BUILD_DIR = obj
