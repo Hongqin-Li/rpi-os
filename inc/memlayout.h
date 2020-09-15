@@ -1,13 +1,11 @@
 #ifndef INC_MEMLAYOUT_H
 #define INC_MEMLAYOUT_H
 
+#define PHYSTOP 0xF000000            // Top physical memory
+// #define DEVSPACE 0xFE000000        // Other devices are at high addresses
 
-// #define PHYSTOP 0xE000000             // Top physical memory
-// #define DEVSPACE 0xFE000000           // Other devices are at high addresses
-
-// #define KERNBASE 0xFFFF000000000000   // First kernel virtual address
-#define KERNBASE 0
-#define KERNLINK (KERNBASE+0x80000)    // Address where kernel is linked
+#define KERNBASE 0xFFFF000000000000   // First kernel virtual address
+#define KERNLINK (KERNBASE+0x80000)   // Address where kernel is linked
 
 #ifndef __ASSEMBLER__
 

@@ -19,9 +19,9 @@ printint(int xx, int base, int sign)
         x = xx;
 
     i = 0;
-    do{
+    do {
         buf[i++] = digits[x % base];
-    }while((x /= base) != 0);
+    } while((x /= base) != 0);
 
     if(sign)
         buf[i++] = '-';

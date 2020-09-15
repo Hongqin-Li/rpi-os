@@ -14,11 +14,12 @@ OBJDUMP := $(CROSS)-objdump
 OBJCOPY := $(CROSS)-objcopy
 
 CC += -Wall -g
-CC += -fno-pie -fno-pic -fno-stack-protector 
+CC += -fno-pie -fno-pic -fno-stack-protector
 CC += -static -fno-builtin -nostdlib -ffreestanding -nostartfiles
 CC += -fno-omit-frame-pointer
 CC += -Wl,--build-id=none
 CC += -mgeneral-regs-only
+
 # CC += -O2
 
 SRC_DIRS := kern
@@ -54,9 +55,9 @@ $(IMG): $(KERN_ELF)
 
 QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -chardev stdio,id=uart1 -serial chardev:uart1 -monitor none
 
-qemu: $(KERN_ELF) 
+qemu: $(IMG) 
 	$(QEMU) -kernel $<
-qemu-gdb: $(KERN_ELF)
+qemu-gdb: $(IMG)
 	$(QEMU) -kernel $< -S -gdb tcp::1234
 gdb: 
 	gdb-multiarch -n -x .gdbinit
