@@ -7,4 +7,4 @@ struct spinlock {
 void acquire(struct spinlock *);
 void release(struct spinlock *);
 
-#endif  /* !INC_SPINLOCK_H */
+#endif

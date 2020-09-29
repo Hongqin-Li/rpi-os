@@ -8,4 +8,4 @@
 #define MBOX_STATUS   (MBOX_BASE + 0x18)
 #define MBOX_WRITE    (MBOX_BASE + 0x20)
 
-#endif  /* !INC_PERIPHERALS_MBOX_H */
+#endif

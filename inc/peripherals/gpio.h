@@ -24,4 +24,4 @@
 #define GPPUDCLK0       (GPIO_BASE + 0x98)
 #define GPPUDCLK1       (GPIO_BASE + 0x9C)
 
-#endif  /* !INC_PERIPHERALS_GPIO_H */
+#endif

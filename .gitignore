@@ -1,2 +1,4 @@
 obj/
 .lvimrc
+firmware/
+.gdb_history

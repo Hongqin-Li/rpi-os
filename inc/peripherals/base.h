@@ -5,4 +5,4 @@
 
 #define MMIO_BASE (KERNBASE + 0x3F000000)
 
-#endif  /* !INC_PERIPHERALS_BASE_H */
+#endif

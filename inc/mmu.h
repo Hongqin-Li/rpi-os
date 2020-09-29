@@ -1,36 +1,51 @@
 #ifndef INC_MMU_H
 #define INC_MMU_H
 
+/*
+ * See Chapter 12 of ARM Cortex-A Series Programmer's Guide for ARMv8-A
+ * and Chapter D5 of Arm Architecture Reference Manual Armv8, for Armv8-A architecture profile.
+ */
 #define PGSIZE 4096
 
-#define MM_TYPE_PAGE_TABLE    0x3
-#define MM_TYPE_PAGE          0x3
-#define MM_TYPE_BLOCK         0x1
-#define MM_ACCESS             (0x1 << 10)
-#define MM_ACCESS_PERMISSION  (0x01 << 6) 
-
-/*
- * Memory region attributes:
- *
- *   n = AttrIndx[2:0]
- *      n  MAIR
- *   DEVICE_nGnRnE  000  00000000
- *   NORMAL_NC    001  01000100
- */
+/* Memory region attributes */
 #define MT_DEVICE_nGnRnE        0x0
-#define MT_NORMAL_NC            0x1
+#define MT_NORMAL               0x1
 #define MT_DEVICE_nGnRnE_FLAGS  0x00
-#define MT_NORMAL_NC_FLAGS      0x44
-#define MAIR_VALUE              (MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | (MT_NORMAL_NC_FLAGS << (8 * MT_NORMAL_NC))
+#define MT_NORMAL_FLAGS         0xFF        /* Inner/Outer Write-back Non-transient RW-Allocate */
 
-#define MMU_FLAGS         (MM_TYPE_BLOCK | (MT_NORMAL_NC << 2) | MM_ACCESS)  
-#define MMU_DEVICE_FLAGS  (MM_TYPE_BLOCK | (MT_DEVICE_nGnRnE << 2) | MM_ACCESS)  
-#define MMU_PTE_FLAGS     (MM_TYPE_PAGE | (MT_NORMAL_NC << 2) | MM_ACCESS | MM_ACCESS_PERMISSION)  
+#define MAIR_VALUE              ((MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | \
+                                (MT_NORMAL_FLAGS << (8 * MT_NORMAL)))
 
-#define TCR_T0SZ          (64 - 48) 
-#define TCR_T1SZ          ((64 - 48) << 16)
-#define TCR_TG0_4K        (0 << 14)
-#define TCR_TG1_4K        (0 << 30)
-#define TCR_VALUE         (TCR_T0SZ | TCR_T1SZ | TCR_TG0_4K | TCR_TG1_4K)
+#define SH_INNER        (3 << 8)        /* Inner shareable */
+#define AF_USED         (1 << 10)
 
-#endif  /* !INC_MMU_H */
+#define PTE_BLOCK       0x1
+#define PTE_TABLE       0x3
+
+#define PTE_KERN        (0 << 6)
+#define PTE_USER        (1 << 6)
+
+/* Address in table or block entry, only support 32 bit physical address. */
+#define PTE_ADDR(pte)   ((pte) & ~0xFFF)
+#define PTE_FLAGS(pte)  ((pte) &  0xFFF)
+
+/* PTE flags */
+#define PTE_NORMAL      (PTE_BLOCK | (MT_NORMAL << 2) | AF_USED | SH_INNER)
+#define PTE_DEVICE      (PTE_BLOCK | (MT_DEVICE_nGnRnE << 2) | AF_USED)
+
+/* Translation Control Register */
+#define TCR_T0SZ        (64 - 48) 
+#define TCR_T1SZ        ((64 - 48) << 16)
+#define TCR_TG0_4K      (0 << 14)
+#define TCR_TG1_4K      (2 << 30)           /* Different from TG0 */
+#define TCR_SH0_INNER   (3 << 12)
+#define TCR_SH1_INNER   (3 << 28)
+#define TCR_ORGN0_IRGN0 ((1 << 10) | (1 << 8))
+#define TCR_ORGN1_IRGN1 ((1 << 26) | (1 << 24))
+
+#define TCR_VALUE       (TCR_T0SZ           | TCR_T1SZ      |   \
+                         TCR_TG0_4K         | TCR_TG1_4K    |   \
+                         TCR_SH0_INNER      | TCR_SH1_INNER |   \
+                         TCR_ORGN0_IRGN0    | TCR_ORGN1_IRGN1)
+
+#endif
