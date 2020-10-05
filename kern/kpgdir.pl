@@ -12,10 +12,10 @@ for (my $i = 0; $i < 512; $i ++) {
     my $pa = $i * 2*1024*1024;
     printf("    0x%x | ", $pa);
     if ($pa < 0x3F000000) {
-        printf("PTE_NORMAL | PTE_KERN", $pa);
+        printf("PTE_KDATA", $pa);
     }
     else {
-        printf("PTE_DEVICE | PTE_KERN", $pa);
+        printf("PTE_KDEV", $pa);
     }
     if ($i != 511) {
         printf(",\n");
@@ -28,7 +28,7 @@ print '
 __attribute__((__aligned__(PGSIZE)))
 uint64_t kpud[512] = {
     V2P(kpte) + PTE_TABLE,
-    0x40000000 + PTE_DEVICE + PTE_KERN,
+    0x40000000 + PTE_KDATA,
 };
 
 __attribute__((__aligned__(PGSIZE)))

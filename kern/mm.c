@@ -58,12 +58,14 @@ free_range(void *start, void *end)
 /*
  * Allocate a page of physical memory.
  * Returns 0 if failed else a pointer.
+ * Corrupt the page by filling non-zero value in it for debugging.
  */
 void *
 kalloc()
 {
     acquire(&memlock);
     void *p = freelist_alloc(&freelist);
+    memset(p, 0xAC, PGSIZE);
     release(&memlock);
     return p;
 }
@@ -86,7 +88,7 @@ mm_test()
     cprintf("* mm test begin\n");
     static void *p[PHYSTOP/PGSIZE];
     int i;
-    for (i = 0; p[i] = kalloc(); i++) {
+    for (i = 0; (p[i] = kalloc()); i++) {
         memset(p[i], 0xFF, PGSIZE);
         if (i % 10000 == 0) cprintf("0x%p\n", p[i]);
     }

@@ -16,22 +16,30 @@
 #define MAIR_VALUE              ((MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | \
                                 (MT_NORMAL_FLAGS << (8 * MT_NORMAL)))
 
-#define SH_INNER        (3 << 8)        /* Inner shareable */
-#define AF_USED         (1 << 10)
+#define SH_INNER         (3 << 8)   /* Inner shareable */
+#define AF_USED          (1 << 10)
 
-#define PTE_BLOCK       0x1
-#define PTE_TABLE       0x3
+#define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
+#define PTE_DEVICE      ((MT_DEVICE_nGnRnE << 2) | AF_USED)
+
+/* PTE flags */
+#define PTE_VALID       0x1
+
+#define PTE_TABLE       0x3         /* Table in level 0/1/2 */
+#define PTE_BLOCK       0x1         /* Block in level 1/2 */
+#define PTE_PAGE        0x3         /* Page in level 3 */
 
 #define PTE_KERN        (0 << 6)
 #define PTE_USER        (1 << 6)
 
+/* 1GB/2MB block for kernel, and 4KB page for user. */
+#define PTE_KDATA       (PTE_KERN | PTE_NORMAL | PTE_BLOCK)
+#define PTE_KDEV        (PTE_KERN | PTE_DEVICE | PTE_BLOCK)
+#define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+
 /* Address in table or block entry, only support 32 bit physical address. */
 #define PTE_ADDR(pte)   ((pte) & ~0xFFF)
 #define PTE_FLAGS(pte)  ((pte) &  0xFFF)
-
-/* PTE flags */
-#define PTE_NORMAL      (PTE_BLOCK | (MT_NORMAL << 2) | AF_USED | SH_INNER)
-#define PTE_DEVICE      (PTE_BLOCK | (MT_DEVICE_nGnRnE << 2) | AF_USED)
 
 /* Translation Control Register */
 #define TCR_T0SZ        (64 - 48) 

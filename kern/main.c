@@ -2,12 +2,13 @@
 
 #include "arm.h"
 #include "types.h"
-#include "memlayout.h"
-#include "mmu.h"
 #include "string.h"
+#include "memlayout.h"
+
 #include "console.h"
 #include "mm.h"
 #include "trap.h"
+#include "proc.h"
 
 extern char edata[], end[];
 
@@ -19,17 +20,16 @@ main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
     console_init();
 
     cprintf("hello, world\n");
+    // uint64_t spsel;
+    // asm volatile("mrs %[x], spsel": [x]"=r"(spsel): );
+    // cprintf("spsel: %llx\n", spsel);
 
     free_range(ROUNDUP((void *)end, PGSIZE), P2V(PHYSTOP));
     irq_init();
 
-    // uint64_t spsel;
-    // asm volatile("mrs %[x], spsel": [x]"=r"(spsel): );
-    // cprintf("spsel: %llx\n", spsel);
-    
     user_init();
 
-    sti();
+    scheduler();
 
     // int x = 10;
     // cprintf("%d %d %d %lld %lld 0x%llx\n", x, 0, 0, 0, -(1ll<<40), edata);
@@ -42,6 +42,5 @@ main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
 
     // cprintf("x1: 0x%x%x, x2: %x%x, x3: %x%x\n", x1>>32, x1, x2>>32, x2, x3>>32, x3);
 
-    cprintf("- spin\n");
-    while (1) ;
+    panic("scheduler return.\n");
 }

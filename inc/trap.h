@@ -4,9 +4,8 @@
 #include <stdint.h>
 
 struct trapframe {
+    uint64_t sp, spsr, elr;
     uint64_t x[31];
-    uint64_t pc, sp;
-    uint64_t spsr, elr;
 };
 
 void irq_init();

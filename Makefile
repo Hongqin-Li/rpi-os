@@ -43,7 +43,7 @@ $(KERN_IMG): $(KERN_ELF)
 
 -include mksd.mk
 
-QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -chardev stdio,id=uart1 -serial chardev:uart1 -monitor none
+QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -nographic 
 
 qemu: $(KERN_IMG) 
 	$(QEMU) -kernel $<

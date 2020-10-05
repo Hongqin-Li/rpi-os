@@ -2,6 +2,7 @@
 
 #include "arm.h"
 #include "mmu.h"
+#include "proc.h"
 #include "console.h"
 #include "peripherals/timer.h"
 #include "peripherals/irq.h"
@@ -12,18 +13,20 @@ static int dt = 1 << 24;
 // TODO change 4 to NCPU
 /* Stack must always be 16 bytes aligned. */
 __attribute__((__aligned__(128)))
-char kstack[PGSIZE];
+char kstack[KSTACKSIZE];
 
 void
 irq_init()
 {
     extern char vectors[];
     load_vbar_el1(vectors);
+
+    /* Enable timer */
     // timer_init();
     // put32(ENABLE_IRQS_1, SYSTEM_TIMER_IRQ_1);
     
-    generic_timer_init();
-    put32(TIMER_INT_CTRL_0, TIMER_INT_CTRL_0_VALUE);
+    // generic_timer_init();
+    // put32(TIMER_INT_CTRL_0, TIMER_INT_CTRL_0_VALUE);
 
     cprintf("- irq init\n");
 }
@@ -64,19 +67,20 @@ clock()
 void
 trap(struct trapframe *tf)
 {
-    int irq = get32(INT_SOURCE_0);
+    int irq = get32(P2V(INT_SOURCE_0));
     switch (irq) {
     case (GENERIC_TIMER_INTERRUPT):
         clock();
         break;
     default:
-        cprintf("Unknown pending irq: %x\r\n", irq);
+        irq_error(99);
     }
 }
 
 void
 irq_error(uint64_t type)
 {
+    cprintf("- irq_error\n");
     /* PSTATE */
     int64_t spsel, el, spsr;
     asm volatile("mrs %[x], currentel": [x]"=r"(el));
@@ -88,9 +92,11 @@ irq_error(uint64_t type)
 
 
     /* Stack pointer */
-    int64_t sp;
+    uint64_t sp, sp0;
     asm volatile("mov %[x], sp": [x]"=r"(sp));
+    asm volatile("mrs %[x], sp_el0": [x]"=r"(sp0));
     cprintf("stack pointer: 0x%llx\n", sp);
+    cprintf("SP_EL0: 0x%llx\n", sp0);
 
     /* Exception link and exception syndrome */
     int64_t elr, esr;

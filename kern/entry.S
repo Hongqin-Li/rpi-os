@@ -4,7 +4,7 @@
 
 .section ".text.boot"
 
-.globl _start
+.global _start
 
 _start:
     /* Read cpu id, stop slave cores */
@@ -23,19 +23,15 @@ _start:
     bgt     el3
 
 el3:
-    mov     x2, #0x5b1
+    mov     x2, #SCR_VALUE
     msr     scr_el3, x2
-    mov     x2, #0x3c9
+    mov     x2, #SPSR_EL3_VALUE
     msr     spsr_el3, x2
     adr     x2, el2
     msr     elr_el3, x2
     eret
 
 el2:
-    /* Set up exception stack */
-    // ldr     x1, =(kstack+PGSIZE)
-    // msr     sp_el1, x1
-
     /* Enable CNTP for EL1 */
     mrs     x0, cnthctl_el2
     orr     x0, x0, #3
@@ -47,18 +43,15 @@ el2:
      * The Execution state for EL0 is determined by the current
      * value of PSTATE.nRW when executing at EL0.
      */
-    mov     x0, #(1 << 31)
-    // orr     x0, x0, #(1 << 1)   /* SWIO hardwired on Pi3 */
+    mov     x0, #HCR_VALUE
     msr     hcr_el2, x0
-    // mrs     x0, hcr_el2
 
     /* Setup SCTLR access */
-    mov     x2, #0x0800
-    movk    x2, #0x30d0, lsl #16
+    ldr     x2, =(SCTLR_VALUE_MMU_DISABLED)
     msr     sctlr_el1, x2
 
     /* Change execution level to EL1 */
-    mov     x2, #0x3c4
+    mov     x2, #SPSR_EL2_VALUE
     msr     spsr_el2, x2
     adr     x2, el1
     msr     elr_el2, x2
@@ -79,16 +72,14 @@ el1:
 
     isb
 
-    /* Read System Control Register configuration data */
+    /* Enable MMU. */
     mrs     x0, sctlr_el1
-    // orr     x0, x0, #SCTLR_MMU_ENABLED 
-    /* SP Alignment check enable for EL0/1. */
-    orr     x0, x0, #0x1F
+    orr     x0, x0, #SCTLR_MMU_ENABLED 
     msr     sctlr_el1, x0
 
     isb
 
-    /* Set up stack pointer */
+    /* Set up stack pointer. */
     msr     spsel, #1
     ldr     x1, =_start
     mov     sp, x1
