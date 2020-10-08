@@ -63,7 +63,7 @@ proc_alloc()
     p->pid = p - ptable.proc;
     p->pgdir = vm_init();
 
-    void *sp = p->kstack + KSTACKSIZE;
+    void *sp = p->kstack + PGSIZE;
     assert(sizeof(*p->tf) == 17*16 && sizeof(*p->context) == 7*16);
 
     sp -= sizeof(*p->tf);
@@ -102,7 +102,7 @@ scheduler()
                 thiscpu()->proc = p;
                 uvm_switch(p->pgdir);
                 swtch(&thiscpu()->scheduler, p->context);
-                thiscpu()->proc = 0;
+                // thiscpu()->proc = 0;
             }
         }
         release(&ptable.lock);

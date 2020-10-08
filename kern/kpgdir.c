@@ -523,7 +523,7 @@ uint64_t kpte[512] = {
 __attribute__((__aligned__(PGSIZE)))
 uint64_t kpud[512] = {
     V2P(kpte) + PTE_TABLE,
-    0x40000000 + PTE_KDATA,
+    0x40000000 + PTE_KDEV,
 };
 
 __attribute__((__aligned__(PGSIZE)))

@@ -11,17 +11,14 @@ FS_SECTORS := $$(($(SECTORS)-$(FS_OFFSET)))
 
 .DELETE_ON_ERROR: $(BOOT_IMG) $(SD_IMG)
 
-$(BOOT_IMG): $(KERN_IMG) boot/bootcode.bin boot/start.elf boot/config.txt
+$(BOOT_IMG): $(KERN_IMG) $(shell find boot/*)
 	dd if=/dev/zero of=$@ seek=$$(($(BOOT_SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1
 	# -F 32 specify FAT32
 	# -s 1 specify one sector per cluster so that we can create a smaller one
 	mkfs.vfat -F 32 -s 1 $@
 	# Install mtools by `sudo apt install mtools`
-	# and copy files into boot partition
-	mcopy -i $@ boot/bootcode.bin ::bootcode.bin
-	mcopy -i $@ boot/start.elf ::start.elf
-	mcopy -i $@ boot/config.txt ::config.txt
-	mcopy -i $@ $< ::$(notdir $<)
+	# Copy files into boot partition
+	$(foreach x, $^, mcopy -i $@ $(x) ::$(notdir $(x));)
 
 $(SD_IMG): $(BOOT_IMG)
 	dd if=/dev/zero of=$@ seek=$$(($(SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1

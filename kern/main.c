@@ -1,35 +1,50 @@
 #include <stdint.h>
 
-#include "arm.h"
-#include "types.h"
 #include "string.h"
-#include "memlayout.h"
 
+#include "arm.h"
+#include "memlayout.h"
 #include "console.h"
 #include "mm.h"
 #include "trap.h"
 #include "proc.h"
+#include "debug.h"
+#include "timer.h"
 
-extern char edata[], end[];
+extern char edata[], end[], vectors[];
+
+/* Stack must always be 16 bytes aligned. */
+
+static struct {
+    int cnt;
+    struct spinlock lock;
+} mplock = {0};
 
 void
-main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
+main(uint64_t sp, uint64_t ent)
 {
-    memset(edata, 0, end-edata);
+    acquire(&mplock.lock);
 
-    console_init();
+    if (mplock.cnt++ == 0) {
+        memset(edata, 0, end-edata);
+        console_init();
+        mm_init();
+        irq_init();
+    }
 
     cprintf("hello, world\n");
-    // uint64_t spsel;
-    // asm volatile("mrs %[x], spsel": [x]"=r"(spsel): );
-    // cprintf("spsel: %llx\n", spsel);
+    cprintf("cpu: %d.\n", cpuid());
+    // debug_reg();
 
-    free_range(ROUNDUP((void *)end, PGSIZE), P2V(PHYSTOP));
-    irq_init();
+    release(&mplock.lock);
+
+    lvbar(vectors);
+    timer_init();
 
     user_init();
-
     scheduler();
+
+    panic("scheduler return.\n");
 
     // int x = 10;
     // cprintf("%d %d %d %lld %lld 0x%llx\n", x, 0, 0, 0, -(1ll<<40), edata);
@@ -41,6 +56,4 @@ main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
     // r++;
 
     // cprintf("x1: 0x%x%x, x2: %x%x, x3: %x%x\n", x1>>32, x1, x2>>32, x2, x3>>32, x3);
-
-    panic("scheduler return.\n");
 }

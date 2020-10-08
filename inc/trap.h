@@ -8,15 +8,8 @@ struct trapframe {
     uint64_t x[31];
 };
 
-void irq_init();
-// void timer_init();
-void generic_timer_init();
-
-void irq_error();
-// void irq_timer();
-void irq_generic_timer();
-
-void clock();
 void trap(struct trapframe *);
+void irq_init();
+void irq_error();
 
 #endif

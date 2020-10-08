@@ -125,7 +125,7 @@ uvm_dealloc(uint64_t *pgdir, size_t oldsz, size_t newsz)
 void
 uvm_switch(uint64_t *pgdir)
 {
-    load_ttbr0(V2P(pgdir));
+    lttbr0(V2P(pgdir));
 }
 
 /*

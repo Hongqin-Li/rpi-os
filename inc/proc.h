@@ -5,13 +5,12 @@
 #include "arm.h"
 #include "mmu.h"
 #include "trap.h"
+#include "spinlock.h"
 
 #define NPROC           100
 #define NCPU            4
 
 /* Stack must always be 16 bytes aligned. */
-#define KSTACKSIZE      PGSIZE 
-#define USTACKSIZE      PGSIZE
 
 struct context {
     uint64_t lr0, lr, fp;
@@ -46,8 +45,8 @@ void scheduler();
 struct cpu {
     struct context *scheduler;  /* swtch() here to enter scheduler */
     struct proc *proc;          /* The process running on this cpu or null */
-    // int id;
-    // volatile int started;       /* Has the CPU started? */
+    volatile int started;       /* Has the CPU started? */
+    struct spinlock lock;
 };
 
 extern struct cpu cpu[NCPU];

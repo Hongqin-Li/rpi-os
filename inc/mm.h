@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-void free_range(void *start, void *end);
+void mm_init();
 void *kalloc();
 void kfree(void *v);
 

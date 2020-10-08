@@ -6,9 +6,10 @@ OBJCOPY := $(CROSS)-objcopy
 
 CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
+          -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
-	      -MMD -MP
+          -MMD -MP \
 
 CFLAGS += -Iinc
 SRC_DIRS := kern
@@ -43,9 +44,10 @@ $(KERN_IMG): $(KERN_ELF)
 
 -include mksd.mk
 
-QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -nographic 
+QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
+# QEMU := ../qemu-5.1.0/configs/aarch64-softmmu/qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
 
-qemu: $(KERN_IMG) 
+qemu: $(KERN_IMG)
 	$(QEMU) -kernel $<
 qemu-gdb: $(KERN_IMG)
 	$(QEMU) -kernel $< -S -gdb tcp::1234

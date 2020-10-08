@@ -1,10 +1,13 @@
 #include "mm.h"
+
 #include "types.h"
+#include "string.h"
 #include "mmu.h"
 #include "memlayout.h"
-#include "string.h"
 #include "spinlock.h"
 #include "console.h"
+
+extern char end[];
 
 struct freelist {
     void *next;
@@ -45,14 +48,19 @@ free_range(void *start, void *end)
 {
     acquire(&memlock);
     int cnt = 0;
-    void *p = ROUNDUP((char *)start, PGSIZE);
-    for (; p + PGSIZE <= end; p += PGSIZE, cnt ++) 
+    for (void *p = start; p + PGSIZE <= end; p += PGSIZE, cnt ++) 
         freelist_free(&freelist, p);
     cprintf("- free_range: 0x%p ~ 0x%p, %d pages\n", start, end, cnt);
     release(&memlock);
 
     // mm_test();
     // mm_test();
+}
+
+void
+mm_init()
+{
+    free_range(ROUNDUP((void *)end, PGSIZE), P2V(PHYSTOP));
 }
 
 /*

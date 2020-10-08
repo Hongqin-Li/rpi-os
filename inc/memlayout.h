@@ -1,7 +1,11 @@
 #ifndef INC_MEMLAYOUT_H
 #define INC_MEMLAYOUT_H
 
-#define PHYSTOP 0x3F000000            /* Top physical memory */
+/* Stack must always be 16 bytes aligned. */
+#define KSTACKSIZE 4096
+#define USTACKSIZE 4096
+
+#define PHYSTOP 0x3E000000            /* Top physical memory */
 
 #define KERNBASE 0xFFFF000000000000   /* First kernel virtual address */
 #define KERNLINK (KERNBASE+0x80000)   /* Address where kernel is linked */

@@ -1,9 +1,15 @@
+#include "console.h"
+
 #include <stdarg.h>
 #include <stdint.h>
 
+#include "arm.h"
 #include "uart.h"
+#include "console.h"
+#include "spinlock.h"
 
-int panicked;
+static struct spinlock conslock;
+static int panicked = -1;
 
 void
 console_init()
@@ -52,7 +58,7 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
         switch (c) {
         case 'u':
             if (l == 2) printint(va_arg(ap, int64_t), 10, 0);
-            else printint(va_arg(ap, int), 10, 0);
+            else printint(va_arg(ap, uint32_t), 10, 0);
             break;
         case 'd':
             if (l == 2) printint(va_arg(ap, int64_t), 10, 1);
@@ -60,10 +66,10 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
             break;
         case 'x':
             if (l == 2) printint(va_arg(ap, int64_t), 16, 0);
-            else printint(va_arg(ap, int), 16, 0);
+            else printint(va_arg(ap, uint32_t), 16, 0);
             break;
         case 'p':
-            printint((int64_t)va_arg(ap, void *), 16, 0);
+            printint((uint64_t)va_arg(ap, void *), 16, 0);
             break;
         case 'c':
             putch(va_arg(ap, int));
@@ -92,9 +98,11 @@ cprintf(const char *fmt, ...)
 {
     va_list ap;
 
+    if (panicked != cpuid()) acquire(&conslock);
     va_start(ap, fmt);
     vprintfmt(uart_putchar, fmt, ap);
     va_end(ap);
+    if (panicked != cpuid()) release(&conslock);
 }
 
 void
@@ -102,12 +110,12 @@ panic(const char *fmt, ...)
 {
     va_list ap;
 
+    acquire(&conslock);
     va_start(ap, fmt);
     vprintfmt(uart_putchar, fmt, ap);
     va_end(ap);
 
-    cprintf("%s:%d: kernel panic.\n", __FILE__, __LINE__);
-    panicked = 1;
-    while (1)
-        ;
+    panicked = cpuid();
+    cprintf("%s:%d: kernel panic at cpu %d.\n", __FILE__, __LINE__, cpuid());
+    while (1) ;
 }

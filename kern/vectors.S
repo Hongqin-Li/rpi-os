@@ -6,7 +6,7 @@
 
 .globl vectors
 
-.align 11
+.align 12
 vectors:
 el1_sp0:
     verror(0)
@@ -16,13 +16,13 @@ el1_sp0:
 
 el1_spx:
     verror(4)
-    ventry
+    verror(5)
     verror(6)
     verror(7)
 
 el0_aarch64:
     ventry
-    verror(9)
+    ventry
     verror(10)
     verror(11)
 
