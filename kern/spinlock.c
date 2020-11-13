@@ -5,10 +5,10 @@
 void 
 acquire(struct spinlock *lk)
 {
-    disb();
+    // disb();
     while (lk->locked || __atomic_test_and_set(&lk->locked, __ATOMIC_ACQUIRE))
         ;
-    disb();
+    // disb();
 }
 
 void 
@@ -16,7 +16,7 @@ release(struct spinlock *lk)
 {
     if (!lk->locked)
         panic("release: not locked\n");
-    disb();
+    // disb();
     __atomic_clear(&lk->locked, __ATOMIC_RELEASE);
-    disb();
+    // disb();
 }

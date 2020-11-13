@@ -5,8 +5,8 @@
 #include "mmu.h"
 #include "peripherals/irq.h"
 
+#include "uart.h"
 #include "console.h"
-#include "proc.h"
 #include "clock.h"
 #include "timer.h"
 

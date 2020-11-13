@@ -4,6 +4,7 @@
 #include <stdarg.h>
 
 void console_init();
+void cgetchar(int c);
 void cprintf(const char *fmt, ...);
 void panic(const char *fmt, ...);
 

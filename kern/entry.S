@@ -5,11 +5,11 @@
 .section ".text.boot"
 .global _start
 _start:
-/*
- * Wake up other processors.
- * See https://github.com/raspberrypi/tools/blob/master/armstubs/armstub8.S
- * which has been incorporated in start.elf (or bootcode.bin ?)
- */
+    /*
+     * Wake up other processors.
+     * See https://github.com/raspberrypi/tools/blob/master/armstubs/armstub8.S
+     * which has been incorporated in start.elf (or bootcode.bin ?)
+     */
     adr     x0, mp_start
     mov     x1, #1
     mov     x2, #2
@@ -23,9 +23,9 @@ _start:
     isb
 
     sev
-mp_start:
 
-    /* Get current exception level by CurrentEL[3:2] */
+mp_start:
+    /* Get current exception level by CurrentEL[3:2]. */
     mrs     x9, CurrentEL
     and     x9, x9, #0xc
     cmp     x9, #8
@@ -42,12 +42,6 @@ el3:
     eret
 
 el2:
-    /* Enable CNTP for EL1 */
-    mrs     x9, cnthctl_el2
-    orr     x9, x9, #3
-    msr     cnthctl_el2, x9
-    msr     cntvoff_el2, xzr
-
     /*
      * HCR_EL2.RW, bit[31] = 1: The Execution state for EL1 is AArch64.
      * The Execution state for EL0 is determined by the current
@@ -56,11 +50,11 @@ el2:
     mov     x9, #HCR_VALUE
     msr     hcr_el2, x9
 
-    /* Setup SCTLR access */
-    ldr     x9, =(SCTLR_VALUE_MMU_DISABLED)
+    /* Setup SCTLR access. */
+    ldr     x9, =SCTLR_VALUE_MMU_DISABLED
     msr     sctlr_el1, x9
 
-    /* Change execution level to EL1 */
+    /* Change execution level to EL1. */
     mov     x9, #SPSR_EL2_VALUE
     msr     spsr_el2, x9
     adr     x9, el1
@@ -70,26 +64,26 @@ el2:
 el1:
     adr     x9, kpgdir
 
-    /* Higher and lower half map to same address */
+    /* Higher and lower half map to same physical memory region. */
     msr     ttbr0_el1, x9
     msr     ttbr1_el1, x9
 
-    ldr     x9, =(TCR_VALUE)        
+    ldr     x9, =TCR_VALUE
     msr     tcr_el1, x9
 
-    ldr     x9, =(MAIR_VALUE)
+    ldr     x9, =MAIR_VALUE
     msr     mair_el1, x9
 
     isb
 
     /* Enable MMU. */
     mrs     x9, sctlr_el1
-    orr     x9, x9, #SCTLR_MMU_ENABLED 
+    orr     x9, x9, #SCTLR_MMU_ENABLED
     msr     sctlr_el1, x9
 
     isb
 
-    /* Read cpu id */
+    /* Read CPU ID. */
     mrs     x0, mpidr_el1
     and     x0, x0, #3
 

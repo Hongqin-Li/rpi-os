@@ -11,12 +11,12 @@
 #define MT_DEVICE_nGnRnE        0x0
 #define MT_NORMAL               0x1
 #define MT_DEVICE_nGnRnE_FLAGS  0x00
-#define MT_NORMAL_FLAGS         0xFF        /* Inner/Outer Write-back Non-transient RW-Allocate */
+#define MT_NORMAL_FLAGS         0xFF    /* Inner/Outer Write-back Non-transient RW-Allocate */
 
 #define MAIR_VALUE              ((MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | \
                                 (MT_NORMAL_FLAGS << (8 * MT_NORMAL)))
 
-#define SH_INNER         (3 << 8)   /* Inner shareable */
+#define SH_INNER         (3 << 8)       /* Inner shareable */
 #define AF_USED          (1 << 10)
 
 #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
@@ -25,9 +25,9 @@
 /* PTE flags */
 #define PTE_VALID       0x1
 
-#define PTE_TABLE       0x3         /* Table in level 0/1/2 */
-#define PTE_BLOCK       0x1         /* Block in level 1/2 */
-#define PTE_PAGE        0x3         /* Page in level 3 */
+#define PTE_TABLE       0x3             /* Table in level 0/1/2 */
+#define PTE_BLOCK       0x1             /* Block in level 1/2 */
+#define PTE_PAGE        0x3             /* Page in level 3 */
 
 #define PTE_KERN        (0 << 6)
 #define PTE_USER        (1 << 6)

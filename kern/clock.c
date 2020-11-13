@@ -37,5 +37,5 @@ void
 clock()
 {
     // debug_mem(LOCAL_BASE, 0x100);
-    // cprintf("cpu %d clock.\n", cpuid());
+    cprintf("cpu %d clock.\n", cpuid());
 }

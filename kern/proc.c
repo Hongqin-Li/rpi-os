@@ -68,7 +68,6 @@ proc_alloc()
 
     sp -= sizeof(*p->tf);
     p->tf = sp;
-    // memset(p->tf, 0, sizeof(*p->tf));
     /* No user stack for init process. */
     p->tf->spsr = p->tf->sp = 0;
 
@@ -76,7 +75,6 @@ proc_alloc()
     p->context = sp;
     p->context->lr0 = forkret;
     p->context->lr = trapret;
-    // memset(p->context, 0, sizeof(*p->context));
    
     release(&ptable.lock);
     return p;
@@ -102,7 +100,6 @@ scheduler()
                 thiscpu()->proc = p;
                 uvm_switch(p->pgdir);
                 swtch(&thiscpu()->scheduler, p->context);
-                // thiscpu()->proc = 0;
             }
         }
         release(&ptable.lock);

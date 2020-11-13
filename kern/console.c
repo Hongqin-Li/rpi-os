@@ -5,7 +5,6 @@
 
 #include "arm.h"
 #include "uart.h"
-#include "console.h"
 #include "spinlock.h"
 
 static struct spinlock conslock;
@@ -98,11 +97,22 @@ cprintf(const char *fmt, ...)
 {
     va_list ap;
 
-    if (panicked != cpuid()) acquire(&conslock);
+    acquire(&conslock);
+    if (panicked >= 0 && panicked != cpuid()) {
+        release(&conslock);
+        while (1) ;
+    }
     va_start(ap, fmt);
     vprintfmt(uart_putchar, fmt, ap);
     va_end(ap);
-    if (panicked != cpuid()) release(&conslock);
+    release(&conslock);
+}
+
+void
+cgetchar(int c)
+{
+    cprintf("%d ", c);
+    /* TODO clist */
 }
 
 void
@@ -111,11 +121,16 @@ panic(const char *fmt, ...)
     va_list ap;
 
     acquire(&conslock);
+    if (panicked < 0) panicked = cpuid();
+    else {
+        release(&conslock);
+        while (1) ;
+    }
     va_start(ap, fmt);
     vprintfmt(uart_putchar, fmt, ap);
     va_end(ap);
+    release(&conslock);
 
-    panicked = cpuid();
     cprintf("%s:%d: kernel panic at cpu %d.\n", __FILE__, __LINE__, cpuid());
     while (1) ;
 }
