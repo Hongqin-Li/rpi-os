@@ -30,7 +30,6 @@ main(uint64_t sp, uint64_t ent)
         console_init();
         mm_init();
         irq_init();
-        mbox_get_clock_rate();
         sd_init();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());

@@ -19,7 +19,7 @@ delay(int32_t count)
 static inline void
 delayms(uint32_t n)
 {
-    uint32_t f, t, r;
+    uint64_t f, t, r;
     /* Get the current counter frequency */
     asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
     /* Read the current counter. */
@@ -48,6 +48,14 @@ static inline void
 disb()
 {
     asm volatile("dsb sy; isb");
+}
+
+/* Data cache clean and invalidate by virtual address to point of coherency. */
+static inline void
+dccivac(void *p, int n)
+{
+    while (n--)
+        asm volatile("dc civac, %[x]" : : [x]"r"(p + n));
 }
 
 /* Read Exception Syndrome Register (EL1) */

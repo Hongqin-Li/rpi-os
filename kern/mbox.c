@@ -2,11 +2,12 @@
 #include "peripherals/mbox.h"
 #include "peripherals/base.h"
 
+#include "arm.h"
 #include "console.h"
 #include "memlayout.h"
 #include "debug.h"
 
-#define VIDEOCORE_MBOX  (MMIO_BASE+0x0000B880)
+#define VIDEOCORE_MBOX  (MMIO_BASE + 0x0000B880)
 #define MBOX_READ       ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x00))
 #define MBOX_POLL       ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x10))
 #define MBOX_SENDER     ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x14))
@@ -26,19 +27,29 @@ int
 mbox_read(uint8_t chan)
 {
     while (1) {
+        disb();
         while (*MBOX_STATUS & MBOX_EMPTY) ;
+        disb();
         uint32_t r = *MBOX_READ;
-        if ((r & 0xF) == chan) return r >> 4;
+        if ((r & 0xF) == chan) {
+            cprintf("- mbox_read: 0x%x\n", r);
+            return r >> 4;
+        }
     }
+    disb();
     return 0;
 }
 
 void
 mbox_write(uint32_t buf, uint8_t chan)
 {
+    disb();
     assert((buf & 0xF) == 0 && (chan & ~0xF) == 0);
     while (*MBOX_STATUS & MBOX_FULL) ;
+    disb();
+    cprintf("- mbox write: 0x%x\n", (buf & ~0xF) | chan);
     *MBOX_WRITE = (buf & ~0xF) | chan;
+    disb();
 }
 
 int
@@ -47,11 +58,20 @@ mbox_get_arm_memory()
     __attribute__((aligned(16)))
     uint32_t buf[] = {36, 0, MBOX_TAG_GET_ARM_MEMORY, 8, 0, 0, 0, MBOX_TAG_END};
     asserts((V2P(buf) & 0xF) == 0, "Buffer should align to 16 bytes. ");
+    debug_mem(VIDEOCORE_MBOX, 0x30);
 
+    disb();
+    dccivac(buf, sizeof(buf));
+    disb();
     mbox_write(V2P(buf), 8);
+    disb();
     mbox_read(8);
-    // debug_mem(buf, buf[0]);
+    disb();
+    dccivac(buf, sizeof(buf));
+    disb();
+
     asserts(buf[5] == 0, "Memory base address should be zero. ");
+    asserts(buf[6] != 0, "Memory size should not be zero. ");
     return buf[6];
 }
 
@@ -62,8 +82,16 @@ mbox_get_clock_rate()
     uint32_t buf[] = {36, 0, MBOX_TAG_GET_CLOCK_RATE, 8, 0, 1, 0, MBOX_TAG_END};
     asserts((V2P(buf) & 0xF) == 0, "Buffer should align to 16 bytes. ");
 
+    disb();
+    dccivac(buf, sizeof(buf));
+    disb();
     mbox_write(V2P(buf), 8);
+    disb();
     mbox_read(8);
+    disb();
+    dccivac(buf, sizeof(buf));
+    disb();
+
     cprintf("- clock rate %d\n", buf[6]);
     return buf[6];
 }

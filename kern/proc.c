@@ -8,6 +8,9 @@
 #include "vm.h"
 #include "spinlock.h"
 
+#include "sd.h"
+#include "debug.h"
+
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
@@ -30,7 +33,12 @@ static void
 forkret()
 {
     cprintf("- forkret\n");
+    char buf[512];
+    sdTransferBlocks(0, 1, buf, 0);
+    debug_mem(buf, sizeof(buf));
+
     release(&ptable.lock);
+
     return;
 }
 

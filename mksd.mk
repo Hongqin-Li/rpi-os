@@ -11,6 +11,7 @@ FS_SECTORS := $$(($(SECTORS)-$(FS_OFFSET)))
 
 .DELETE_ON_ERROR: $(BOOT_IMG) $(SD_IMG)
 
+# TODO: Detect img size automatically
 $(BOOT_IMG): $(KERN_IMG) $(shell find boot/*)
 	dd if=/dev/zero of=$@ seek=$$(($(BOOT_SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1
 	# -F 32 specify FAT32

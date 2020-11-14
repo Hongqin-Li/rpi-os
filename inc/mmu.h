@@ -16,9 +16,11 @@
 #define MAIR_VALUE              ((MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | \
                                 (MT_NORMAL_FLAGS << (8 * MT_NORMAL)))
 
-#define SH_INNER         (3 << 8)       /* Inner shareable */
-#define AF_USED          (1 << 10)
+#define SH_OUTER        (2 << 8)
+#define SH_INNER        (3 << 8)       /* Inner shareable */
+#define AF_USED         (1 << 10)
 
+// #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_OUTER)
 #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
 #define PTE_DEVICE      ((MT_DEVICE_nGnRnE << 2) | AF_USED)
 
@@ -48,6 +50,8 @@
 #define TCR_TG1_4K      (2 << 30)           /* Different from TG0 */
 #define TCR_SH0_INNER   (3 << 12)
 #define TCR_SH1_INNER   (3 << 28)
+#define TCR_SH0_OUTER   (2 << 12)
+#define TCR_SH1_OUTER   (2 << 28)
 #define TCR_ORGN0_IRGN0 ((1 << 10) | (1 << 8))
 #define TCR_ORGN1_IRGN1 ((1 << 26) | (1 << 24))
 
