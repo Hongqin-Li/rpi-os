@@ -5,7 +5,8 @@
 #define KSTACKSIZE 4096
 #define USTACKSIZE 4096
 
-#define PHYSTOP 0x3E000000            /* Top physical memory */
+// Deprecated: use mbox_get_arm_memory() instead
+// #define PHYSTOP 0x3E000000            /* Top physical memory */
 
 #define KERNBASE 0xFFFF000000000000   /* First kernel virtual address */
 #define KERNLINK (KERNBASE+0x80000)   /* Address where kernel is linked */

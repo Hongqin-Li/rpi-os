@@ -16,4 +16,12 @@ void panic(const char *fmt, ...);
     }                                                               \
 })
 
+#define asserts(x, ...)                                             \
+({                                                                  \
+    if (!(x)) {                                                     \
+        cprintf("%s:%d: assertion failed.\n", __FILE__, __LINE__);  \
+        panic(__VA_ARGS__);                                         \
+    }                                                               \
+})
+
 #endif

@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "console.h"
+#include "peripherals/mbox.h"
 
 extern char end[];
 
@@ -60,7 +61,8 @@ free_range(void *start, void *end)
 void
 mm_init()
 {
-    free_range(ROUNDUP((void *)end, PGSIZE), P2V(PHYSTOP));
+    int phystop = mbox_get_arm_memory();
+    free_range(ROUNDUP((void *)end, PGSIZE), P2V(phystop));
 }
 
 /*
@@ -93,7 +95,8 @@ kfree(void *va)
 void
 mm_test()
 {
-    cprintf("* mm test begin\n");
+    /*
+    cprintf("- mm test begin\n");
     static void *p[PHYSTOP/PGSIZE];
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
@@ -102,5 +105,6 @@ mm_test()
     }
     while (i--)
         kfree(p[i]);
-    cprintf("* mm test end\n");
+    cprintf("- mm test end\n");
+    */
 }

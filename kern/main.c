@@ -8,6 +8,7 @@
 #include "trap.h"
 #include "timer.h"
 #include "proc.h"
+#include "peripherals/mbox.h"
 
 extern char edata[], end[], vectors[];
 
@@ -29,6 +30,8 @@ main(uint64_t sp, uint64_t ent)
         console_init();
         mm_init();
         irq_init();
+        mbox_get_clock_rate();
+        sd_init();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());
     release(&mp.lock);

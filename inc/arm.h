@@ -3,11 +3,32 @@
 
 #include <stdint.h>
 
+/*
+ * Wait N CPU cycles.
+ */
 static inline void
 delay(int32_t count)
 {
     asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n":
                  "=r"(count): [count]"0"(count) : "cc");
+}
+
+/*
+ * Wait N microsec.
+ */
+static inline void
+delayms(uint32_t n)
+{
+    uint32_t f, t, r;
+    /* Get the current counter frequency */
+    asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
+    /* Read the current counter. */
+    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
+    /* Calculate expire value for counter */
+    t += ((f/1000)*n) / 1000;
+    do {
+        asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(r));
+    } while (r < t);
 }
 
 static inline void

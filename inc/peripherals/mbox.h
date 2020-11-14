@@ -8,4 +8,7 @@
 #define MBOX_STATUS   (MBOX_BASE + 0x18)
 #define MBOX_WRITE    (MBOX_BASE + 0x20)
 
+int mbox_get_arm_memory();
+int mbox_get_clock_rate();
+
 #endif
