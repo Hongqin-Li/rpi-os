@@ -33,9 +33,9 @@ static void
 forkret()
 {
     cprintf("- forkret\n");
-    char buf[512];
-    sdTransferBlocks(0, 1, buf, 0);
-    debug_mem(buf, sizeof(buf));
+    // char buf[512];
+    // sdTransferBlocks(0, 1, buf, 0);
+    // debug_mem(buf, sizeof(buf));
 
     release(&ptable.lock);
 

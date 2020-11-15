@@ -17,7 +17,7 @@ delay(int32_t count)
  * Wait N microsec.
  */
 static inline void
-delayms(uint32_t n)
+delayus(uint32_t n)
 {
     uint64_t f, t, r;
     /* Get the current counter frequency */
@@ -25,7 +25,7 @@ delayms(uint32_t n)
     /* Read the current counter. */
     asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
     /* Calculate expire value for counter */
-    t += ((f/1000)*n) / 1000;
+    t += f / 1000000 * n * 3; // FIXME: currently delay 3us
     do {
         asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(r));
     } while (r < t);
