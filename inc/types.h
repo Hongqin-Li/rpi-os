@@ -2,6 +2,7 @@
 #define INC_TYPES_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* Efficient min and max operations */
 #define MIN(_a, _b)                 \
@@ -31,5 +32,11 @@
 })
 
 #define ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
+
+#define container_of(ptr, type, member)                 \
+({                                                      \
+    const typeof(((type *)0)->member) *__mptr = (ptr);  \
+    (type *)((char *)__mptr - offsetof(type,member));   \
+})
 
 #endif

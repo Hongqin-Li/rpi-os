@@ -12,7 +12,7 @@ void panic(const char *fmt, ...);
 ({                                                                  \
     if (!(x)) {                                                     \
         cprintf("%s:%d: assertion failed.\n", __FILE__, __LINE__);  \
-        while(1) ;                                                  \
+        while (1) ;                                                 \
     }                                                               \
 })
 

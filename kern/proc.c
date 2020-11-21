@@ -3,6 +3,7 @@
 #include "string.h"
 #include "types.h"
 #include "memlayout.h"
+#include "list.h"
 #include "console.h"
 #include "mm.h"
 #include "vm.h"
@@ -14,16 +15,23 @@
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
-// #define SQSIZE 0x100    /* Must be power of 2 */
-// #define HASH(x) (((int)x >> 5) & (SQSIZE - 1))
-// struct proc *slpque[SQSIZE];
+#define SQSIZE  0x100    /* Must be power of 2. */
+#define HASH(x) ((((int)(x)) >> 5) & (SQSIZE - 1))
 
 struct cpu cpu[NCPU];
 
 struct {
+  struct list_head slpque[SQSIZE];
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
+
+void
+proc_init()
+{
+    for (int i = 0; i < SQSIZE; i++) list_init(&ptable.slpque[i]);
+}
+
 
 /*
  * A fork child's very first scheduling by scheduler()
@@ -33,12 +41,27 @@ static void
 forkret()
 {
     cprintf("- forkret\n");
-    // char buf[512];
-    // sdTransferBlocks(0, 1, buf, 0);
-    // debug_mem(buf, sizeof(buf));
+    static int first = 1;
+    if (first) {
+        static struct buf b;
+        b.flags = 0;
+        b.blockno = 0;
+       
+        sd_start(&b);
+        // memset(buf, 0xAC, sizeof(buf));
+        // sdTransferBlocks(0, 1, buf, 1);
+        // sdTransferBlocks(0, 1, buf, 0);
+        debug_mem(b.data, sizeof(b.data));
+        // b.flags = B_DIRTY;
+        // sd_start(&b);
+        // debug_mem(b.data, sizeof(b.data));
+        sd_test();
+
+        first = 0;
+    }
 
     release(&ptable.lock);
-
+    cprintf("- forkret finish\n");
     return;
 }
 
@@ -140,5 +163,61 @@ user_init()
 
     acquire(&ptable.lock);
     p->state = RUNNABLE;
+    release(&ptable.lock);
+}
+
+/*
+ * Atomically release lock and sleep on chan.
+ * Reacquires lock when awakened.
+ */
+void
+sleep(void *chan, struct spinlock *lk)
+{
+    struct list_head t;
+    int i = HASH(chan);
+    assert(i < SQSIZE);
+
+    if (lk != &ptable.lock) {
+        acquire(&ptable.lock);
+        release(lk);
+    }
+
+    list_push_back(&ptable.slpque[i], &t);
+
+    swtch(&thisproc()->context, thiscpu()->scheduler);
+
+    assert(list_find(&ptable.slpque[i], &t) == &t);
+    list_drop(list_find(&ptable.slpque[i], &t));
+
+    if (lk != &ptable.lock) {
+        acquire(lk);
+        release(&ptable.lock);
+    }
+}
+
+/*
+ * Wake up all processes sleeping on chan.
+ * The ptable lock must be held.
+ */
+static void
+wakeup1(void *chan)
+{
+    struct list_head *q = &ptable.slpque[HASH(chan)];
+    struct proc *p;
+    LIST_FOREACH_ENTRY(p, q, link) {
+        if (p->chan == chan) {
+            list_drop(&p->link);
+            p->state = RUNNABLE;
+        }
+    }
+
+}
+
+/* Wake up all processes sleeping on chan. */
+void
+wakeup(void *chan)
+{
+    acquire(&ptable.lock);
+    wakeup1(chan);
     release(&ptable.lock);
 }

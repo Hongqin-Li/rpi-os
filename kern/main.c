@@ -24,15 +24,16 @@ static struct {
 void
 main(uint64_t sp, uint64_t ent)
 {
+    while (cpuid()) ;
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
         memset(edata, 0, end-edata);
         console_init();
         mm_init();
         irq_init();
-        cprintf("- start\n");
-        delayus(1000000);
-        cprintf("- end\n");
+        // cprintf("- start\n");
+        // delayus(1000000);
+        // cprintf("- end\n");
         sd_init();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());

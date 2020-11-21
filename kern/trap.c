@@ -9,6 +9,7 @@
 #include "console.h"
 #include "clock.h"
 #include "timer.h"
+#include "sd.h"
 
 #include "debug.h"
 
@@ -18,6 +19,7 @@ irq_init()
     cprintf("- irq init\n");
     clock_init();
     put32(ENABLE_IRQS_1, AUX_INT);
+    put32(ENABLE_IRQS_2, VC_ARASANSDIO_INT);
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
 }
 
@@ -29,19 +31,23 @@ trap(struct trapframe *tf)
     else if (src & IRQ_TIMER) clock(), clock_reset();
     else if (src & IRQ_GPU) {
         if (get32(IRQ_PENDING_1) & AUX_INT) uart_intr();
+        else if (get32(IRQ_PENDING_2) & VC_ARASANSDIO_INT) sd_intr();
         else goto bad;
     } else { 
         switch (resr() >> EC_SHIFT) {
         case EC_SVC64:
-            cprintf("hello, world\n");   
+            cprintf("- hello, world syscall %d\n", resr() & 0xFFFFFF);
             lesr(0);  /* Clear esr. */
             break;
         default:
 bad:
             debug_reg();
+            cprintf("- IRQ_PENDING_1: 0x%x\n", get32(IRQ_PENDING_1));
+            cprintf("- IRQ_PENDING_2: 0x%x\n", get32(IRQ_PENDING_2));
             panic("unexpected irq.\n");
         }
     }
+    disb();
 }
 
 void

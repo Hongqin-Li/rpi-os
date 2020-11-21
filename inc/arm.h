@@ -3,9 +3,7 @@
 
 #include <stdint.h>
 
-/*
- * Wait N CPU cycles.
- */
+/* Wait N CPU cycles. */
 static inline void
 delay(int32_t count)
 {
@@ -13,9 +11,15 @@ delay(int32_t count)
                  "=r"(count): [count]"0"(count) : "cc");
 }
 
-/*
- * Wait N microsec.
- */
+static inline uint64_t
+timestamp()
+{
+    uint64_t t;
+    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
+    return t;
+}
+
+/* Wait N microsec. */
 static inline void
 delayus(uint32_t n)
 {
