@@ -56,4 +56,9 @@ gdb:
 clean:
 	rm -r $(BUILD_DIR)
 
-.PHONY: all clean qemu qemu-gdb gdb
+install-apt:
+	sudo apt install -y gcc-aarch64-linux-gnu gdb-multiarch
+	sudo apt install -y qemu-system-arm qemu-efi-aarch64 qemu-utils
+	sudo apt install -y mtools
+
+.PHONY: all install-apt clean qemu qemu-gdb gdb
