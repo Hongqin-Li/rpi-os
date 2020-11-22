@@ -18,7 +18,7 @@ Several parts of it are still in progress.
 
 ## Development
 
-Linux is required for building and Ubuntu is prefered.
+Linux is required for building and Ubuntu is preferred.
 
 - Install toolchains by `make install-apt` on Ubuntu 18.04 or higher.
 - Emulate the kernel at `obj/kernel8.img` by `make qemu`.
