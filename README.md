@@ -12,7 +12,7 @@ Several parts of it are still in progress.
 - [ ] Process management
 - [ ] Disk Driver (EMMC)
 - [ ] File system
-- [ ] C library
+- [x] C library: port [musl](https://musl.libc.org/)
 - [ ] Compiler
 - [ ] Documentation...
 
@@ -20,7 +20,7 @@ Several parts of it are still in progress.
 
 Linux is required for building and Ubuntu is preferred.
 
-- Install toolchains by `make install-apt` on Ubuntu 18.04 or higher.
+- Install toolchains and libc by `make init` on Ubuntu 18.04 or higher.
 - Emulate the kernel at `obj/kernel8.img` by `make qemu`.
 - Create a bootable sd card image at `obj/sd.img` for rpi3 by `make`.
 - Burn to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).

@@ -1,8 +1,8 @@
-CROSS := aarch64-linux-gnu
-CC := $(CROSS)-gcc
-LD := $(CROSS)-ld
-OBJDUMP := $(CROSS)-objdump
-OBJCOPY := $(CROSS)-objcopy
+CROSS := aarch64-linux-gnu-
+CC := $(CROSS)gcc
+LD := $(CROSS)ld
+OBJDUMP := $(CROSS)objdump
+OBJCOPY := $(CROSS)objcopy
 
 CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
@@ -19,7 +19,9 @@ KERN_ELF := $(BUILD_DIR)/kernel8.elf
 KERN_IMG := $(BUILD_DIR)/kernel8.img
 SD_IMG := $(BUILD_DIR)/sd.img
 
-all: $(KERN_IMG) $(SD_IMG)
+all:
+	$(MAKE) -C usr
+	$(MAKE) $(SD_IMG)
 
 # Automatically find sources and headers
 SRCS := $(shell find $(SRC_DIRS) -name *.c -or -name *.S)
@@ -46,19 +48,23 @@ $(KERN_IMG): $(KERN_ELF)
 
 QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
 
-qemu: $(KERN_IMG)
+qemu: $(KERN_IMG) $(SD_IMG)
 	$(QEMU) -kernel $<
-qemu-gdb: $(KERN_IMG)
+qemu-gdb: $(KERN_IMG) $(SD_IMG)
 	$(QEMU) -kernel $< -S -gdb tcp::1234
 gdb: 
 	gdb-multiarch -n -x .gdbinit
 
-clean:
-	rm -r $(BUILD_DIR)
-
-install-apt:
+init:
 	sudo apt install -y gcc-aarch64-linux-gnu gdb-multiarch
 	sudo apt install -y qemu-system-arm qemu-efi-aarch64 qemu-utils
 	sudo apt install -y mtools
+	git submodule update --init --recursive
+	(cd libc && export CROSS_COMPILE=$(CROSS) && ./configure --target=$(ARCH))
 
-.PHONY: all install-apt clean qemu qemu-gdb gdb
+clean:
+	rm -r $(BUILD_DIR)
+	$(MAKE) -C usr clean
+	$(MAKE) -C libc clean
+
+.PHONY: init all clean qemu qemu-gdb gdb

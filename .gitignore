@@ -1,3 +1,4 @@
 obj/
+bin/
 .lvimrc
 .gdb_history
