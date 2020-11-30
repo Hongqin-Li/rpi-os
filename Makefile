@@ -7,11 +7,11 @@ OBJCOPY := $(CROSS)objcopy
 CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
-          -static -fno-builtin -nostdlib -ffreestanding -nostartfiles \
+          -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
 
-CFLAGS += -Iinc
+CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include
 SRC_DIRS := kern
 BUILD_DIR = obj
 
@@ -63,8 +63,8 @@ init:
 	(cd libc && export CROSS_COMPILE=$(CROSS) && ./configure --target=$(ARCH))
 
 clean:
-	rm -r $(BUILD_DIR)
 	$(MAKE) -C usr clean
 	$(MAKE) -C libc clean
+	rm -rf $(BUILD_DIR)
 
 .PHONY: init all clean qemu qemu-gdb gdb

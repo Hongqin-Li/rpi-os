@@ -11,14 +11,6 @@ delay(int32_t count)
                  "=r"(count): [count]"0"(count) : "cc");
 }
 
-static inline uint64_t
-timestamp()
-{
-    uint64_t t;
-    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
-    return t;
-}
-
 /* Wait N microsec. */
 static inline void
 delayus(uint32_t n)
@@ -29,10 +21,18 @@ delayus(uint32_t n)
     /* Read the current counter. */
     asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
     /* Calculate expire value for counter */
-    t += f / 1000000 * n * 3; // FIXME: currently delay 3us
+    t += f / 1000000 * n;
     do {
         asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(r));
     } while (r < t);
+}
+
+static inline uint64_t
+timestamp()
+{
+    uint64_t t;
+    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
+    return t;
 }
 
 static inline void

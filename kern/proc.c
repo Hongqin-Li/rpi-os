@@ -15,6 +15,9 @@
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
+static void user_init();
+static void idle_init();
+
 #define SQSIZE  0x100    /* Must be power of 2. */
 #define HASH(x) ((((int)(x)) >> 5) & (SQSIZE - 1))
 
@@ -22,14 +25,18 @@ struct cpu cpu[NCPU];
 
 struct {
   struct list_head slpque[SQSIZE];
+  struct list_head sched_que;
   struct spinlock lock;
-  struct proc proc[NPROC];
 } ptable;
 
 void
 proc_init()
 {
-    for (int i = 0; i < SQSIZE; i++) list_init(&ptable.slpque[i]);
+    list_init(&ptable.sched_que);
+    for (int i = 0; i < SQSIZE; i++)
+        list_init(&ptable.slpque[i]);
+    // FIXME: 
+    user_init();
 }
 
 
@@ -40,31 +47,12 @@ proc_init()
 static void
 forkret()
 {
-    cprintf("- forkret\n");
-    static int first = 1;
-    if (first) {
-        static struct buf b;
-        b.flags = 0;
-        b.blockno = 0;
-       
-        sd_start(&b);
-        // memset(buf, 0xAC, sizeof(buf));
-        // sdTransferBlocks(0, 1, buf, 1);
-        // sdTransferBlocks(0, 1, buf, 0);
-        debug_mem(b.data, sizeof(b.data));
-        // b.flags = B_DIRTY;
-        // sd_start(&b);
-        // debug_mem(b.data, sizeof(b.data));
-        sd_test();
-
-        first = 0;
-    }
-
     release(&ptable.lock);
-    cprintf("- forkret finish\n");
+    cprintf("- forkret\n");
     return;
 }
 
+// TODO: use kmalloc
 /*
  * Look in the process table for an UNUSED proc.
  * If found, change state to EMBRYO and initialize
@@ -74,11 +62,12 @@ forkret()
 static struct proc *
 proc_alloc()
 {
+    static struct proc proc[NPROC];
     struct proc *p;
     int found = 0;
 
     acquire(&ptable.lock);
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    for (p = proc; p < &proc[NPROC]; p++) {
         if (p->state == UNUSED) {
             found = 1;
             break;
@@ -91,7 +80,8 @@ proc_alloc()
     }
 
     p->state = EMBRYO;
-    p->pid = p - ptable.proc;
+    p->pid = p - proc;
+    cprintf("- proc alloc: pid %d\n", p->pid);
     p->pgdir = vm_init();
 
     void *sp = p->kstack + PGSIZE;
@@ -111,30 +101,25 @@ proc_alloc()
     return p;
 }
 
-/*
- * Per-CPU process scheduler.
- * Each CPU calls scheduler() after setting itself up.
- * Scheduler never returns. It loops, doing:
- * - choose a process to run
- * - swtch to start running that process
- * - eventually that process transfers control
- *   via swtch back to the scheduler.
- */
-void
-scheduler()
+/* Initialize per-cpu idle process. */
+static void
+idle_init()
 {
-    while (1) {
-        acquire(&ptable.lock);
-        for (struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-            if (p->state == RUNNABLE) {
-                p->state = RUNNING;
-                thiscpu()->proc = p;
-                uvm_switch(p->pgdir);
-                swtch(&thiscpu()->scheduler, p->context);
-            }
-        }
-        release(&ptable.lock);
-    }
+    cprintf("- idle init\n");
+
+    struct proc *p;
+    while (!(p = proc_alloc())) ;
+
+    void *va = kalloc();
+    uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
+
+    extern char ispin[], eicode[];
+    memmove(va, ispin, eicode - ispin);
+    assert((size_t)(eicode - ispin) <= PGSIZE);
+
+    p->tf->elr = 0;
+
+    thiscpu()->idle = p;
 }
 
 /*
@@ -144,7 +129,7 @@ scheduler()
  * - set up link register in trap frame.
  * - mark as RUNNABLE so that our scheduler can swtch to it.
  */
-void
+static void
 user_init()
 {
     cprintf("- user init\n");
@@ -162,7 +147,52 @@ user_init()
     p->tf->elr = 0;
 
     acquire(&ptable.lock);
-    p->state = RUNNABLE;
+    list_push_back(&ptable.sched_que, &p->link);
+    release(&ptable.lock);
+}
+
+/*
+ * Per-CPU process scheduler.
+ * Each CPU calls scheduler() after setting itself up.
+ * Scheduler never returns. It loops, doing:
+ * - choose a process to run
+ * - swtch to start running that process
+ * - eventually that process transfers control
+ *   via swtch back to the scheduler.
+ */
+void
+scheduler()
+{
+    idle_init();
+    for (struct proc *p; ; ) {
+        acquire(&ptable.lock);
+        struct list_head *head = &ptable.sched_que;
+        if (list_empty(head)) {
+            p = thiscpu()->idle;
+            // cprintf("- scheduler: cpu %d to idle\n", cpuid());
+        } else {
+            p = container_of(list_front(head), struct proc, link);
+            list_pop_front(head);
+            // cprintf("- scheduler: cpu %d to pid %d\n", cpuid(), p->pid);
+        }
+        uvm_switch(p->pgdir);
+        thiscpu()->proc = p;
+        swtch(&thiscpu()->scheduler, p->context);
+        // cprintf("- scheduler: cpu %d back to scheduler from pid %d\n", cpuid(), p->pid);
+        thiscpu()->proc = 0;
+        release(&ptable.lock);
+    }
+}
+
+/* Give up CPU. */
+void
+yield()
+{
+    struct proc *p = thisproc();
+    acquire(&ptable.lock);
+    if (p != thiscpu()->idle)
+        list_push_back(&ptable.sched_que, &p->link);
+    swtch(&p->context, thiscpu()->scheduler);
     release(&ptable.lock);
 }
 
@@ -173,7 +203,7 @@ user_init()
 void
 sleep(void *chan, struct spinlock *lk)
 {
-    struct list_head t;
+    struct proc *p = thisproc();
     int i = HASH(chan);
     assert(i < SQSIZE);
 
@@ -182,12 +212,12 @@ sleep(void *chan, struct spinlock *lk)
         release(lk);
     }
 
-    list_push_back(&ptable.slpque[i], &t);
+    p->chan = chan;
+    list_push_back(&ptable.slpque[i], &p->link);
 
+    // cprintf("- cpu %d: sleep pid %d on chan 0x%p\n", cpuid(), p->pid, chan);
     swtch(&thisproc()->context, thiscpu()->scheduler);
-
-    assert(list_find(&ptable.slpque[i], &t) == &t);
-    list_drop(list_find(&ptable.slpque[i], &t));
+    // cprintf("- cpu %d: wake on chan 0x%p\n", cpuid(), chan);
 
     if (lk != &ptable.lock) {
         acquire(lk);
@@ -203,11 +233,14 @@ static void
 wakeup1(void *chan)
 {
     struct list_head *q = &ptable.slpque[HASH(chan)];
-    struct proc *p;
-    LIST_FOREACH_ENTRY(p, q, link) {
+    struct proc *p, *np;
+
+    LIST_FOREACH_ENTRY_SAFE(p, np, q, link) {
+        // cprintf("- wakeup1: try pid %d\n", p->pid);
         if (p->chan == chan) {
+            // cprintf("- wakeup1: pid %d\n", p->pid);
             list_drop(&p->link);
-            p->state = RUNNABLE;
+            list_push_back(&ptable.sched_que, &p->link);
         }
     }
 
@@ -217,6 +250,7 @@ wakeup1(void *chan)
 void
 wakeup(void *chan)
 {
+    // cprintf("- wakeup: chan 0x%p\n", chan);
     acquire(&ptable.lock);
     wakeup1(chan);
     release(&ptable.lock);

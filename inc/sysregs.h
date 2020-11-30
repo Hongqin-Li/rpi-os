@@ -37,4 +37,6 @@
 #define EC_DABORT                   0x24
 #define EC_IABORT                   0x20
 
+#define ISS_MASK                    0xFFFFFF
+
 #endif

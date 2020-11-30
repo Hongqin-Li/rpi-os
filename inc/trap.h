@@ -11,5 +11,6 @@ struct trapframe {
 void trap(struct trapframe *);
 void irq_init();
 void irq_error();
+extern int syscall1(struct trapframe *);
 
 #endif

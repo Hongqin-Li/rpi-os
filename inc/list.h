@@ -85,9 +85,16 @@ list_find(struct list_head *head, struct list_head *item)
     return 0;
 }
 
-#define LIST_FOREACH_ENTRY(pos, head, member)                       \
-    for(pos = container_of(list_front(head), typeof(*pos), member); \
-        &pos->member != (head);                                     \
+#define LIST_FOREACH_ENTRY(pos, head, member)                           \
+    for (pos = container_of(list_front(head), typeof(*pos), member);    \
+        &pos->member != (head);                                         \
         pos = container_of(pos->member.next, typeof(*pos), member))
+
+/* Iterate over a list safe against removal of list entry. */
+#define LIST_FOREACH_ENTRY_SAFE(pos, n, head, member)                   \
+    for(pos = container_of(list_front(head), typeof(*pos), member),     \
+        n = container_of(pos->member.next, typeof(*n), member);         \
+        &pos->member != (head);                                         \
+        pos = n, n = container_of(n->member.next, typeof(*n), member))
 
 #endif

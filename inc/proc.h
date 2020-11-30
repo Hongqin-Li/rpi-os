@@ -43,7 +43,8 @@ struct proc {
 /* Per-CPU state */
 struct cpu {
     struct context *scheduler;  /* swtch() here to enter scheduler */
-    struct proc *proc;          /* The process running on this cpu or null */
+    struct proc *proc;          /* The process running on this cpu or null. */
+    struct proc *idle;          /* The idle process. */
     volatile int started;       /* Has the CPU started? */
     struct spinlock lock;
 };
@@ -63,7 +64,6 @@ thisproc()
 }
 
 void proc_init();
-void user_init();
 void scheduler();
 void sleep(void *chan, struct spinlock *lk);
 void wakeup(void *chan);

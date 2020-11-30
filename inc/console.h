@@ -11,8 +11,7 @@ void panic(const char *fmt, ...);
 #define assert(x)                                                   \
 ({                                                                  \
     if (!(x)) {                                                     \
-        cprintf("%s:%d: assertion failed.\n", __FILE__, __LINE__);  \
-        while (1) ;                                                 \
+        panic("%s:%d: assertion failed.\n", __FILE__, __LINE__);    \
     }                                                               \
 })
 

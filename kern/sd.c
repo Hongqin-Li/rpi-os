@@ -502,8 +502,16 @@ static struct list_head sdque;
 void
 sd_init()
 {
-    sdInit();
     list_init(&sdque);
+    sdInit();
+    assert(sdCard.init);
+}
+
+void
+sd_delayus(uint32_t c)
+{
+    // FIXME: should delay 3 times longer on my rpi3.
+    delayus(c*3);
 }
 
 /* Start the request for b. Caller must hold sdlock. */
@@ -516,10 +524,11 @@ sd_start(struct buf *b)
     int blockAddress = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
     int write = b->flags & B_DIRTY;
     // asserts(!write, "write not implemented");
+    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, b->blockno, write);
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
-    asserts(!*EMMC_INTERRUPT, "emmc interrupt flag should be empty.");
+    asserts(!*EMMC_INTERRUPT, "emmc interrupt flag should be empty: 0x%x. ", *EMMC_INTERRUPT);
     disb();
 
     // Work out the status, interrupt and command values for the transfer.
@@ -538,40 +547,55 @@ sd_start(struct buf *b)
         // return sdDebugResponse(resp);
     }
 
-    // Wait for ready interrupt for the next block.
-    if ((resp = sdWaitForInterrupt(readyInt))) {
-        panic("* EMMC ERROR: Timeout waiting for ready to read\n");
-        // return sdDebugResponse(resp);
-    }
-
-    asserts(((int)b->data & 0x03) == 0, "Only support word-aligned buffers. ");
-
     int done = 0;
     uint32_t *intbuf = (uint32_t *)b->data;
-    if (write) while (done < 128) *EMMC_DATA = intbuf[done++];
-    else while (done < 128) intbuf[done++] = *EMMC_DATA;
+    asserts(((int)b->data & 0x03) == 0, "Only support word-aligned buffers. ");
+
+    // if (write) while (done < 128) *EMMC_DATA = intbuf[done++];
+    // else while (done < 128) intbuf[done++] = *EMMC_DATA;
+    // return;
+
+    if (write) {
+        // Wait for ready interrupt for the next block.
+        if ((resp = sdWaitForInterrupt(readyInt))) {
+            panic("* EMMC ERROR: Timeout waiting for ready to write\n");
+            // return sdDebugResponse(resp);
+        }
+        asserts(!*EMMC_INTERRUPT, "%d ", *EMMC_INTERRUPT);
+        while (done < 128) *EMMC_DATA = intbuf[done++];
+    }
 }
 
 /* The interrupt handler. */
 void
 sd_intr()
 {
-
     acquire(&sdlock);
     if (list_empty(&sdque)) {
-        cprintf("sd receive redundent interrupt, omitted.\n");
+        cprintf("sd receive redundent interrupt 0x%x, omitted.\n", *EMMC_INTERRUPT);
     } else {
         int i = *EMMC_INTERRUPT;
-        cprintf("- emmc intr: 0x%x\n", i);
+        // cprintf("- sd intr: 0x%x\n", i);
+        // FIXME: when failed
+        asserts((i & INT_DATA_DONE) || (i & INT_READ_RDY), "unexpected sd intr");
 
         *EMMC_INTERRUPT = i; /* Clear interrupt. */
         disb();
 
         struct buf *b = container_of(list_front(&sdque), struct buf, dlink);
-        if (i != INT_DATA_DONE) {
+        int write = b->flags & B_DIRTY;
+        if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
-            cprintf("sd intr unexpected: 0x%x, restarted.\n", i);
+            // FIXME: don't panic
+            panic("sd intr unexpected: 0x%x, restarted.\n", i);
         } else {
+            if (!write) {
+                uint32_t *intbuf = (uint32_t *)b->data;
+                for (int done = 0; done < 128; )
+                    intbuf[done++] = *EMMC_DATA;
+                sdWaitForInterrupt(INT_DATA_DONE);
+            }
+
             b->flags |= B_VALID;
             b->flags &= ~B_DIRTY;
             wakeup(b);
@@ -604,9 +628,6 @@ sdrw(struct buf *b)
     while ((b->flags & (B_VALID | B_DIRTY)) != B_VALID)
         sleep(b, &sdlock);
 
-    assert(list_front(&sdque) == &b->dlink);
-    list_pop_front(&sdque);
-
     release(&sdlock);
 }
 
@@ -614,42 +635,70 @@ sdrw(struct buf *b)
 void
 sd_test()
 {
-    /*
-    int n = 1 << 11;
+    static struct buf b[1 << 11];
+    int n = ARRAY_SIZE(b);
     int mb = (n * BSIZE) >> 20;
     assert(mb);
     int64_t f, t;
     asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
+    cprintf("- sd test: begin nblocks %d\n", n);
 
-    static struct buf b;
+    cprintf("- sd check rw...\n");
+    // Read/write test
+    for (int i = 1; i < n; i ++) {
+        // Backup.
+        b[0].flags = 0;
+        b[0].blockno = i;
+        sdrw(&b[0]);
 
-    b.flags = 0;
+        // Write some value.
+        b[i].flags = B_DIRTY;
+        b[i].blockno = i;
+        for (int j = 0; j < BSIZE; j++)
+            b[i].data[j] = i*j & 0xFF;
+        sdrw(&b[i]);
+
+        memset(b[i].data, 0, sizeof(b[i].data));
+        // Read back and check
+        b[i].flags = 0;
+        sdrw(&b[i]);
+        for (int j = 0; j < BSIZE; j++)
+            assert(b[i].data[j] == (i*j & 0xFF));
+        // Restore previous value.
+        b[0].flags = B_DIRTY;
+        sdrw(&b[0]);
+    }
+
+    // Read profile
     disb();
     t = timestamp();
     disb();
     for (int i = 0; i < n; i++) {
-        b.blockno = i;
-        sd_start(&b);
+        b[i].flags = 0;
+        b[i].blockno = i;
+        sdrw(&b[i]);
     }
     disb();
     t = timestamp() - t;
     disb();
-    cprintf("- read %lldB (%lldMB), t: %lld cycles, speed: %lld MB/s\n", n*BSIZE, mb, t, mb * f / t);
+    cprintf("- read %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
+            n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
 
-    b.flags = B_DIRTY;
+    // Write profile
     disb();
     t = timestamp();
     disb();
     for (int i = 0; i < n; i++) {
-        b.blockno = i;
-        sd_start(&b);
+        b[i].flags = B_DIRTY;
+        b[i].blockno = i;
+        sdrw(&b[i]);
     }
     disb();
     t = timestamp() - t;
     disb();
 
-    cprintf("- write %lldB (%lldMB), t: %lld cycles, speed: %lld MB/s\n", n*BSIZE, mb, t, mb * f / t);
-    */
+    cprintf("- write %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
+            n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
 }
 
 static int
@@ -673,8 +722,8 @@ sdWaitForInterrupt(unsigned int mask)
     int ival;
 
     // Wait for the specified interrupt or any error.
-    while (!(*EMMC_INTERRUPT & waitMask) && count--) ;
-        // delayus(1);
+    while (!(*EMMC_INTERRUPT & waitMask) && count--)
+        sd_delayus(1);
     ival = *EMMC_INTERRUPT;
     // cprintf("- sd intr 0x%x cost %d loops\n", mask, 1000000 - count);
 
@@ -711,7 +760,7 @@ static int sdWaitForCommand()
     // Check for status indicating a command in progress.
     int count = 1000000;
     while ((*EMMC_STATUS & SR_CMD_INHIBIT) && !(*EMMC_INTERRUPT & INT_ERROR_MASK) && count--)
-        delayus(1);
+        sd_delayus(1);
     if (count <= 0 || (*EMMC_INTERRUPT & INT_ERROR_MASK)) {
         cprintf("* EMMC: Wait for command aborted: %x %x %x\n",*EMMC_STATUS,*EMMC_INTERRUPT,*EMMC_RESP0);
         return SD_BUSY;
@@ -732,7 +781,7 @@ static int sdWaitForData()
     int count = 0;
     while ((*EMMC_STATUS & SR_DAT_INHIBIT) &&
            !(*EMMC_INTERRUPT & INT_ERROR_MASK) && ++count < 500000)
-        delayus(1);
+        sd_delayus(1);
     if (count >= 500000 || (*EMMC_INTERRUPT & INT_ERROR_MASK)) {
         cprintf("* EMMC: Wait for data aborted: %x %x %x\n",
                 *EMMC_STATUS, *EMMC_INTERRUPT, *EMMC_RESP0);
@@ -771,7 +820,7 @@ static int sdSendCommandP(EMMCCommand* cmd, int arg)
     // cprintf("- arg: 0x%x, code: 0x%x, delay: %d\n", arg, cmd->code, cmd->delay);
     *EMMC_ARG1 = arg;
     *EMMC_CMDTM = cmd->code;
-    if (cmd->delay) delayus(cmd->delay);
+    if (cmd->delay) sd_delayus(cmd->delay);
 
     // Wait until command complete interrupt.
     if ((result = sdWaitForInterrupt(INT_CMD_DONE))) return result;
@@ -932,7 +981,7 @@ static int sdReadSCR()
         if (*EMMC_STATUS & SR_READ_AVAILABLE)
             sdCard.scr[numRead++] = *EMMC_DATA;
         else {
-            delayus(1);
+            sd_delayus(1);
             if (--count == 0) break;
         }
     }
@@ -1067,7 +1116,7 @@ static int sdSetClock(int freq)
     // Wait for any pending inhibit bits
     int count = 100000;
     while ((*EMMC_STATUS & (SR_CMD_INHIBIT|SR_DAT_INHIBIT)) && --count)
-        delayus(1);
+        sd_delayus(1);
     if (count <= 0) {
         cprintf("* EMMC ERROR: Set clock: timeout waiting for inhibit flags. Status %08x.\n",*EMMC_STATUS);
         return SD_ERROR_CLOCK;
@@ -1075,21 +1124,21 @@ static int sdSetClock(int freq)
 
     // Switch clock off.
     *EMMC_CONTROL1 &= ~C1_CLK_EN;
-    delayus(10);
+    sd_delayus(10);
 
     // Request the new clock setting and enable the clock
     int cdiv = sdGetClockDivider(freq);
     *EMMC_CONTROL1 = (*EMMC_CONTROL1 & 0xffff003f) | cdiv;
-    delayus(10);
+    sd_delayus(10);
 
     // Enable the clock.
     *EMMC_CONTROL1 |= C1_CLK_EN;
-    delayus(10);
+    sd_delayus(10);
 
     // Wait for clock to be stable.
     count = 10000;
     while (!(*EMMC_CONTROL1 & C1_CLK_STABLE) && count--)
-        delayus(10);
+        sd_delayus(10);
     if (count <= 0) {
         cprintf("* EMMC: ERROR: failed to get stable clock.\n");
         return SD_ERROR_CLOCK;
@@ -1110,10 +1159,10 @@ static int sdResetCard(int resetType)
     //  *EMMC_CONTROL2 = 0;
     *EMMC_CONTROL1 |= resetType;
     //*EMMC_CONTROL1 &= ~(C1_CLK_EN|C1_CLK_INTLEN);
-    delayus(10);
+    sd_delayus(10);
     count = 10000;
     while ((*EMMC_CONTROL1 & resetType) && count--)
-        delayus(10);
+        sd_delayus(10);
     if (count <= 0) {
         cprintf("* EMMC: ERROR: failed to reset.\n");
         return SD_ERROR_RESET;
@@ -1122,7 +1171,7 @@ static int sdResetCard(int resetType)
     // Enable internal clock and set data timeout.
     // TODO: Correct value for timeout?
     *EMMC_CONTROL1 |= C1_CLK_INTLEN | C1_TOUNIT_MAX;
-    delayus(10);
+    sd_delayus(10);
 
     // Set clock to setup frequency.
     if ((resp = sdSetClock(FREQ_SETUP))) return resp;
@@ -1130,7 +1179,8 @@ static int sdResetCard(int resetType)
     // Enable interrupts for command completion values.
     // *EMMC_IRPT_EN   = INT_ALL_MASK;
     // *EMMC_IRPT_MASK = INT_ALL_MASK;
-    *EMMC_IRPT_EN = 0xffffffff;
+    // Ignore INT_CMD_DONE and INT_WRITE_RDY.
+    *EMMC_IRPT_EN = 0xffffffff & (~INT_CMD_DONE) & (~INT_WRITE_RDY);
     *EMMC_IRPT_MASK = 0xffffffff;
     // printf("EMMC: Interrupt enable/mask registers: %08x %08x\n",*EMMC_IRPT_EN,*EMMC_IRPT_MASK);
     // printf("EMMC: Status: %08x, control: %08x %08x %08x\n",*EMMC_STATUS,*EMMC_CONTROL0,*EMMC_CONTROL1,*EMMC_CONTROL2);
@@ -1145,7 +1195,7 @@ static int sdResetCard(int resetType)
     sdCard.uhsi = 0;
 
     // Send GO_IDLE_STATE
-    // printf("---- Send IX_GO_IDLE_STATE command\n");
+    cprintf("- Send IX_GO_IDLE_STATE command\n");
     resp = sdSendCommand(IX_GO_IDLE_STATE);
 
     return resp;
@@ -1159,7 +1209,7 @@ static int sdAppSendOpCond(int arg)
     // Send APP_SEND_OP_COND with the given argument (for SC or HC cards).
     // Note: The host shall set ACMD41 timeout more than 1 second to abort repeat of issuing ACMD41
     // TODO: how to set ACMD41 timeout? Is that the wait?
-    //    printf("EMMC: Sending ACMD41 SEND_OP_COND status %08x\n",*EMMC_STATUS);
+    cprintf("- EMMC: Sending ACMD41 SEND_OP_COND status %x\n",*EMMC_STATUS);
     int resp, count;
     if ((resp = sdSendCommandA(IX_APP_SEND_OP_COND, arg)) && resp != SD_TIMEOUT) {
         cprintf("* EMMC: ACMD41 returned non-timeout error %d\n", resp);
@@ -1167,7 +1217,7 @@ static int sdAppSendOpCond(int arg)
     }
     count = 6;
     while (!(sdCard.ocr & R3_COMPLETE) && count--) {
-        // printf("EMMC: Retrying ACMD SEND_OP_COND status %08x\n",*EMMC_STATUS);
+        cprintf("- EMMC: Retrying ACMD SEND_OP_COND status %x\n",*EMMC_STATUS);
         // delay(400);
         delay(50000);
         if ((resp = sdSendCommandA(IX_APP_SEND_OP_COND,arg)) && resp != SD_TIMEOUT) {
@@ -1339,7 +1389,7 @@ int sdClearBlocks(long long address, int numBlocks)
             cprintf("* EMMC: Timeout waiting for erase: %08x %08x\n",*EMMC_STATUS,*EMMC_INTERRUPT);
             return SD_TIMEOUT;
         }
-        delayus(10);
+        sd_delayus(10);
     }
 
     //  printf("EMMC: completed erase command int %08x\n",*EMMC_INTERRUPT);
@@ -1440,16 +1490,19 @@ int sdInit()
     if ((resp = sdGetBaseClock())) return resp;
 
     // Reset the card.
-    //  printf("Reset the card\n"); // TEST
+    cprintf("- sdInit: reset the card\n");
     if ((resp = sdResetCard(C1_SRST_HC))) return resp;
 
+    disb();
     // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
     // If voltage range and check pattern don't match, look for older card.
     resp = sdSendCommandA(IX_SEND_IF_COND, 0x000001AA);
-    //  printf("sdSendCommandA response: %d\n", resp);
+    cprintf("- sdSendCommandA response: %d\n", resp);
     if (resp == SD_OK) {
         // Card responded with voltage and check pattern.
         // Resolve voltage and check for high capacity card.
+        // FIXME:
+        delay(50);
         if ((resp = sdAppSendOpCond(ACMD41_ARG_HC))) return sdDebugResponse(resp);
 
         // Check for high or standard capacity.
@@ -1461,14 +1514,14 @@ int sdInit()
 
     else if (resp == SD_BUSY) return resp;
 
-    // No response to SEND_IF_COND, treat as an old card.
     else {
+        cprintf("- no response to SEND_IF_COND, treat as an old card.\n");
         // If there appears to be a command in progress, reset the card.
         if ((*EMMC_STATUS & SR_CMD_INHIBIT) &&
             (resp = sdResetCard(C1_SRST_HC)))
             return resp;
 
-        //      wait(50);
+        // delay(50);
         // Resolve voltage.
         if ((resp = sdAppSendOpCond(ACMD41_ARG_SC))) return sdDebugResponse(resp);
 

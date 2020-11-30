@@ -5,10 +5,11 @@
 #include "arm.h"
 #include "console.h"
 #include "mm.h"
-#include "trap.h"
+#include "clock.h"
 #include "timer.h"
+#include "sd.h"
+#include "trap.h"
 #include "proc.h"
-#include "peripherals/mbox.h"
 
 extern char edata[], end[], vectors[];
 
@@ -24,24 +25,26 @@ static struct {
 void
 main(uint64_t sp, uint64_t ent)
 {
-    while (cpuid()) ;
+    // while (cpuid()) ;
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
         memset(edata, 0, end-edata);
+
         console_init();
-        mm_init();
-        irq_init();
-        // cprintf("- start\n");
-        // delayus(1000000);
-        // cprintf("- end\n");
+        // FIXME: clock_init();
         sd_init();
+
+        mm_init();
+
+        irq_init();
+
+        proc_init();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());
     release(&mp.lock);
 
     lvbar(vectors);
-    timer_init();
-    user_init();
+    // FIXME: timer_init();
 
     scheduler();
 
