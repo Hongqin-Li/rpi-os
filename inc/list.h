@@ -90,6 +90,11 @@ list_find(struct list_head *head, struct list_head *item)
         &pos->member != (head);                                         \
         pos = container_of(pos->member.next, typeof(*pos), member))
 
+#define LIST_FOREACH_ENTRY_REVERSE(pos, head, member)                           \
+    for (pos = container_of(list_front(head), typeof(*pos), member);    \
+        &pos->member != (head);                                         \
+        pos = container_of(pos->member.prev, typeof(*pos), member))
+
 /* Iterate over a list safe against removal of list entry. */
 #define LIST_FOREACH_ENTRY_SAFE(pos, n, head, member)                   \
     for(pos = container_of(list_front(head), typeof(*pos), member),     \
