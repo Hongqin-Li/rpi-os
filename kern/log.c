@@ -2,6 +2,7 @@
 #include "console.h"
 #include "spinlock.h"
 #include "sleeplock.h"
+#include "defs.h"
 #include "fs.h"
 #include "buf.h"
 #include "string.h"

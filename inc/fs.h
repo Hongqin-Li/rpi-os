@@ -7,8 +7,6 @@
 
 #define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size
-#define uint uint32_t
-#define ushort uint16_t
 
 // Disk layout:
 // [ boot block | super block | log | inode blocks |
