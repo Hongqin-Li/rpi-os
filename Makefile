@@ -66,7 +66,7 @@ init:
 
 clean:
 	$(MAKE) -C usr clean
-	$(MAKE) -C libc clean
+	# $(MAKE) -C libc clean
 	rm -rf $(BUILD_DIR)
 
 .PHONY: init all clean qemu qemu-gdb gdb
