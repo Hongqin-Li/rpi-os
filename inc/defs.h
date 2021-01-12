@@ -2,8 +2,9 @@
 #define _INC_DEFS_H
 
 // types
-#define uint uint32_t
-#define ushort uint16_t
+typedef unsigned int   uint;
+typedef unsigned short ushort;
+typedef unsigned char  uchar;
 
 // parameters
 #define NOFILE       16  // open files per process

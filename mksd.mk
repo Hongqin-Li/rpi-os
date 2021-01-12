@@ -24,10 +24,14 @@ $(BOOT_IMG): $(KERN_IMG) $(shell find boot/*)
 	# Copy files into boot partition
 	$(foreach x, $^, mcopy -i $@ $(x) ::$(notdir $(x));)
 
+UPLOAD=\
+	hello\
+
 $(FS_IMG): $(shell find usr/bin -type f)
 	echo $^
-	cc $(shell find usr/src/mkfs/ -name "*.c") -o obj/mkfs
-	./obj/mkfs $@ $^
+	cc -Wall -Iinc usr/mkfs.c -o obj/mkfs
+	cd usr/bin; \
+	../../obj/mkfs ../../$(FS_IMG) $(UPLOAD)
 
 $(SD_IMG): $(BOOT_IMG) $(FS_IMG)
 	dd if=/dev/zero of=$@ seek=$$(($(SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1
