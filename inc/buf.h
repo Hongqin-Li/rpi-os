@@ -21,4 +21,9 @@ struct buf {
     uint8_t data[BSIZE];
 };
 
+#define uint uint32_t
+struct buf* bread(uint dev, uint blockno);
+void binit(void);
+void bwrite(struct buf *b);
+void brelse(struct buf *b);
 #endif

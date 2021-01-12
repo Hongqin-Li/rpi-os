@@ -21,12 +21,9 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "buf.h"
-
-#define uint uint32_t
-#define MAXOPBLOCKS  10  // max # of blocks any FS op writes
-#define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
-#define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
-#define FSSIZE       1000  // size of file system in blocks
+#include "defs.h"
+#include "console.h"
+#include "sd.h"
 
 struct {
   struct spinlock lock;
@@ -42,7 +39,7 @@ binit(void)
 {
   struct buf *b;
 
-  initlock(&bcache.lock, "bcache");
+  // initlock(&bcache.lock, "bcache");
 
 //PAGEBREAK!
   // Create linked list of buffers
@@ -63,7 +60,7 @@ bget(uint dev, uint blockno)
   acquire(&bcache.lock);
 
   // Is the block already cached?
-  LIST_FOREACH_ENTRY(b, &bcache.head, clink) {
+  LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock);
@@ -75,7 +72,7 @@ bget(uint dev, uint blockno)
   // Not cached; recycle an unused buffer.
   // Even if refcnt==0, B_DIRTY indicates a buffer is in use
   // because log.c has modified it but not yet committed it.
-  LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head, clink) {
+  LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head.clink, clink) {
     if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
       b->dev = dev;
       b->blockno = blockno;

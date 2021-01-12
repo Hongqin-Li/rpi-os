@@ -4,6 +4,7 @@
 struct spinlock {
     volatile int locked;
 };
+void initlock(struct spinlock *);
 void acquire(struct spinlock *);
 void release(struct spinlock *);
 

@@ -2,6 +2,12 @@
 #include "spinlock.h"
 #include "console.h"
 
+void
+initlock(struct spinlock *lk)
+{
+    lk->locked = 0;
+}
+
 void 
 acquire(struct spinlock *lk)
 {

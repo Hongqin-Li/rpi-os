@@ -10,6 +10,7 @@
 
 #define NPROC           100
 #define NCPU            4
+#define NOFILE       16  // open files per process
 
 /* Stack must always be 16 bytes aligned. */
 
@@ -35,9 +36,9 @@ struct proc {
     // struct proc *parent;         /* Parent process */
 
     // int killed;                  // If non-zero, have been killed
-    // struct file *ofile[NOFILE];  // Open files
-    // struct inode *cwd;           // Current directory
-    // char name[16];               // Process name (debugging)
+    struct file *ofile[NOFILE];  // Open files
+    struct inode *cwd;           // Current directory
+    char name[16];               // Process name (debugging)
 };
 
 /* Per-CPU state */
