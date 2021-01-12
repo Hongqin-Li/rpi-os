@@ -4,6 +4,7 @@
 #include "sleeplock.h"
 #include "fs.h"
 #include "buf.h"
+#include "string.h"
 
 // originally imported from xv6-public/param.h
 #define MAXOPBLOCKS  10  // max # of blocks any FS op writes

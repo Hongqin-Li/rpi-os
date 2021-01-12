@@ -4,7 +4,6 @@
 
 #include "types.h"
 #include "defs.h"
-#include "param.h"
 #include "fs.h"
 #include "spinlock.h"
 #include "sleeplock.h"
@@ -19,7 +18,7 @@ struct {
 void
 fileinit(void)
 {
-  initlock(&ftable.lock, "ftable");
+  initlock(&ftable.lock);
 }
 
 // Allocate a file structure.
