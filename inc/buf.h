@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "list.h"
 #include "sleeplock.h"
+#include "defs.h"
 
 #define BSIZE   512
 
@@ -21,7 +22,6 @@ struct buf {
     uint8_t data[BSIZE];
 };
 
-#define uint uint32_t
 struct buf* bread(uint dev, uint blockno);
 void binit(void);
 void bwrite(struct buf *b);

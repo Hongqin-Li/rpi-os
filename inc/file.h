@@ -1,5 +1,4 @@
-#define uint uint32_t
-
+#include "defs.h"
 #include "sleeplock.h"
 #include "fs.h"
 

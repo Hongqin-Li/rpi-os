@@ -255,3 +255,65 @@ wakeup(void *chan)
     wakeup1(chan);
     release(&ptable.lock);
 }
+
+// Kill the process with the given pid.
+// Process won't exit until it returns
+// to user space (see trap in trap.c).
+int
+kill(int pid)
+{
+    panic("not implemented");
+//   struct proc *p;
+
+//   acquire(&ptable.lock);
+//   for(p = &proc; p < &proc[NPROC]; p++){
+//     if(p->pid == pid){
+//       p->killed = 1;
+//       // Wake process from sleep if necessary.
+//       if(p->state == SLEEPING)
+//         p->state = RUNNABLE;
+//       release(&ptable.lock);
+//       return 0;
+//     }
+//   }
+//   release(&ptable.lock);
+//   return -1;
+}
+
+//PAGEBREAK: 36
+// Print a process listing to console.  For debugging.
+// Runs when user types ^P on console.
+// No lock to avoid wedging a stuck machine further.
+void
+procdump(void)
+{
+    panic("not implemented");
+//   static char *states[] = {
+//   [UNUSED]    "unused",
+//   [EMBRYO]    "embryo",
+//   [SLEEPING]  "sleep ",
+//   [RUNNABLE]  "runble",
+//   [RUNNING]   "run   ",
+//   [ZOMBIE]    "zombie"
+//   };
+//   int i;
+//   struct proc *p;
+//   char *state;
+//   uint pc[10];
+
+//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+//     if(p->state == UNUSED)
+//       continue;
+//     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+//       state = states[p->state];
+//     else
+//       state = "???";
+//     cprintf("%d %s %s", p->pid, state, p->name);
+//     if(p->state == SLEEPING){
+//       getcallerpcs((uint*)p->context->ebp+2, pc);
+//       for(i=0; i<10 && pc[i] != 0; i++)
+//         cprintf(" %p", pc[i]);
+//     }
+//     cprintf("\n");
+//   }
+}

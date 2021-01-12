@@ -38,30 +38,30 @@ memcmp(const void *v1, const void *v2, size_t n)
     return 0;
 }
 
-// #define uint uint32_t
-// #define uchar uint8_t
-// int
-// strncmp(const char *p, const char *q, uint n)
-// {
-//   while(n > 0 && *p && *p == *q)
-//     n--, p++, q++;
-//   if(n == 0)
-//     return 0;
-//   return (uchar)*p - (uchar)*q;
-// }
+#define uint uint32_t
+#define uchar uint8_t
+static inline int
+strncmp(const char *p, const char *q, uint n)
+{
+  while(n > 0 && *p && *p == *q)
+    n--, p++, q++;
+  if(n == 0)
+    return 0;
+  return (uchar)*p - (uchar)*q;
+}
 
-// char*
-// strncpy(char *s, const char *t, int n)
-// {
-//   char *os;
+static inline char*
+strncpy(char *s, const char *t, int n)
+{
+  char *os;
 
-//   os = s;
-//   while(n-- > 0 && (*s++ = *t++) != 0)
-//     ;
-//   while(n-- > 0)
-//     *s++ = 0;
-//   return os;
-// }
+  os = s;
+  while(n-- > 0 && (*s++ = *t++) != 0)
+    ;
+  while(n-- > 0)
+    *s++ = 0;
+  return os;
+}
 
 // // Like strncpy but guaranteed to NUL-terminate.
 // char*
