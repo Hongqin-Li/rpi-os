@@ -19,7 +19,11 @@ execve(const char *path, char *const argv[], char *const envp[])
         first = 0;
     }
     release(&lock);
-    if (do_test) sd_test();
+    if (do_test) {
+        sd_test();
+        cprintf("sd test fin\n");
+        // fs_test();
+    }
 
     return 0xad;
 }

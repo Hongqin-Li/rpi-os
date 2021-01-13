@@ -55,6 +55,7 @@ binit(void)
 static struct buf*
 bget(uint dev, uint blockno)
 {
+  cprintf("bget - %d,%d\n", dev, blockno);
   struct buf *b;
 
   acquire(&bcache.lock);
@@ -94,6 +95,7 @@ bread(uint dev, uint blockno)
 
   b = bget(dev, blockno);
   if((b->flags & B_VALID) == 0) {
+    cprintf("sdrw - %d,%d\n", dev, blockno);
     sdrw(b);
   }
   return b;

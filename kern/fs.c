@@ -177,6 +177,8 @@ iinit(int dev)
     initsleeplock(&icache.inode[i].lock, "inode");
   }
 
+  cprintf("init - sleeplock inited\n");
+
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
  inodestart %d bmap start %d\n", sb.size, sb.nblocks,
@@ -616,7 +618,6 @@ skipelem(char *path, char *name)
   return path;
 }
 
-#define ROOTDEV       1  // device number of file system root disk
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
