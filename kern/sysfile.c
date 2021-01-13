@@ -6,15 +6,19 @@
 
 // #include "types.h"
 // #include "defs.h"
-// #include "param.h"
-// #include "stat.h"
 // #include "mmu.h"
 // #include "proc.h"
 // #include "fs.h"
 // #include "spinlock.h"
 // #include "sleeplock.h"
 // #include "file.h"
-// #include "fcntl.h"
+// // #include "fcntl.h"
+
+// #define O_RDONLY  0x000
+// #define O_WRONLY  0x001
+// #define O_RDWR    0x002
+// #define O_CREATE  0x200
+
 
 // // Fetch the nth word-sized system call argument as a file descriptor
 // // and return both the descriptor and the corresponding struct file.
@@ -26,7 +30,7 @@
 
 //   if(argint(n, &fd) < 0)
 //     return -1;
-//   if(fd < 0 || fd >= NOFILE || (f=myproc()->ofile[fd]) == 0)
+//   if(fd < 0 || fd >= NOFILE || (f=thisproc()->ofile[fd]) == 0)
 //     return -1;
 //   if(pfd)
 //     *pfd = fd;
@@ -35,13 +39,50 @@
 //   return 0;
 // }
 
+// // Fetch the nth 32-bit system call argument.
+// int
+// argint(int n, int *ip)
+// {
+//   return fetchint((thisproc()->tf->esp) + 4 + 4*n, ip);
+// }
+
+// // Fetch the nth word-sized system call argument as a pointer
+// // to a block of memory of size bytes.  Check that the pointer
+// // lies within the process address space.
+// int
+// argptr(int n, char **pp, int size)
+// {
+//   int i;
+//   struct proc *curproc = thisproc();
+ 
+//   if(argint(n, &i) < 0)
+//     return -1;
+//   if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+//     return -1;
+//   *pp = (char*)i;
+//   return 0;
+// }
+
+// // Fetch the nth word-sized system call argument as a string pointer.
+// // Check that the pointer is valid and the string is nul-terminated.
+// // (There is no shared writable memory, so the string can't change
+// // between this check and being used by the kernel.)
+// int
+// argstr(int n, char **pp)
+// {
+//   int addr;
+//   if(argint(n, &addr) < 0)
+//     return -1;
+//   return fetchstr(addr, pp);
+// }
+
 // // Allocate a file descriptor for the given file.
 // // Takes over file reference from caller on success.
 // static int
 // fdalloc(struct file *f)
 // {
 //   int fd;
-//   struct proc *curproc = myproc();
+//   struct proc *curproc = thisproc();
 
 //   for(fd = 0; fd < NOFILE; fd++){
 //     if(curproc->ofile[fd] == 0){
@@ -98,7 +139,7 @@
 
 //   if(argfd(0, &fd, &f) < 0)
 //     return -1;
-//   myproc()->ofile[fd] = 0;
+//   thisproc()->ofile[fd] = 0;
 //   fileclose(f);
 //   return 0;
 // }
@@ -373,7 +414,7 @@
 // {
 //   char *path;
 //   struct inode *ip;
-//   struct proc *curproc = myproc();
+//   struct proc *curproc = thisproc();
   
 //   begin_op();
 //   if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
@@ -433,7 +474,7 @@
 //   fd0 = -1;
 //   if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
 //     if(fd0 >= 0)
-//       myproc()->ofile[fd0] = 0;
+//       thisproc()->ofile[fd0] = 0;
 //     fileclose(rf);
 //     fileclose(wf);
 //     return -1;

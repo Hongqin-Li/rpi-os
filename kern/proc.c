@@ -47,8 +47,18 @@ proc_init()
 static void
 forkret()
 {
+    static int first = 1;
     release(&ptable.lock);
     cprintf("- forkret\n");
+    if (first) {
+        first = 0;
+        cprintf("iinit...\m");
+        iinit(ROOTDEV);
+        cprintf("iinit done!\m");
+        cprintf("initlog...\m");
+        initlog(ROOTDEV);
+        cprintf("initlog done!\m");
+    }
     return;
 }
 
