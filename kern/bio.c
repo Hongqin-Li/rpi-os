@@ -40,12 +40,12 @@ binit(void)
   struct buf *b;
 
   // initlock(&bcache.lock, "bcache");
+  cprintf("binit\n");
 
-//PAGEBREAK!
   // Create linked list of buffers
   list_init(&bcache.head.clink);
-  for(b = bcache.buf; b < bcache.buf+NBUF; b++){
-    list_init(&b->clink);
+  for (b = bcache.buf; b < bcache.buf+NBUF; b++) {
+    list_push_back(&bcache.head.clink, &b->clink);
   }
 }
 
@@ -62,6 +62,8 @@ bget(uint dev, uint blockno)
 
   // Is the block already cached?
   LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
+    // cprintf("bget foreach dev %d, blockno %d\n", b->dev, b->blockno);
+    cprintf("bget foreach \n");
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock);
@@ -69,6 +71,8 @@ bget(uint dev, uint blockno)
       return b;
     }
   }
+
+  cprintf("bget - not cached\n");
 
   // Not cached; recycle an unused buffer.
   // Even if refcnt==0, B_DIRTY indicates a buffer is in use
