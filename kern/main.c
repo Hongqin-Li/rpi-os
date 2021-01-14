@@ -39,6 +39,7 @@ main(uint64_t sp, uint64_t ent)
         irq_init();
 
         proc_init();
+        binit();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());
     release(&mp.lock);
