@@ -96,7 +96,7 @@ struct buf*
 bread(uint dev, uint blockno)
 {
   struct buf *b;
-
+  blockno += 133120; // offset from MBR and boot, dirty hack
   b = bget(dev, blockno);
   if((b->flags & B_VALID) == 0) {
     cprintf("sdrw - %d,%d\n", dev, blockno);

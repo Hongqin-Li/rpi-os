@@ -153,6 +153,7 @@ user_init()
     extern char icode[], eicode[];
     memmove(va, icode, eicode - icode);
     assert((size_t)(eicode - icode) <= PGSIZE);
+    p->sz = PGSIZE;
 
     p->tf->elr = 0;
 
