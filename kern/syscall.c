@@ -165,7 +165,7 @@ static int (*syscalls[])(void) = {
         // [SYS_pipe]    sys_pipe,
         // [SYS_read]    sys_read,
         // [SYS_kill]    sys_kill,
-        // [SYS_execve]    sys_exec,
+        [SYS_execve]    sys_exec,
         // [SYS_fstat]   sys_fstat,
         // [SYS_chdir]   sys_chdir,
         // [SYS_dup]     sys_dup,
