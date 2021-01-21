@@ -4,7 +4,7 @@ CFLAGS = -std=c99 -O3 -MMD -MP \
   -nostdinc -ffreestanding -static \
   -I../libc/include/ -I../libc/obj/include/
 LIBC_A = ../libc/lib/libc.a
-OBJ = ../obj/usr
+OBJ = ../obj/user
 
 BIN := bin
 SRC := src

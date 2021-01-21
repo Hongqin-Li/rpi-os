@@ -39,29 +39,6 @@ proc_init()
     user_init();
 }
 
-
-/*
- * A fork child's very first scheduling by scheduler()
- * will swtch here. "Return" to user space.
- */
-static void
-forkret()
-{
-    static int first = 1;
-    release(&ptable.lock);
-    cprintf("- forkret\n");
-    if (first) {
-        first = 0;
-        cprintf("iinit...\m");
-        iinit(ROOTDEV);
-        cprintf("iinit done!\m");
-        cprintf("initlog...\m");
-        initlog(ROOTDEV);
-        cprintf("initlog done!\m");
-    }
-    return;
-}
-
 // TODO: use kmalloc
 /*
  * Look in the process table for an UNUSED proc.
@@ -193,6 +170,29 @@ scheduler()
         thiscpu()->proc = 0;
         release(&ptable.lock);
     }
+}
+
+
+/*
+ * A fork child's very first scheduling by scheduler()
+ * will swtch here. "Return" to user space.
+ */
+static void
+forkret()
+{
+    static int first = 1;
+    release(&ptable.lock);
+    cprintf("- forkret\n");
+    if (first) {
+        first = 0;
+        cprintf("iinit...\m");
+        iinit(ROOTDEV);
+        cprintf("iinit done!\m");
+        cprintf("initlog...\m");
+        initlog(ROOTDEV);
+        cprintf("initlog done!\m");
+    }
+    return;
 }
 
 /* Give up CPU. */

@@ -24,6 +24,8 @@
 #include "proc.h"
 
 // Private functions.
+static void sd_start(struct buf *b);
+static void sd_delayus(uint32_t cnt);
 static int sdInit();
 static void sdParseCID();
 static void sdParseCSD();

@@ -27,7 +27,7 @@ $(BOOT_IMG): $(KERN_IMG) $(shell find boot/*)
 UPLOAD=\
 	hello\
 
-$(FS_IMG): $(shell find usr/bin -type f)
+$(FS_IMG): $(shell find user/bin -type f)
 	echo $^
 	cc -Wall -Iinc usr/mkfs.c -o obj/mkfs
 	cd usr/bin; \
