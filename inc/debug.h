@@ -11,7 +11,7 @@ debug_mem(void *start, size_t sz)
     void *end = start + sz;
     for (int cnt = 0; start < end; start += 4, cnt ++) {
         if (cnt % 4 == 0) cprintf("%p: ", start);
-        cprintf("0x%x ", get32(start));
+        cprintf("0x%x ", get32((uint64_t)start));
         if (cnt % 4 == 3) cprintf("\n");
     }
 }

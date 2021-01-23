@@ -31,7 +31,7 @@ main(uint64_t sp, uint64_t ent)
         memset(edata, 0, end-edata);
 
         console_init();
-        // FIXME: clock_init();
+        clock_init();
         sd_init();
 
         mm_init();
@@ -44,7 +44,7 @@ main(uint64_t sp, uint64_t ent)
     release(&mp.lock);
 
     lvbar(vectors);
-    // FIXME: timer_init();
+    timer_init();
 
     scheduler();
 

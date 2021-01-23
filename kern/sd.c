@@ -24,6 +24,8 @@
 #include "proc.h"
 
 // Private functions.
+static void sd_start(struct buf *b);
+static void sd_delayus(uint32_t cnt);
 static int sdInit();
 static void sdParseCID();
 static void sdParseCSD();
@@ -458,8 +460,7 @@ static const char* SD_TYPE_NAME[] =
 
 
 // SD card descriptor
-typedef struct SDDescriptor
-{
+typedef struct SDDescriptor {
   // Static information about the SD Card.
   unsigned long long capacity;
   unsigned int cid[4];
@@ -496,18 +497,43 @@ static int sdBaseClock;
 // SD Card PUBLIC functions.
 //**************************************************************************
 
+uint32_t first_bno = 0;
+uint32_t nblocks = 1;
+
 static struct spinlock sdlock;
 static struct list_head sdque;
 
+/*
+ * Initialize SD card and parse MBR.
+ * 1. The first partition should be FAT and is used for booting.
+ * 2. The second partition is used by our file system.
+ *
+ * See https://en.wikipedia.org/wiki/Master_boot_record
+ */
 void
 sd_init()
 {
     list_init(&sdque);
     sdInit();
     assert(sdCard.init);
+
+    struct buf b;
+    b.blockno = b.flags = 0;
+    sd_start(&b);
+    sdWaitForInterrupt(INT_READ_RDY);
+    asserts((((int64_t)b.data) & 0x03) == 0, "Only support word-aligned buffers. ");
+    uint32_t *intbuf = (uint32_t *)b.data;
+    for (int done = 0; done < 128; )
+        intbuf[done++] = *EMMC_DATA;
+    sdWaitForInterrupt(INT_DATA_DONE);
+
+    assert(b.data[510] == 0x55 && b.data[511] == 0xAA);
+    first_bno = *(uint32_t *)(b.data + 0x1CE + 0x8);
+    nblocks = *(uint32_t *)(b.data + 0x1CE + 0xC);
+    cprintf("- sd init: LBA of 1st block 0x%x, 0x%x blocks totally\n", first_bno, nblocks);
 }
 
-void
+static void
 sd_delayus(uint32_t c)
 {
     // FIXME: should delay 3 times longer on my rpi3.
@@ -515,16 +541,17 @@ sd_delayus(uint32_t c)
 }
 
 /* Start the request for b. Caller must hold sdlock. */
-void
+static void
 sd_start(struct buf *b)
 {
     // Address is different depending on the card type.
     // HC pass address as block #.
     // SC pass address straight through.
-    int blockAddress = sdCard.type == SD_TYPE_2_HC ? b->blockno : b->blockno << 9;
+    assert(b->blockno < nblocks);
     int write = b->flags & B_DIRTY;
-    // asserts(!write, "write not implemented");
-    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, b->blockno, write);
+    int bno = b->blockno + first_bno;
+    // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
+    bno = sdCard.type == SD_TYPE_2_HC ? bno : bno << 9;
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -532,8 +559,7 @@ sd_start(struct buf *b)
     disb();
 
     // Work out the status, interrupt and command values for the transfer.
-    int readyInt = write ? INT_WRITE_RDY : INT_READ_RDY;
-    int transferCmd = write ? IX_WRITE_SINGLE : IX_READ_SINGLE;
+    int cmd = write ? IX_WRITE_SINGLE : IX_READ_SINGLE;
 
     int resp;
     // Set BLKSIZECNT to number of blocks * 512 bytes, send the read or write command.
@@ -542,22 +568,18 @@ sd_start(struct buf *b)
     // are transferred and stops the transfer once BLKCNT reaches 0.
     // TODO: TM_AUTO_CMD12 - is this needed?  What effect does it have?
     *EMMC_BLKSIZECNT = 512;
-    if ((resp = sdSendCommandA(transferCmd, blockAddress))) {
+    if ((resp = sdSendCommandA(cmd, bno))) {
         panic("* EMMC send command error.");
         // return sdDebugResponse(resp);
     }
 
     int done = 0;
     uint32_t *intbuf = (uint32_t *)b->data;
-    asserts(((int)b->data & 0x03) == 0, "Only support word-aligned buffers. ");
-
-    // if (write) while (done < 128) *EMMC_DATA = intbuf[done++];
-    // else while (done < 128) intbuf[done++] = *EMMC_DATA;
-    // return;
+    asserts((((int64_t)b->data) & 0x03) == 0, "Only support word-aligned buffers. ");
 
     if (write) {
         // Wait for ready interrupt for the next block.
-        if ((resp = sdWaitForInterrupt(readyInt))) {
+        if ((resp = sdWaitForInterrupt(INT_WRITE_RDY))) {
             panic("* EMMC ERROR: Timeout waiting for ready to write\n");
             // return sdDebugResponse(resp);
         }
@@ -587,7 +609,7 @@ sd_intr()
         if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
             // FIXME: don't panic
-            panic("sd intr unexpected: 0x%x, restarted.\n", i);
+            cprintf("sd intr unexpected: 0x%x, restarted.\n", i);
         } else {
             if (!write) {
                 uint32_t *intbuf = (uint32_t *)b->data;
@@ -638,7 +660,7 @@ sd_test()
     static struct buf b[1 << 11];
     int n = ARRAY_SIZE(b);
     int mb = (n * BSIZE) >> 20;
-    assert(mb);
+    // assert(mb);
     int64_t f, t;
     asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
     cprintf("- sd test: begin nblocks %d\n", n);
@@ -711,8 +733,7 @@ sdDebugResponse(int resp)
     return resp;
 }
 
-/* Wait for interrupt.
- */
+/* Wait for interrupt. */
 static int
 sdWaitForInterrupt(unsigned int mask)
 {
@@ -746,16 +767,14 @@ sdWaitForInterrupt(unsigned int mask)
     }
 
     // Clear the interrupt we were waiting for, leaving any other (non-error) interrupts.
-    // FIXME
     *EMMC_INTERRUPT = mask;
-    // cprintf("- emmc clear int 0x%x\n", mask);
 
     return SD_OK;
 }
 
-/* Wait for any command that may be in progress.
- */
-static int sdWaitForCommand()
+/* Wait for any command that may be in progress. */
+static int
+sdWaitForCommand()
 {
     // Check for status indicating a command in progress.
     int count = 1000000;
@@ -769,9 +788,9 @@ static int sdWaitForCommand()
     return SD_OK;
 }
 
-/* Wait for any data that may be in progress.
- */
-static int sdWaitForData()
+/* Wait for any data that may be in progress. */
+static int
+sdWaitForData()
 {
     // Check for status indicating data transfer in progress.
     // Spec indicates a maximum wait of 500ms.
@@ -792,9 +811,9 @@ static int sdWaitForData()
     return SD_OK;
 }
 
-/* Send command and handle response.
- */
-static int sdSendCommandP(EMMCCommand* cmd, int arg)
+/* Send command and handle response. */
+static int
+sdSendCommandP(EMMCCommand* cmd, int arg)
 {
     // Check for command in progress
     if (sdWaitForCommand() != 0) return SD_BUSY;
@@ -888,9 +907,9 @@ static int sdSendCommandP(EMMCCommand* cmd, int arg)
     return SD_ERROR;
 }
 
-/* Send APP_CMD.
- */
-static int sdSendAppCommand()
+/* Send APP_CMD. */
+static int
+sdSendAppCommand()
 {
   int resp;
   // If no RCA, send the APP_CMD and don't look for a response.
@@ -909,11 +928,13 @@ static int sdSendAppCommand()
   return SD_OK;
 }
 
-/* Send a command with no argument.
+/*
+ * Send a command with no argument.
  * RCA automatically added if required.
  * APP_CMD sent automatically if required.
  */
-static int sdSendCommand(int index)
+static int
+sdSendCommand(int index)
 {
   // Issue APP_CMD if needed.
   int resp;
@@ -935,10 +956,12 @@ static int sdSendCommand(int index)
   return resp;
 }
 
-/* Send a command with a specific argument.
+/*
+ * Send a command with a specific argument.
  * APP_CMD sent automatically if required.
  */
-static int sdSendCommandA(int index, int arg)
+static int
+sdSendCommandA(int index, int arg)
 {
   // Issue APP_CMD if needed.
   int resp;
@@ -955,10 +978,9 @@ static int sdSendCommandA(int index, int arg)
   return resp;
 }
 
-/*
- * Read card's SCR
- */
-static int sdReadSCR()
+/* Read card's SCR. */
+static int
+sdReadSCR()
 {
     // SEND_SCR command is like a READ_SINGLE but for a block of 8 bytes.
     // Ensure that any data operation has completed before reading the block.
@@ -1003,7 +1025,8 @@ static int sdReadSCR()
     return SD_OK;
 }
 
-int fls_long(unsigned long x)
+int
+fls_long(unsigned long x)
 {
     int r = 32;
     if (!x) return 0;
@@ -1030,7 +1053,8 @@ int fls_long(unsigned long x)
     return r;
 }
 
-unsigned long roundup_pow_of_two(unsigned long x)
+unsigned long
+roundup_pow_of_two(unsigned long x)
 {
   return 1UL << fls_long(x - 1);
 }
@@ -1039,7 +1063,8 @@ unsigned long roundup_pow_of_two(unsigned long x)
  * Get the clock divider for the given requested frequency.
  * This is calculated relative to the SD base clock.
  */
-static uint32_t sdGetClockDivider(uint32_t freq)
+static uint32_t
+sdGetClockDivider(uint32_t freq)
 {
     uint32_t divisor;
     // Pi SD frequency is always 41.66667Mhz on baremetal
@@ -1072,46 +1097,9 @@ static uint32_t sdGetClockDivider(uint32_t freq)
     return cdiv;                        // Return cdiv
 }
 
-/*
- * Get the clock divider for the given requested frequency.
- * This is calculated relative to the SD base clock.
- */
-static int sdGetClockDivider_old(int freq)
-{
-    // Work out the closest divider which will result in a frequency
-    // equal or less than that requested.
-    // Maximum possible divider is 1024.
-    int closest = 0;
-    if (freq > sdBaseClock) closest = 1;
-    else {
-        closest = sdBaseClock/freq;
-        if (sdBaseClock % freq) closest++;
-    }
-    if (closest > 1024) closest = 1024;
-    // Now find the nearest valid divider value, again that will result in a
-    // frequency equal to or less than that requested.
-    // For V2, the divider is supposed to be a power of 2
-    // For V3, the divider is a multiple of 2, with a value of 0 indicating 1.
-    // TODO: currently only V2 algorithm appears to work.
-    int div = 1;
-    if (0 && sdHostVer > HOST_SPEC_V2)
-        div = closest;
-    else
-        for (div = 1; div < closest; div *= 2) ;
-    div >>= 1;
-    // TODO: Don't allow divider > 15 - does not seem to work.
-    if (div > 15) div = 15;
-    // printf("EMMC: Clock divider for freq %d is %d.\n",freq,div);
-    int hi = (div & 0x300) >> 2;
-    int lo = (div & 0x0ff);
-    int cdiv = (lo << 8) + hi;
-    return cdiv;
-} 
-
-/*
- * Set the SD clock to the given frequency.
- */
-static int sdSetClock(int freq)
+/* Set the SD clock to the given frequency. */
+static int
+sdSetClock(int freq)
 {
     // Wait for any pending inhibit bits
     int count = 100000;
@@ -1148,9 +1136,9 @@ static int sdSetClock(int freq)
     return SD_OK;
 }
 
-/* Reset card.
- */
-static int sdResetCard(int resetType)
+/* Reset card. */
+static int
+sdResetCard(int resetType)
 {
     int resp, count;
 
@@ -1201,10 +1189,12 @@ static int sdResetCard(int resetType)
     return resp;
 }
 
-/* Common routine for APP_SEND_OP_COND.
+/*
+ * Common routine for APP_SEND_OP_COND.
  * This is used for both SC and HC cards based on the parameter.
  */
-static int sdAppSendOpCond(int arg)
+static int
+sdAppSendOpCond(int arg)
 {
     // Send APP_SEND_OP_COND with the given argument (for SC or HC cards).
     // Note: The host shall set ACMD41 timeout more than 1 second to abort repeat of issuing ACMD41
@@ -1237,170 +1227,17 @@ static int sdAppSendOpCond(int arg)
     return SD_OK;
 }
 
-/*
- * Switch voltage to 1.8v where the card supports it.
- */
-static int sdSwitchVoltage()
+/* Switch voltage to 1.8v where the card supports it. */
+static int
+sdSwitchVoltage()
 {
     cprintf("- EMMC: Pi does not support switch voltage, fixed at 3.3volt\n");
     return SD_OK;
 }
 
-/*
- * Transfer multiple contiguous blocks between the given address on the card and the buffer.
- */
-int sdTransferBlocks(long long address, int numBlocks, unsigned char* buffer, int write)
-{
-    //  printf("check sdCard.init\n"); // TEST
-    if (!sdCard.init) return SD_NO_RESP;
-
-    //  printf("sdWaitForData() .init\n"); // TEST
-    // Ensure that any data operation has completed before doing the transfer.
-    if (sdWaitForData()) return SD_TIMEOUT;
-
-    // Work out the status, interrupt and command values for the transfer.
-    int readyInt = write ? INT_WRITE_RDY : INT_READ_RDY;
-    //int readyData = write ? SR_WRITE_AVAILABLE : SR_READ_AVAILABLE;
-    int transferCmd = write ? (numBlocks == 1 ? IX_WRITE_SINGLE : IX_WRITE_MULTI)
-                            : (numBlocks == 1 ? IX_READ_SINGLE : IX_READ_MULTI);
-
-    // If more than one block to transfer, and the card supports it,
-    // send SET_BLOCK_COUNT command to indicate the number of blocks to transfer.
-    int resp;
-    if (numBlocks > 1 && (sdCard.support & SD_SUPP_SET_BLOCK_COUNT) &&
-        (resp = sdSendCommandA(IX_SET_BLOCKCNT,numBlocks)))
-        return sdDebugResponse(resp);
-
-    // Address is different depending on the card type.
-    // HC pass address as block # which is just address/512.
-    // SC pass address straight through.
-    int blockAddress = sdCard.type == SD_TYPE_2_HC ? (int)(address>>9) : (int)address;
-
-    // Set BLKSIZECNT to number of blocks * 512 bytes, send the read or write command.
-    // Once the data transfer has started and the TM_BLKCNT_EN bit in the CMDTM register is
-    // set the EMMC module automatically decreases the BLKCNT value as the data blocks
-    // are transferred and stops the transfer once BLKCNT reaches 0.
-    // TODO: TM_AUTO_CMD12 - is this needed?  What effect does it have?
-    *EMMC_BLKSIZECNT = (numBlocks << 16) | 512;
-    //  printf("sdSendCommandA() .init\n"); // TEST
-    if ((resp = sdSendCommandA(transferCmd,blockAddress))) return sdDebugResponse(resp);
-
-    // Transfer all blocks.
-    int blocksDone = 0;
-    while (blocksDone < numBlocks) {
-        // Wait for ready interrupt for the next block.
-        if ((resp = sdWaitForInterrupt(readyInt))) {
-            //        printf("EMMC: Timeout waiting for ready to read\n"); //TEST
-            cprintf("* EMMC ERROR: Timeout waiting for ready to read\n");
-            return sdDebugResponse(resp);
-        }
-
-        // Handle non-word-aligned buffers byte-by-byte.
-        // Note: the entire block is sent without looking at status registers.
-        int done = 0;
-        if ((int)buffer & 0x03) {
-            while (done < 512) {
-                disb();
-                cprintf("- emmc intr 0x%x\n", *EMMC_INTERRUPT);
-                disb();
-                if (write) {
-                    int data = (buffer[done++]);
-                    data += (buffer[done++] << 8);
-                    data += (buffer[done++] << 16);
-                    data += (buffer[done++] << 24);
-                    *EMMC_DATA = data;
-                } else {
-                    int data = *EMMC_DATA;
-                    buffer[done++] = (data) & 0xff;
-                    buffer[done++] = (data >> 8) & 0xff;
-                    buffer[done++] = (data >> 16) & 0xff;
-                    buffer[done++] = (data >> 24) & 0xff;
-                }
-            }
-        }
-
-        // Handle word-aligned buffers more efficiently.
-        else {
-            unsigned int* intbuff = (unsigned int*)buffer;
-            while (done < 128) {
-                if (write) *EMMC_DATA = intbuff[done++];
-                else intbuff[done++] = *EMMC_DATA;
-            }
-        }
-
-        blocksDone++;
-        buffer += 512;
-    }
-
-    // If not all bytes were read, the operation timed out.
-    if (blocksDone != numBlocks) {
-        cprintf("* EMMC: Transfer error only done %d/%d blocks\n", blocksDone, numBlocks);
-        cprintf("- EMMC: Transfer: %08x %08x %08x %08x\n", *EMMC_STATUS, *EMMC_INTERRUPT, *EMMC_RESP0, *EMMC_BLKSIZECNT);
-        if (!write && numBlocks > 1 && (resp = sdSendCommand(IX_STOP_TRANS)))
-            cprintf("- EMMC: Error response from stop transmission: %d\n", resp);
-
-        return SD_TIMEOUT;
-    }
-
-    // For a write operation, ensure DATA_DONE interrupt before we stop transmission.
-    if (write && (resp = sdWaitForInterrupt(INT_DATA_DONE))) {
-        cprintf("* EMMC: Timeout waiting for data done\n");
-        return sdDebugResponse(resp);
-    }
-
-    // For a multi-block operation, if SET_BLOCKCNT is not supported, we need to indicate
-    // that there are no more blocks to be transferred.
-    if (numBlocks > 1 && !(sdCard.support & SD_SUPP_SET_BLOCK_COUNT) &&
-        (resp = sdSendCommand(IX_STOP_TRANS)))
-        return sdDebugResponse(resp);
-
-    return SD_OK;
-}
-
-/*
- * Clear multiple contiguous blocks.
- * Assumes that the erase operation writes zeros to the file.
- */
-int sdClearBlocks(long long address, int numBlocks)
-{
-    if (!sdCard.init) return SD_NO_RESP;
-
-    // Ensure that any data operation has completed before doing the transfer.
-    if (sdWaitForData()) return SD_TIMEOUT;
-
-    // Address is different depending on the card type.
-    // HC pass address as block # which is just address/512.
-    // SC pass address straight through.
-    int startAddress = sdCard.type == SD_TYPE_2_HC ? (int)(address>>9) : (int)address;
-    int endAddress = startAddress +
-                     (sdCard.type == SD_TYPE_2_HC ? (numBlocks - 1) : ((numBlocks-1)*512));
-
-    int resp;
-    //  printf("EMMC: erasing blocks from %d to %d\n",startAddress,endAddress); /*  */
-    if ((resp = sdSendCommandA(IX_ERASE_WR_ST,startAddress))) return sdDebugResponse(resp);
-    if ((resp = sdSendCommandA(IX_ERASE_WR_END,endAddress))) return sdDebugResponse(resp);
-    if ((resp = sdSendCommand(IX_ERASE))) return sdDebugResponse(resp);
-    //  printf("EMMC: sent erase command, status %08x int %08x\n",*EMMC_STATUS,*EMMC_INTERRUPT);
-
-    // Wait for data inhibit status to drop.
-    int count = 1000000;
-    while (*EMMC_STATUS & SR_DAT_INHIBIT) {
-        if (--count == 0) {
-            cprintf("* EMMC: Timeout waiting for erase: %08x %08x\n",*EMMC_STATUS,*EMMC_INTERRUPT);
-            return SD_TIMEOUT;
-        }
-        sd_delayus(10);
-    }
-
-    //  printf("EMMC: completed erase command int %08x\n",*EMMC_INTERRUPT);
-
-    return SD_OK;
-}
-
-/*
- * Routine to initialize GPIO registers.
- */
-static void sdInitGPIO()
+/* Routine to initialize GPIO registers. */
+static void
+sdInitGPIO()
 {
     uint32_t r;
     // GPIO_CD
@@ -1423,9 +1260,9 @@ static void sdInitGPIO()
     delay(150); put32(GPPUD, 0); put32(GPPUDCLK1, 0);
 }
 
-/* Get the base clock speed.
- */
-int sdGetBaseClock()
+/* Get the base clock speed. */
+int
+sdGetBaseClock()
 {
     sdBaseClock = mbox_get_clock_rate(MBX_PROP_CLOCK_EMMC);
     if (sdBaseClock == -1) {
@@ -1436,10 +1273,12 @@ int sdGetBaseClock()
     return SD_OK;
 }
 
-/* Initialize SD card.
+/*
+ * Initialize SD card.
  * Returns zero if initialization was successful, non-zero otherwise.
  */
-int sdInit()
+int
+sdInit()
 {
     // Ensure we've initialized GPIO.
     if (!sdCard.init) sdInitGPIO();
@@ -1595,9 +1434,9 @@ int sdInit()
     return SD_CARD_CHANGED;
 }
 
-/* Parse CID
- */
-static void sdParseCID()
+/* Parse CID. */
+static void
+sdParseCID()
 {
     // For some reason cards I have looked at seem to have everything
     // shifted 8 bits down.
@@ -1628,9 +1467,7 @@ static void sdParseCID()
             manId, appId, name, revH, revL, dateM, dateY, serial, sdCard.rca>>16);
 }
 
-/*
- * Parse CSD
- */
+/* Parse CSD. */
 static void
 sdParseCSD()
 {

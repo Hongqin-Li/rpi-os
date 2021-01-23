@@ -5,7 +5,6 @@
 #include "arm.h"
 #include "console.h"
 #include "memlayout.h"
-#include "debug.h"
 
 #define VIDEOCORE_MBOX  (MMIO_BASE + 0x0000B880)
 #define MBOX_READ       ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x00))
@@ -58,7 +57,6 @@ mbox_get_arm_memory()
     __attribute__((aligned(16)))
     uint32_t buf[] = {36, 0, MBOX_TAG_GET_ARM_MEMORY, 8, 0, 0, 0, MBOX_TAG_END};
     asserts((V2P(buf) & 0xF) == 0, "Buffer should align to 16 bytes. ");
-    debug_mem(VIDEOCORE_MBOX, 0x30);
 
     disb();
     dccivac(buf, sizeof(buf));

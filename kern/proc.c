@@ -94,8 +94,8 @@ proc_alloc()
 
     sp -= sizeof(*p->context);
     p->context = sp;
-    p->context->lr0 = forkret;
-    p->context->lr = trapret;
+    p->context->lr0 = (uint64_t)forkret;
+    p->context->lr = (uint64_t)trapret;
    
     release(&ptable.lock);
     return p;

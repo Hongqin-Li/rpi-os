@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "test/test.h"
+#include "test.h"
+
 int
 main(int argc, char *argv[])
 {
@@ -22,5 +25,6 @@ main(int argc, char *argv[])
         fclose(fin);
     }
     fclose(fout);
+    test();
     return 0;
 }
