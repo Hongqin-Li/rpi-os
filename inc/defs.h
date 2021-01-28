@@ -1,5 +1,5 @@
-#ifndef _INC_DEFS_H
-#define _INC_DEFS_H
+#ifndef INC_DEFS_H
+#define INC_DEFS_H
 
 // types
 typedef unsigned int   uint;
@@ -10,7 +10,7 @@ typedef unsigned char  uchar;
 #define NOFILE       16  // open files per process
 #define NFILE       100  // open files per system
 #define NDEV         10  // maximum major device number
-#define NINODE       50  // maximum number of active i-nodes
+// #define NINODE       50  // maximum number of active i-nodes
 #define ROOTDEV       0  // device number of file system root disk
 #define MAXARG       32  // max exec arguments
 #define MAXOPBLOCKS  10  // max # of blocks any FS op writes

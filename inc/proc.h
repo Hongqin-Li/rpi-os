@@ -24,7 +24,28 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 /* Per-process state */
 struct proc {
-    uint64_t sz; // kernel memory size
+    /* 
+     * Memory layout
+     *
+     * +----------+
+     * |  Kernel  | 
+     * +----------+  KERNBASE
+     * |  Stack   |  
+     * +----------+  KERNBASE - stksz
+     * |   ....   |
+     * |   ....   |
+     * +----------+  base + sz
+     * |   Heap   |
+     * +----------+
+     * |   Code   |
+     * +----------+  base
+     * | Reserved | 
+     * +----------+  0
+     *
+     */
+    size_t base, sz;
+    size_t stksz;
+
     uint64_t  *pgdir;           /* User space page table. */
     char *kstack;               /* Bottom of kernel stack for this process. */
     enum procstate state;       /* Process state. */

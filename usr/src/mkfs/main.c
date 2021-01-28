@@ -9,9 +9,9 @@
 
 #define stat xv6_stat  // avoid clash with host struct stat
 #define sleep xv6_sleep
-#include "file.h"
-#include "fs.h"
-#include "defs.h"
+// #include "../../../inc/file.h"
+#include "../../../inc/fs.h"
+#include "../../../inc/defs.h"
 
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
@@ -43,7 +43,7 @@ void rsect(uint sec, void *buf);
 uint ialloc(ushort type);
 void iappend(uint inum, void *p, int n);
 
-// convert to intel byte order
+// convert to little-endian byte order
 ushort
 xshort(ushort x)
 {
@@ -130,9 +130,18 @@ main(int argc, char *argv[])
   iappend(rootino, &de, sizeof(de));
 
   for(i = 2; i < argc; i++){
+    char *path = argv[i];
+    int j = 0;
+    for (; *argv[i]; argv[i]++) {
+        if (*argv[i] == '/') j = -1;
+        j++;
+    }
+    argv[i] -= j;
+    printf("input: '%s' -> '%s'\n", path, argv[i]);
+
     assert(index(argv[i], '/') == 0);
 
-    if((fd = open(argv[i], 0)) < 0){
+    if((fd = open(path, 0)) < 0){
       perror(argv[i]);
       exit(1);
     }

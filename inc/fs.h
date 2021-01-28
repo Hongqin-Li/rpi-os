@@ -1,9 +1,10 @@
-#ifndef _INC_FS_H
-#define _INC_FS_H
+#ifndef INC_FS_H
+#define INC_FS_H
 
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
 
+#include "defs.h"
 
 #define ROOTINO 1  // root i-number
 #define BSIZE 512  // block size
@@ -58,7 +59,10 @@ struct dirent {
   char name[DIRSIZ];
 };
 
-void readsb(int dev, struct superblock *sb);
 #define NINODE 200
+
+#define T_DIR  1   // Directory
+#define T_FILE 2   // File
+#define T_DEV  3   // Device
 
 #endif

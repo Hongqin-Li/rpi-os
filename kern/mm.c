@@ -39,7 +39,6 @@ freelist_alloc(struct freelist *f)
 static void
 freelist_free(struct freelist *f, void *v)
 {
-    // cprintf("free\n");
     *(void **)v = f->next;
     f->next = v;
 }
@@ -75,7 +74,11 @@ kalloc()
 {
     acquire(&memlock);
     void *p = freelist_alloc(&freelist);
-    memset(p, 0xAC, PGSIZE);
+    if (p) {
+        memset(p, 0xAC, PGSIZE);
+        cprintf("kalloc 0x%p\n", p);
+    }
+    else cprintf("- kalloc null\n");
     release(&memlock);
     return p;
 }
@@ -86,18 +89,19 @@ kalloc()
 void
 kfree(void *va)
 {
+    cprintf("kfree 0x%p...", va);
     acquire(&memlock);
     freelist_free(&freelist, va);
     release(&memlock);
+    cprintf("finished\n");
 }
 
 
 void
 mm_test()
 {
-    /*
     cprintf("- mm test begin\n");
-    static void *p[PHYSTOP/PGSIZE];
+    static void *p[0x100000000/PGSIZE];
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
         memset(p[i], 0xFF, PGSIZE);
@@ -106,5 +110,4 @@ mm_test()
     while (i--)
         kfree(p[i]);
     cprintf("- mm test end\n");
-    */
 }

@@ -55,7 +55,7 @@ binit(void)
 static struct buf*
 bget(uint dev, uint blockno)
 {
-  cprintf("bget - %d,%d\n", dev, blockno);
+  cprintf("bget - dev %d, bno %d\n", dev, blockno);
   struct buf *b;
 
   acquire(&bcache.lock);
@@ -63,7 +63,6 @@ bget(uint dev, uint blockno)
   // Is the block already cached?
   LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
     // cprintf("bget foreach dev %d, blockno %d\n", b->dev, b->blockno);
-    cprintf("bget foreach \n");
     if(b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.lock);
@@ -96,7 +95,8 @@ struct buf*
 bread(uint dev, uint blockno)
 {
   struct buf *b;
-  blockno += 133120; // offset from MBR and boot, dirty hack
+  // FIXME: offset determined by dev.
+  // blockno += 133120; // offset from MBR and boot, dirty hack
   b = bget(dev, blockno);
   if((b->flags & B_VALID) == 0) {
     cprintf("sdrw - %d,%d\n", dev, blockno);

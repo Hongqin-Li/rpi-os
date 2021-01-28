@@ -4,6 +4,7 @@
 
 #include "arm.h"
 #include "console.h"
+#include "vm.h"
 #include "mm.h"
 #include "clock.h"
 #include "timer.h"
@@ -40,6 +41,11 @@ main(uint64_t sp, uint64_t ent)
 
         proc_init();
         binit();
+
+
+        // Tests
+        // mm_test();
+        vm_test();
     }
     cprintf("- cpu: %d. hello, world\n", cpuid());
     release(&mp.lock);

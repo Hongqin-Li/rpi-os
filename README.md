@@ -16,6 +16,15 @@ Several parts of it are still in progress.
 - [ ] Compiler
 - [ ] Documentation...
 
+FS TODO:
+- [ ] mkfs
+- [x] sd
+- [x] bio
+- [x] log
+- [ ] inode(fs.c)
+- [ ] file
+- [ ] mkfs
+
 ## Development
 
 Linux is required for building and Ubuntu is preferred.
@@ -26,5 +35,4 @@ Linux is required for building and Ubuntu is preferred.
 - Burn to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 
 ## Project structure
-
 

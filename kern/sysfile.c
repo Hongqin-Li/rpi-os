@@ -4,6 +4,8 @@
 // user code, and calls into file.c and fs.c.
 //
 
+// #include <fcntl.h>
+
 #include "types.h"
 #include "defs.h"
 #include "mmu.h"
@@ -12,7 +14,7 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "file.h"
-// #include "fcntl.h"
+#include "string.h"
 
 #define O_RDONLY  0x000
 #define O_WRONLY  0x001
@@ -397,31 +399,31 @@ sys_chdir(void)
   return 0;
 }
 
-int
-sys_exec(void)
-{
-  char *path, *argv[MAXARG];
-  int i;
-  uint uargv, uarg;
-
-  if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
-    return -1;
-  }
-  memset(argv, 0, sizeof(argv));
-  for(i=0;; i++){
-    if(i >= NELEM(argv))
-      return -1;
-    if(fetchint(uargv+4*i, (int*)&uarg) < 0)
-      return -1;
-    if(uarg == 0){
-      argv[i] = 0;
-      break;
-    }
-    if(fetchstr(uarg, &argv[i]) < 0)
-      return -1;
-  }
-  return execve(path, argv, 0);
-}
+// int
+// sys_exec(void)
+// {
+//   char *path, *argv[MAXARG];
+//   int i;
+//   uint uargv, uarg;
+// 
+//   if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
+//     return -1;
+//   }
+//   memset(argv, 0, sizeof(argv));
+//   for(i=0;; i++){
+//     if(i >= NELEM(argv))
+//       return -1;
+//     if(fetchint(uargv+4*i, (int*)&uarg) < 0)
+//       return -1;
+//     if(uarg == 0){
+//       argv[i] = 0;
+//       break;
+//     }
+//     if(fetchstr(uarg, &argv[i]) < 0)
+//       return -1;
+//   }
+//   return execve(path, argv, 0);
+// }
 
 int
 sys_pipe(void)

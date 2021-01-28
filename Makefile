@@ -22,7 +22,7 @@ KERN_IMG := $(BUILD_DIR)/kernel8.img
 SD_IMG := $(BUILD_DIR)/sd.img
 
 all:
-	$(MAKE) -C user
+	$(MAKE) -C usr
 	$(MAKE) $(SD_IMG)
 
 # Automatically find sources and headers
@@ -65,7 +65,7 @@ init:
 	(cd libc && export CROSS_COMPILE=$(CROSS) && ./configure --target=$(ARCH))
 
 clean:
-	$(MAKE) -C user clean
+	$(MAKE) -C usr clean
 	# $(MAKE) -C libc clean
 	rm -rf $(BUILD_DIR)
 

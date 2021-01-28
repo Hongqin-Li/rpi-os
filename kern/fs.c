@@ -15,10 +15,14 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "sleeplock.h"
-#include "fs.h"
-#include "buf.h"
 #include "file.h"
+#include "buf.h"
 #include "string.h"
+
+#include "log.h"
+
+#include "console.h"
+#include "memlayout.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
@@ -181,7 +185,7 @@ iinit(int dev)
 
   readsb(dev, &sb);
   cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
- inodestart %d bmap start %d\n", sb.size, sb.nblocks,
+ inodestart %d bmapstart %d\n", sb.size, sb.nblocks,
           sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
           sb.bmapstart);
 }
@@ -288,28 +292,29 @@ idup(struct inode *ip)
 void
 ilock(struct inode *ip)
 {
-  struct buf *bp;
-  struct dinode *dip;
+    struct buf *bp;
+    struct dinode *dip;
+    assert((void *)ip >= KERNBASE);
 
-  if(ip == 0 || ip->ref < 1)
-    panic("ilock");
+    if (ip == 0 || ip->ref < 1)
+          panic("ilock");
 
-  acquiresleep(&ip->lock);
+    acquiresleep(&ip->lock);
 
-  if(ip->valid == 0){
-    bp = bread(ip->dev, IBLOCK(ip->inum, sb));
-    dip = (struct dinode*)bp->data + ip->inum%IPB;
-    ip->type = dip->type;
-    ip->major = dip->major;
-    ip->minor = dip->minor;
-    ip->nlink = dip->nlink;
-    ip->size = dip->size;
-    memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
-    brelse(bp);
-    ip->valid = 1;
-    if(ip->type == 0)
-      panic("ilock: no type");
-  }
+    if (ip->valid == 0) {
+        bp = bread(ip->dev, IBLOCK(ip->inum, sb));
+        dip = (struct dinode*)bp->data + ip->inum%IPB;
+        ip->type = dip->type;
+        ip->major = dip->major;
+        ip->minor = dip->minor;
+        ip->nlink = dip->nlink;
+        ip->size = dip->size;
+        memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
+        brelse(bp);
+        ip->valid = 1;
+        if (ip->type == 0)
+            panic("ilock: no type");
+    }
 }
 
 // Unlock the given inode.
@@ -360,7 +365,6 @@ iunlockput(struct inode *ip)
   iput(ip);
 }
 
-//PAGEBREAK!
 // Inode content
 //
 // The content (data) associated with each inode is stored
@@ -447,36 +451,39 @@ stati(struct inode *ip, struct stat *st)
   st->size = ip->size;
 }
 
-//PAGEBREAK!
 // Read data from inode.
 // Caller must hold ip->lock.
 int
 readi(struct inode *ip, char *dst, uint off, uint n)
 {
-  uint tot, m;
-  struct buf *bp;
+    cprintf("readi: inum %d, dst 0x%p, off %d, n %d\n", ip->inum, dst, off, n);
 
-  if(ip->type == T_DEV){
-    if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
-      return -1;
-    return devsw[ip->major].read(ip, dst, n);
-  }
+    uint tot, m;
+    struct buf *bp;
 
-  if(off > ip->size || off + n < off)
-    return -1;
-  if(off + n > ip->size)
-    n = ip->size - off;
+    if (ip->type == T_DEV) {
+        panic("unimplemented. ");
+        if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
+            return -1;
+        return devsw[ip->major].read(ip, dst, n);
+    }
 
-  for(tot=0; tot<n; tot+=m, off+=m, dst+=m){
-    bp = bread(ip->dev, bmap(ip, off/BSIZE));
-    m = min(n - tot, BSIZE - off%BSIZE);
-    memmove(dst, bp->data + off%BSIZE, m);
-    brelse(bp);
-  }
-  return n;
+    if (off > ip->size || off + n < off)
+        return -1;
+    if (off + n > ip->size)
+        n = ip->size - off;
+
+    for (tot = 0; tot < n; tot += m, off += m, dst += m) {
+        bp = bread(ip->dev, bmap(ip, off/BSIZE));
+        m = min(n - tot, BSIZE - off%BSIZE);
+        memmove(dst, bp->data + off%BSIZE, m);
+        brelse(bp);
+    }
+    
+    cprintf("readi result(%d): '%s'\n", n, dst - n + 2);
+    return n;
 }
 
-// PAGEBREAK!
 // Write data to inode.
 // Caller must hold ip->lock.
 int
@@ -525,27 +532,28 @@ namecmp(const char *s, const char *t)
 struct inode*
 dirlookup(struct inode *dp, char *name, uint *poff)
 {
-  uint off, inum;
-  struct dirent de;
+    cprintf("dirlookup: name '%s'\n", name);
+    uint off, inum;
+    struct dirent de;
 
-  if(dp->type != T_DIR)
-    panic("dirlookup not DIR");
+    if(dp->type != T_DIR)
+        panic("dirlookup not DIR");
 
-  for(off = 0; off < dp->size; off += sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("dirlookup read");
-    if(de.inum == 0)
-      continue;
-    if(namecmp(name, de.name) == 0){
-      // entry matches path element
-      if(poff)
-        *poff = off;
-      inum = de.inum;
-      return iget(dp->dev, inum);
+    for (off = 0; off < dp->size; off += sizeof(de)) {
+        if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+            panic("dirlookup read");
+        if(de.inum == 0)
+            continue;
+        if(namecmp(name, de.name) == 0){
+            // entry matches path element
+            if (poff)
+                *poff = off;
+            inum = de.inum;
+            return iget(dp->dev, inum);
+        }
     }
-  }
-
-  return 0;
+    cprintf("- dirlookup not found\n");
+    return 0;
 }
 
 // Write a new directory entry (name, inum) into the directory dp.
@@ -657,15 +665,19 @@ namex(char *path, int nameiparent, char *name)
   return ip;
 }
 
-struct inode*
+struct inode *
 namei(char *path)
 {
-  char name[DIRSIZ];
-  return namex(path, 0, name);
+    cprintf("namei begin\n");
+    char name[DIRSIZ];
+    struct inode *ip = namex(path, 0, name);
+    assert((void *)ip >= KERNBASE);
+    cprintf("namei end: 0x%p\n", ip);
+    return ip;
 }
 
-struct inode*
+struct inode *
 nameiparent(char *path, char *name)
 {
-  return namex(path, 1, name);
+    return namex(path, 1, name);
 }

@@ -15,6 +15,7 @@
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
+static void forkret();
 static void user_init();
 static void idle_init();
 
@@ -103,6 +104,9 @@ idle_init()
     extern char ispin[], eicode[];
     memmove(va, ispin, eicode - ispin);
     assert((size_t)(eicode - ispin) <= PGSIZE);
+    p->stksz = 0;
+    p->sz = PGSIZE;
+    p->base = 0;
 
     p->tf->elr = 0;
 
@@ -130,7 +134,9 @@ user_init()
     extern char icode[], eicode[];
     memmove(va, icode, eicode - icode);
     assert((size_t)(eicode - icode) <= PGSIZE);
+    p->stksz = 0;
     p->sz = PGSIZE;
+    p->base = 0;
 
     p->tf->elr = 0;
 
@@ -183,16 +189,12 @@ forkret()
     static int first = 1;
     release(&ptable.lock);
     cprintf("- forkret\n");
-    if (first) {
+    if (first && thisproc() != thiscpu()->idle) {
         first = 0;
-        cprintf("iinit...\m");
         iinit(ROOTDEV);
-        cprintf("iinit done!\m");
-        cprintf("initlog...\m");
         initlog(ROOTDEV);
-        cprintf("initlog done!\m");
+        cprintf("- initlog done!\n");
     }
-    return;
 }
 
 /* Give up CPU. */
