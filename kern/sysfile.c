@@ -21,6 +21,10 @@
 #define O_RDWR    0x002
 #define O_CREATE  0x200
 
+struct iovec {
+    void  *iov_base;    /* Starting address. */
+    size_t iov_len;     /* Number of bytes to transfer. */
+};
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -94,6 +98,27 @@ sys_write(void)
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
   return filewrite(f, p, n);
+}
+
+
+size_t
+sys_writev()
+{
+    struct file *f;
+    int fd, iovcnt;
+    struct iovec *iov, *p;
+    if (argfd(0, &fd, &f) < 0 || argint(2, &iovcnt) < 0 || argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
+        return -1;
+    }
+    cprintf("writev: fd %d, iovcnt: %d\n", fd, iovcnt);
+
+    size_t tot = 0;
+    for (p = iov; p < iov + iovcnt; p++) {
+        if (!in_user(p->iov_base, p->iov_len))
+            return -1;
+        tot += filewrite(f, p->iov_base, p->iov_len);
+    }
+    return tot;
 }
 
 int

@@ -70,10 +70,9 @@ proc_alloc()
     p->state = EMBRYO;
     p->pid = p - proc;
     cprintf("- proc alloc: pid %d\n", p->pid);
-    p->pgdir = vm_init();
 
     void *sp = p->kstack + PGSIZE;
-    assert(sizeof(*p->tf) == 17*16 && sizeof(*p->context) == 7*16);
+    assert(sizeof(*p->tf) == 18*16 && sizeof(*p->context) == 8*16);
 
     sp -= sizeof(*p->tf);
     p->tf = sp;
@@ -84,6 +83,8 @@ proc_alloc()
     p->context = sp;
     p->context->lr0 = (uint64_t)forkret;
     p->context->lr = (uint64_t)trapret;
+
+    list_init(&p->child);
    
     release(&ptable.lock);
     return p;
@@ -96,8 +97,10 @@ idle_init()
     cprintf("- idle init\n");
 
     struct proc *p;
-    while (!(p = proc_alloc())) ;
+    if (!(p = proc_alloc()))
+        panic("idle init: failed\n");
 
+    p->pgdir = vm_init();
     void *va = kalloc();
     uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
 
@@ -125,8 +128,12 @@ user_init()
 {
     cprintf("- user init\n");
 
-    struct proc *p;
-    while (!(p = proc_alloc())) ;
+    struct proc *p = proc_alloc();
+    if (p == 0)
+        panic("user init: failed\n");
+
+    if ((p->pgdir = vm_init()) == 0)
+        panic("user init: failed\n");
 
     void *va = kalloc();
     uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
@@ -139,6 +146,9 @@ user_init()
     p->base = 0;
 
     p->tf->elr = 0;
+
+    safestrcpy(p->name, "icode", sizeof(p->name));
+    p->cwd = namei("/");
 
     acquire(&ptable.lock);
     list_push_back(&ptable.sched_que, &p->link);
@@ -269,6 +279,88 @@ wakeup(void *chan)
     release(&ptable.lock);
 }
 
+// FIXME: not tested.
+// Create a new process copying p as the parent.
+// Sets up stack to return as if from system call.
+// Caller must set state of returned proc to RUNNABLE.
+int
+fork()
+{
+    struct proc *cp = thisproc();
+    struct proc *np = proc_alloc();
+
+    if ((np->pgdir = uvm_copy(cp->pgdir)) == 0) {
+        kfree(np->kstack);
+        np->kstack = 0;
+
+        acquire(&ptable.lock);
+        np->state = UNUSED;
+        release(&ptable.lock);
+
+        return -1;
+    }
+
+    np->base = cp->base;
+    np->sz = cp->sz;
+    np->stksz = cp->stksz;
+
+    memmove(np->tf, cp->tf, sizeof(*np->tf));
+
+    // Fork returns 0 in the child.
+    np->tf->x[0] = 0;
+
+    for (int i = 0; i < NOFILE; i++)
+        if (cp->ofile[i])
+            np->ofile[i] = filedup(cp->ofile[i]);
+    np->cwd = idup(cp->cwd);
+
+    int pid = np->pid;
+    np->parent = cp;
+
+    acquire(&ptable.lock);
+    list_push_back(&cp->child, &np->clink);
+    list_push_back(&ptable.sched_que, &np->link);
+    release(&ptable.lock);
+
+    return pid;
+}
+
+
+// FIXME: not tested.
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int
+wait()
+{   
+    struct proc *cp = thisproc();
+
+    struct list_head *q = &cp->child;
+    struct proc *p, *np;
+    if (list_empty(q)) return -1;
+
+    acquire(&ptable.lock);
+    while (!list_empty(q)) {
+        LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
+            if (p->state == ZOMBIE) {
+                assert(p->parent == cp);
+                cprintf("wait: weap proc %d\n", p->pid);
+
+                list_drop(&p->clink);
+
+                kfree(p->kstack);
+                vm_free(p->pgdir);
+                p->kstack = 0;
+                p->parent = 0;
+                p->state = UNUSED;
+                p->killed = 0;
+                p->name[0] = 0;
+            }
+        }
+        sleep(cp, &ptable.lock);
+    }
+    release(&ptable.lock);
+}
+
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
@@ -291,6 +383,15 @@ kill(int pid)
 //   }
 //   release(&ptable.lock);
 //   return -1;
+}
+
+// Exit the current process.  Does not return.
+// An exited process remains in the zombie state
+// until its parent calls wait() to find out it exited.
+void
+exit(int code)
+{
+    panic("unimplemented. ");
 }
 
 //PAGEBREAK: 36

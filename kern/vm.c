@@ -53,9 +53,9 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
 
 /* Fork a process's page table. */
 uint64_t *
-vm_fork(uint64_t *pgdir)
+uvm_copy(uint64_t *pgdir)
 {
-
+    panic("unimplemented. ");
 }
 
 // FIXME: Not tested.

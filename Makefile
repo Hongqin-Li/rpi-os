@@ -50,9 +50,9 @@ $(KERN_IMG): $(KERN_ELF)
 
 QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
 
-qemu: $(KERN_IMG) $(SD_IMG)
+qemu: $(KERN_IMG) all
 	$(QEMU) -kernel $<
-qemu-gdb: $(KERN_IMG) $(SD_IMG)
+qemu-gdb: $(KERN_IMG) all
 	$(QEMU) -kernel $< -S -gdb tcp::1234
 gdb: 
 	gdb-multiarch -n -x .gdbinit

@@ -42,19 +42,20 @@ irq_init()
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
-int fetchstr(uint64_t addr, char **pp)
+int
+fetchstr(uint64_t addr, char **pp)
 {
     struct proc *p = thisproc();
     uint64_t low_top = p->base + p->sz;
-    uint64_t high_bottom = KERNBASE - p->stksz;
+    uint64_t high_bottom = USERTOP - p->stksz;
 
     *pp = (char *)addr;
 
     if (p->base <= addr && addr < low_top) {
         for (char *s = (void *)addr; (uint64_t)s < low_top; s++)
             if (*s == 0) return s - *pp;
-    } else if (high_bottom <= addr && addr < KERNBASE) {
-        for (char *s = (void *)addr; (uint64_t)s < KERNBASE; s++)
+    } else if (high_bottom <= addr && addr < USERTOP) {
+        for (char *s = (void *)addr; (uint64_t)s < USERTOP; s++)
             if (*s == 0) return s - *pp;
     } else {
         return -1;
@@ -64,7 +65,8 @@ int fetchstr(uint64_t addr, char **pp)
 // Fetch the nth (starting from 0) 32-bit system call argument.
 // In our ABI, x8 contains system call index, x0-r3 contain parameters.
 // now we support system calls with at most 4 parameters.
-int argint(int n, long *ip)
+int
+argint(int n, long *ip)
 {
     struct proc *proc = thisproc();
     if (n > 3) {
@@ -78,7 +80,8 @@ int argint(int n, long *ip)
 // Fetch the nth (starting from 0) 64-bit system call argument.
 // In our ABI, x8 contains system call index, x0-r3 contain parameters.
 // now we support system calls with at most 4 parameters.
-uint64_t argu64(int n, uint64_t *ip)
+uint64_t
+argu64(int n, uint64_t *ip)
 {
     if (n > 3) {
         panic ("too many system call parameters\n");
@@ -87,22 +90,30 @@ uint64_t argu64(int n, uint64_t *ip)
     return 0;
 }
 
+// Check if a block of memory lies within the process user space.
+int
+in_user(void *base, size_t size) {
+    struct proc *p = thisproc();
+    uint64_t low_top = p->base + p->sz;
+    uint64_t high_bottom = USERTOP - p->stksz;
+
+    if ((p->base <= base && base + size <= low_top) || (high_bottom <= base && base + size <= USERTOP)) {
+        return 1;
+    }
+    return 0;
+}
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes. Check that the pointer
 // lies within the process address space.
-int argptr(int n, char **pp, int size)
+int
+argptr(int n, char **pp, size_t size)
 {
     uint64_t i;
     if(argu64(n, &i) < 0) {
         return -1;
     }
-
-    struct proc *p = thisproc();
-    uint64_t low_top = p->base + p->sz;
-    uint64_t high_bottom = KERNBASE - p->stksz;
-
-    if ((p->base <= i && i + size < low_top) || (high_bottom <= i && i + size < KERNBASE)) {
+    if (in_user((void *)i, size)) {
         *pp = (char*)i;
         return 0;
     } else {
@@ -114,7 +125,8 @@ int argptr(int n, char **pp, int size)
 // Check that the pointer is valid and the string is nul-terminated.
 // (There is no shared writable memory, so the string can't change
 // between this check and being used by the kernel.)
-int argstr(int n, char **pp)
+int
+argstr(int n, char **pp)
 {
     uint64_t addr;
 

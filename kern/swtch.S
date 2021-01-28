@@ -10,6 +10,8 @@
 .global swtch
 swtch:
     /* Save old callee-saved registers. */
+    str     q0, [sp, #-16]!
+
     stp     x19, xzr, [sp, #-16]!
     stp     x21, x20, [sp, #-16]!
     stp     x23, x22, [sp, #-16]!
@@ -31,6 +33,8 @@ swtch:
     ldp     x23, x22, [sp], #16
     ldp     x21, x20, [sp], #16
     ldp     x19, xzr, [sp], #16
+
+    ldr     q0, [sp], #16
 
     /* Why not simply ret by x30? This is a hack for forkret. */
     ret     x15

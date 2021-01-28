@@ -16,6 +16,11 @@
 #define HCR_RW                      (1 << 31)
 #define HCR_VALUE                   HCR_RW
 
+/* CPACR_EL1, Architectural Feature Access Control Register. */
+#define CPACR_FP_EN                 (3 << 20)
+#define CPACR_TRACE_EN              (0 << 28)
+#define CPACR_VALUE                 (CPACR_FP_EN | CPACR_TRACE_EN)                    
+
 /* SCR_EL3, Secure Configuration Register (EL3). */
 #define SCR_RESERVED                (3 << 4)
 #define SCR_RW                      (1 << 10)

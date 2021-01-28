@@ -2,6 +2,8 @@
 .global alltraps
 alltraps:
     /* Use stp/ldp in favor of str/ldr to maintain stack alignment. */
+    str     q0, [sp, #-16]!
+
     stp     x29, x30, [sp, #-16]!
     stp     x27, x28, [sp, #-16]!
     stp     x25, x26, [sp, #-16]!
@@ -53,5 +55,7 @@ trapret:
     ldp     x25, x26, [sp], #16
     ldp     x27, x28, [sp], #16
     ldp     x29, x30, [sp], #16
+
+    ldr     q0, [sp], #16
 
     eret
