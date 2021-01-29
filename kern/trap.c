@@ -22,6 +22,19 @@ irq_init()
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
 }
 
+// Check if a block of memory lies within the process user space.
+int
+in_user(void *base, size_t size) {
+    struct proc *p = thisproc();
+    uint64_t low_top = p->base + p->sz;
+    uint64_t high_bottom = USERTOP - p->stksz;
+
+    if ((p->base <= base && base + size <= low_top) || (high_bottom <= base && base + size <= USERTOP)) {
+        return 1;
+    }
+    return 0;
+}
+
 // User code makes a system call with INT T_SYSCALL. System call number
 // in r0. Arguments on the stack, from the user call to the C library
 // system call function. The saved user sp points to the first argument.
@@ -87,19 +100,6 @@ argu64(int n, uint64_t *ip)
         panic ("too many system call parameters\n");
     }
     *ip = thisproc()->tf->x[n];
-    return 0;
-}
-
-// Check if a block of memory lies within the process user space.
-int
-in_user(void *base, size_t size) {
-    struct proc *p = thisproc();
-    uint64_t low_top = p->base + p->sz;
-    uint64_t high_bottom = USERTOP - p->stksz;
-
-    if ((p->base <= base && base + size <= low_top) || (high_bottom <= base && base + size <= USERTOP)) {
-        return 1;
-    }
     return 0;
 }
 

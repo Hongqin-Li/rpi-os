@@ -11,6 +11,8 @@
 
 #include "sd.h"
 #include "debug.h"
+#include "file.h"
+#include "log.h"
 
 extern void trapret();
 extern void swtch(struct context **old, struct context *new);
@@ -29,6 +31,8 @@ struct {
   struct list_head sched_que;
   struct spinlock lock;
 } ptable;
+
+struct proc *initproc;
 
 void
 proc_init()
@@ -66,6 +70,8 @@ proc_alloc()
         release(&ptable.lock);
         return 0;
     }
+
+    memset(p, 0, sizeof(p));
 
     p->state = EMBRYO;
     p->pid = p - proc;
@@ -134,6 +140,9 @@ user_init()
 
     if ((p->pgdir = vm_init()) == 0)
         panic("user init: failed\n");
+
+    assert(!initproc);
+    initproc = p;
 
     void *va = kalloc();
     uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
@@ -339,7 +348,7 @@ wait()
     if (list_empty(q)) return -1;
 
     acquire(&ptable.lock);
-    while (!list_empty(q)) {
+    while (1) {
         LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
             if (p->state == ZOMBIE) {
                 assert(p->parent == cp);
@@ -349,14 +358,11 @@ wait()
 
                 kfree(p->kstack);
                 vm_free(p->pgdir);
-                p->kstack = 0;
-                p->parent = 0;
                 p->state = UNUSED;
-                p->killed = 0;
-                p->name[0] = 0;
             }
         }
-        sleep(cp, &ptable.lock);
+        if (list_empty(q)) break;
+        else sleep(cp, &ptable.lock);
     }
     release(&ptable.lock);
 }
@@ -385,16 +391,56 @@ kill(int pid)
 //   return -1;
 }
 
+// FIXME: not tested.
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
 void
 exit(int code)
 {
-    panic("unimplemented. ");
+    struct proc *cp = thisproc();
+
+    if (cp == initproc)
+        panic("init exiting");
+
+    // Close all open files.
+    for (int fd = 0; fd < NOFILE; fd++) {
+        if (cp->ofile[fd]) {
+            fileclose(cp->ofile[fd]);
+            cp->ofile[fd] = 0;
+        }
+    }
+
+    begin_op();
+    iput(cp->cwd);
+    end_op();
+    cp->cwd = 0;
+
+    acquire(&ptable.lock);
+
+    // Parent might be sleeping in wait().
+    wakeup1(cp->parent);
+
+    // Pass abandoned children to init.
+    struct list_head *q = &cp->child;
+    struct proc *p, *np;
+    LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
+        assert(p->parent == cp);
+        cprintf("exit: pass child %d to init\n", p->pid);
+
+        list_drop(&p->clink);
+        list_push_back(&initproc->child, &p->clink);
+        if (p->state == ZOMBIE)
+            wakeup1(initproc);
+    }
+    assert(list_empty(q));
+ 
+    // Jump into the scheduler, never to return.
+    cp->state = ZOMBIE;
+    swtch(&cp->context, thiscpu()->scheduler);
+    panic("zombie exit");
 }
 
-//PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.

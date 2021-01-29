@@ -55,7 +55,42 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
 uint64_t *
 uvm_copy(uint64_t *pgdir)
 {
-    panic("unimplemented. ");
+    uint64_t *newpgdir = vm_init();
+    if (!newpgdir) return 0;
+
+    for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
+        assert(pgdir[i] & PTE_TABLE);
+        uint64_t *pgt1 = P2V(PTE_ADDR(pgdir[i]));
+        for (int i1 = 0; i1 < 512; i1++) if (pgt1[i1] & PTE_VALID) {
+            assert(pgt1[i1] & PTE_TABLE);
+            uint64_t *pgt2 = P2V(PTE_ADDR(pgt1[i1]));
+            for (int i2 = 0; i2 < 512; i2++) if (pgt2[i2] & PTE_VALID) {
+                assert(pgt2[i2] & PTE_TABLE);
+                uint64_t *pgt3 = P2V(PTE_ADDR(pgt2[i2]));
+                for (int i3 = 0; i3 < 512; i3++) if (pgt3[i3] & PTE_VALID) {
+
+                    assert(pgt3[i3] & PTE_PAGE);
+                    assert(pgt3[i3] & PTE_USER);
+                    assert(pgt3[i3] & PTE_NORMAL);
+
+                    assert(PTE_ADDR(pgt3[i3]) < KERNBASE);
+
+                    uint64_t *p = P2V(PTE_ADDR(pgt3[i3]));
+                    uint64_t va = (uint64_t)i << (12 + 9*3) | (uint64_t)i1 << (12 + 9*2)| (uint64_t)i2 << (12 + 9) | i3 << 12;
+
+                    void *np = kalloc();
+                    memmove(np, p, PGSIZE);
+                    if (uvm_map(newpgdir, va, PGSIZE, V2P(np)) < 0) {
+                        vm_free(newpgdir);
+                        kfree(np);
+                        cprintf("- uvmcopy failed.\n");
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    return newpgdir;
 }
 
 // FIXME: Not tested.

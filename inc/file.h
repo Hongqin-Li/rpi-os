@@ -51,6 +51,7 @@ struct stat {
   uint size;   // Size of file in bytes
 };
 
+// fs.c
 void            readsb(int dev, struct superblock *sb);
 int             dirlink(struct inode *, char *, uint);
 struct inode *  dirlookup(struct inode *, char *, uint *);
@@ -68,5 +69,12 @@ struct inode *  nameiparent(char *, char *);
 int             readi(struct inode *, char *, uint, uint);
 void            stati(struct inode *, struct stat *);
 int             writei(struct inode *, char *, uint, uint);
+
+struct file *   filealloc(void);
+struct file *   filedup(struct file *f);
+void            fileclose(struct file *f);
+int             filestat(struct file *f, struct stat *st);
+int             fileread(struct file *f, char *addr, int n);
+int             filewrite(struct file *f, char *addr, int n);
 
 #endif
