@@ -78,7 +78,7 @@ proc_alloc()
     cprintf("- proc alloc: pid %d\n", p->pid);
 
     void *sp = p->kstack + PGSIZE;
-    assert(sizeof(*p->tf) == 18*16 && sizeof(*p->context) == 8*16);
+    assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 8*16);
 
     sp -= sizeof(*p->tf);
     p->tf = sp;
@@ -345,10 +345,9 @@ wait()
 
     struct list_head *q = &cp->child;
     struct proc *p, *np;
-    if (list_empty(q)) return -1;
 
     acquire(&ptable.lock);
-    while (1) {
+    while (!list_empty(q)) {
         LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
             if (p->state == ZOMBIE) {
                 assert(p->parent == cp);
@@ -359,12 +358,16 @@ wait()
                 kfree(p->kstack);
                 vm_free(p->pgdir);
                 p->state = UNUSED;
+
+                int pid = p->pid;
+                release(&ptable.lock);
+                return pid;
             }
         }
-        if (list_empty(q)) break;
-        else sleep(cp, &ptable.lock);
+        sleep(cp, &ptable.lock);
     }
     release(&ptable.lock);
+    return -1;
 }
 
 // Kill the process with the given pid.
@@ -427,6 +430,7 @@ exit(int code)
     LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
         assert(p->parent == cp);
         cprintf("exit: pass child %d to init\n", p->pid);
+        p->parent = initproc;
 
         list_drop(&p->clink);
         list_push_back(&initproc->child, &p->clink);

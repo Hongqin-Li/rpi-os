@@ -19,7 +19,8 @@ execve(const char *path, char *const argv[], char *const envp[])
     fetchstr(path, &s);
 
     cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
-    asserts(envp == 0, "envp unimplemented. ");
+   
+    // asserts(envp == 0, "envp unimplemented. ");
     // asserts(argv == 0, "argv unimplemented. ");
 
     begin_op();

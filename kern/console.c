@@ -8,6 +8,8 @@
 #include "spinlock.h"
 #include "file.h"
 
+#define CONSOLE 1
+
 static struct spinlock conslock;
 static int panicked = -1;
 
@@ -81,6 +83,9 @@ void
 console_init()
 {
     uart_init();
+
+    devsw[CONSOLE].read = console_read;
+    devsw[CONSOLE].write = console_write;
 }
 
 static void

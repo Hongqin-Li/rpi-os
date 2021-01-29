@@ -24,7 +24,8 @@ irq_init()
 
 // Check if a block of memory lies within the process user space.
 int
-in_user(void *base, size_t size) {
+in_user(void *base, size_t size)
+{
     struct proc *p = thisproc();
     uint64_t low_top = p->base + p->sz;
     uint64_t high_bottom = USERTOP - p->stksz;
@@ -62,30 +63,32 @@ fetchstr(uint64_t addr, char **pp)
     uint64_t low_top = p->base + p->sz;
     uint64_t high_bottom = USERTOP - p->stksz;
 
-    *pp = (char *)addr;
 
+    *pp = (char *)addr;
     if (p->base <= addr && addr < low_top) {
+        cprintf("fetchstr: at heap 0x%p to 0x%p\n", addr, pp);
         for (char *s = (void *)addr; (uint64_t)s < low_top; s++)
             if (*s == 0) return s - *pp;
     } else if (high_bottom <= addr && addr < USERTOP) {
+        cprintf("fetchstr: at stack 0x%p to 0x%p\n", addr, pp);
         for (char *s = (void *)addr; (uint64_t)s < USERTOP; s++)
             if (*s == 0) return s - *pp;
-    } else {
-        return -1;
     }
+    return -1;
 }
 
 // Fetch the nth (starting from 0) 32-bit system call argument.
 // In our ABI, x8 contains system call index, x0-r3 contain parameters.
 // now we support system calls with at most 4 parameters.
 int
-argint(int n, long *ip)
+argint(int n, int *ip)
 {
     struct proc *proc = thisproc();
     if (n > 3) {
-        panic ("too many system call parameters\n");
+        cprintf("too many system call parameters\n");
+        return -1;
     }
-    *ip = *(&proc->tf->x[n]);
+    *ip = proc->tf->x[n];
 
     return 0;
 }
@@ -93,13 +96,16 @@ argint(int n, long *ip)
 // Fetch the nth (starting from 0) 64-bit system call argument.
 // In our ABI, x8 contains system call index, x0-r3 contain parameters.
 // now we support system calls with at most 4 parameters.
-uint64_t
+int
 argu64(int n, uint64_t *ip)
 {
+    struct proc *proc = thisproc();
     if (n > 3) {
-        panic ("too many system call parameters\n");
+        cprintf("too many system call parameters\n");
+        return -1;
     }
-    *ip = thisproc()->tf->x[n];
+    *ip = proc->tf->x[n];
+
     return 0;
 }
 
@@ -110,7 +116,7 @@ int
 argptr(int n, char **pp, size_t size)
 {
     uint64_t i;
-    if(argu64(n, &i) < 0) {
+    if (argu64(n, &i) < 0) {
         return -1;
     }
     if (in_user((void *)i, size)) {
@@ -129,26 +135,28 @@ int
 argstr(int n, char **pp)
 {
     uint64_t addr;
-
-    if (argu64(n, &addr) < 0) {
+    if (argu64(n, &addr) < 0)
         return -1;
-    }
-
-    return fetchstr(addr, pp);
+    int r = fetchstr(addr, pp);
+    cprintf("argstr: to 0x%p\n", *pp);
+    return r;
 }
-
 
 void
 trap(struct trapframe *tf)
 {
     // cprintf("- trap: cpu %d\n", cpuid());
     int src = get32(IRQ_SRC_CORE(cpuid()));
-    if (src & IRQ_CNTPNSIRQ) timer(), timer_reset();
-    else if (src & IRQ_TIMER) clock(), clock_reset();
+    if (src & IRQ_CNTPNSIRQ)
+        timer(), timer_reset();
+    else if (src & IRQ_TIMER)
+        clock(), clock_reset();
     else if (src & IRQ_GPU) {
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
-        if (p1 & AUX_INT) uart_intr();
-        else if (p2 & VC_ARASANSDIO_INT) sd_intr();
+        if (p1 & AUX_INT)
+            uart_intr();
+        else if (p2 & VC_ARASANSDIO_INT)
+            sd_intr();
         else {
             cprintf("- trap: unexpected gpu intr p1 %x, p2 %x, sd %d.\n", p1, p2, p2 & VC_ARASANSDIO_INT);
             goto bad;

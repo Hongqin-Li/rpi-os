@@ -19,7 +19,7 @@
 #define O_RDONLY  0x000
 #define O_WRONLY  0x001
 #define O_RDWR    0x002
-#define O_CREATE  0x200
+#define O_CREATE  0x100
 
 struct iovec {
     void  *iov_base;    /* Starting address. */
@@ -50,30 +50,31 @@ argfd(int n, int *pfd, struct file **pf)
 static int
 fdalloc(struct file *f)
 {
-  int fd;
-  struct proc *curproc = thisproc();
+    int fd;
+    struct proc *curproc = thisproc();
 
-  for(fd = 0; fd < NOFILE; fd++){
-    if(curproc->ofile[fd] == 0){
-      curproc->ofile[fd] = f;
-      return fd;
+    for (fd = 0; fd < NOFILE; fd++){
+        if (curproc->ofile[fd] == 0){
+            curproc->ofile[fd] = f;
+            return fd;
+        }
     }
-  }
-  return -1;
+    return -1;
 }
 
 int
-sys_dup(void)
+sys_dup()
 {
-  struct file *f;
-  int fd;
+    struct file *f;
+    int fd;
 
-  if(argfd(0, 0, &f) < 0)
-    return -1;
-  if((fd=fdalloc(f)) < 0)
-    return -1;
-  filedup(f);
-  return fd;
+    if (argfd(0, 0, &f) < 0)
+        return -1;
+    if ((fd = fdalloc(f)) < 0)
+        return -1;
+    cprintf("dup: fd %d\n", fd);
+    filedup(f);
+    return fd;
 }
 
 int
@@ -314,53 +315,59 @@ create(char *path, short type, short major, short minor)
 }
 
 int
-sys_open(void)
+sys_openat()
 {
-  char *path;
-  int fd, omode;
-  struct file *f;
-  struct inode *ip;
+    char *path;
+    int dirfd, fd, omode;
+    struct file *f;
+    struct inode *ip;
 
-  if(argstr(0, &path) < 0 || argint(1, &omode) < 0)
-    return -1;
-
-  begin_op();
-
-  if(omode & O_CREATE){
-    ip = create(path, T_FILE, 0, 0);
-    if(ip == 0){
-      end_op();
-      return -1;
+    if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &omode) < 0)
+        return -1;
+    if (dirfd != -100) {
+        cprintf("dirfd unimplemented\n");
+        return -1;
     }
-  } else {
-    if((ip = namei(path)) == 0){
-      end_op();
-      return -1;
-    }
-    ilock(ip);
-    if(ip->type == T_DIR && omode != O_RDONLY){
-      iunlockput(ip);
-      end_op();
-      return -1;
-    }
-  }
+    cprintf("openat: path '%s', flag 0x%x\n", path, omode);
 
-  if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
-    if(f)
-      fileclose(f);
-    iunlockput(ip);
+    begin_op();
+
+    if (omode & O_CREATE) {
+        // FIXME: acl mode are ignored.
+        ip = create(path, T_FILE, 0, 0);
+        if (ip == 0) {
+            end_op();
+            return -1;
+        }
+    } else {
+        if ((ip = namei(path)) == 0) {
+            end_op();
+            return -1;
+        }
+        ilock(ip);
+        if (ip->type == T_DIR && omode != O_RDONLY) {
+            iunlockput(ip);
+            end_op();
+            return -1;
+        }
+    }
+
+    if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
+        if (f)
+            fileclose(f);
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+    iunlock(ip);
     end_op();
-    return -1;
-  }
-  iunlock(ip);
-  end_op();
 
-  f->type = FD_INODE;
-  f->ip = ip;
-  f->off = 0;
-  f->readable = !(omode & O_WRONLY);
-  f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
-  return fd;
+    f->type = FD_INODE;
+    f->ip = ip;
+    f->off = 0;
+    f->readable = !(omode & O_WRONLY);
+    f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
+    return fd;
 }
 
 int
@@ -380,23 +387,28 @@ sys_mkdir(void)
 }
 
 int
-sys_mknod(void)
+sys_mknodat()
 {
-  struct inode *ip;
-  char *path;
-  int major, minor;
+    struct inode *ip;
+    char *path;
+    int dirfd, major, minor;
 
-  begin_op();
-  if((argstr(0, &path)) < 0 ||
-     argint(1, &major) < 0 ||
-     argint(2, &minor) < 0 ||
-     (ip = create(path, T_DEV, major, minor)) == 0){
+    if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &major) < 0 || argint(3, &minor))
+        return -1;
+    if (dirfd != -100) {
+        cprintf("dirfd unimplemented\n");
+        return -1;
+    }
+    cprintf("mknodat: path '%s', major:minor %d:%d\n", path, major, minor);
+
+    begin_op();
+    if((ip = create(path, T_DEV, major, minor)) == 0) {
+        end_op();
+        return -1;
+    }
+    iunlockput(ip);
     end_op();
-    return -1;
-  }
-  iunlockput(ip);
-  end_op();
-  return 0;
+    return 0;
 }
 
 int

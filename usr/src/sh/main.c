@@ -7,4 +7,5 @@ int main()
 {
     test();
     printf("hello, world\n");
+    while (1) ;
 }

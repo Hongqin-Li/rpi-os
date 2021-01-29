@@ -671,7 +671,7 @@ namei(char *path)
     cprintf("namei begin\n");
     char name[DIRSIZ];
     struct inode *ip = namex(path, 0, name);
-    assert((void *)ip >= KERNBASE);
+    assert((void *)ip >= KERNBASE || ip == 0);
     cprintf("namei end: 0x%p\n", ip);
     return ip;
 }
