@@ -4,7 +4,6 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
-#include <sys/stat.h>
 
 char *argv[] = { "sh", 0 };
 

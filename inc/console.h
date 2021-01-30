@@ -4,9 +4,11 @@
 #include <stdarg.h>
 
 void console_init();
+void console_intr(int (*getc)());
 void cgetchar(int c);
 void cprintf(const char *fmt, ...);
 void panic(const char *fmt, ...);
+
 
 #define assert(x)                                                   \
 ({                                                                  \

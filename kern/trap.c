@@ -24,15 +24,13 @@ irq_init()
 
 // Check if a block of memory lies within the process user space.
 int
-in_user(void *base, size_t size)
+in_user(void *s, size_t n)
 {
     struct proc *p = thisproc();
-    uint64_t low_top = p->base + p->sz;
-    uint64_t high_bottom = USERTOP - p->stksz;
-
-    if ((p->base <= base && base + size <= low_top) || (high_bottom <= base && base + size <= USERTOP)) {
+    if ((p->base <= s && s + n <= p->sz) ||
+        (USERTOP - p->stksz <= s && s + n <= USERTOP))
         return 1;
-    }
+
     return 0;
 }
 
@@ -60,17 +58,14 @@ int
 fetchstr(uint64_t addr, char **pp)
 {
     struct proc *p = thisproc();
-    uint64_t low_top = p->base + p->sz;
-    uint64_t high_bottom = USERTOP - p->stksz;
-
 
     *pp = (char *)addr;
-    if (p->base <= addr && addr < low_top) {
-        cprintf("fetchstr: at heap 0x%p to 0x%p\n", addr, pp);
-        for (char *s = (void *)addr; (uint64_t)s < low_top; s++)
+    if (p->base <= addr && addr < p->sz) {
+        // cprintf("fetchstr: at heap 0x%p to 0x%p\n", addr, pp);
+        for (char *s = (void *)addr; (uint64_t)s < p->sz; s++)
             if (*s == 0) return s - *pp;
-    } else if (high_bottom <= addr && addr < USERTOP) {
-        cprintf("fetchstr: at stack 0x%p to 0x%p\n", addr, pp);
+    } else if (USERTOP - p->stksz <= addr && addr < USERTOP) {
+        // cprintf("fetchstr: at stack 0x%p to 0x%p\n", addr, pp);
         for (char *s = (void *)addr; (uint64_t)s < USERTOP; s++)
             if (*s == 0) return s - *pp;
     }
@@ -97,7 +92,7 @@ argint(int n, int *ip)
 // In our ABI, x8 contains system call index, x0-r3 contain parameters.
 // now we support system calls with at most 4 parameters.
 int
-argu64(int n, uint64_t *ip)
+argu64(int n, size_t *ip)
 {
     struct proc *proc = thisproc();
     if (n > 3) {
@@ -138,7 +133,6 @@ argstr(int n, char **pp)
     if (argu64(n, &addr) < 0)
         return -1;
     int r = fetchstr(addr, pp);
-    cprintf("argstr: to 0x%p\n", *pp);
     return r;
 }
 

@@ -1,17 +1,20 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <assert.h>
 
+typedef uint8_t     uchar;
+typedef uint16_t    ushort;
+typedef uint32_t    uint;
+
 // this file should be compiled with normal gcc...
 
 #define stat xv6_stat  // avoid clash with host struct stat
 #define sleep xv6_sleep
-// #include "../../../inc/file.h"
 #include "../../../inc/fs.h"
-#include "../../../inc/defs.h"
 
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)

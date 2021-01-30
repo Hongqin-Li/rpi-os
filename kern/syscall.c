@@ -26,8 +26,10 @@ syscall1(struct trapframe *tf)
 
     // FIXME: always return 0 since we don't have signals  :)
     case SYS_rt_sigprocmask:
-        cprintf("sigprocmask: TODO\n");
         return 0;
+
+    case SYS_brk:
+        return sys_brk();
 
     case SYS_execve:
         return execve(tf->x[0], tf->x[1], tf->x[2]);
@@ -41,8 +43,25 @@ syscall1(struct trapframe *tf)
     case SYS_wait4:
         return sys_wait4();
 
+    // FIXME: exit_group should kill every thread in the current thread group.
+    case SYS_exit_group:
+    case SYS_exit:
+        exit(tf->x[0]);
+
     case SYS_dup:
         return sys_dup();
+
+    case SYS_chdir:
+        return sys_chdir();
+
+    case SYS_fstat:
+        return sys_fstat();
+
+    case SYS_newfstatat:
+        return sys_fstatat();
+
+    case SYS_mkdirat:
+        return sys_mkdirat();
 
     case SYS_mknodat:
         return sys_mknodat();
@@ -53,10 +72,11 @@ syscall1(struct trapframe *tf)
     case SYS_writev:
         return sys_writev();
 
-    // FIXME: exit_group should kill every thread in the current thread group.
-    case SYS_exit_group:
-    case SYS_exit:
-        exit(tf->x[0]);
+    case SYS_read:
+        return sys_read();
+
+    case SYS_close:
+        return sys_close();
 
     default:
         // FIXME: don't panic.

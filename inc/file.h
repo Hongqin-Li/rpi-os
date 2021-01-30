@@ -1,6 +1,8 @@
 #ifndef INC_FILE_H
 #define INC_FILE_H
 
+#include <sys/stat.h>
+#include "types.h"
 #include "defs.h"
 #include "sleeplock.h"
 #include "fs.h"
@@ -12,24 +14,24 @@ struct file {
   char writable;
   struct pipe *pipe;
   struct inode *ip;
-  uint off;
+  size_t off;
 };
 
 
 // in-memory copy of an inode
 struct inode {
-  uint dev;           // Device number
-  uint inum;          // Inode number
+  size_t dev;           // Device number
+  size_t inum;          // Inode number
   int ref;            // Reference count
   struct sleeplock lock; // protects everything below here
   int valid;          // inode has been read from disk?
 
-  short type;         // copy of disk inode
-  short major;
-  short minor;
-  short nlink;
-  uint size;
-  uint addrs[NDIRECT+1];
+  uint16_t type;         // copy of disk inode
+  uint16_t major;
+  uint16_t minor;
+  uint16_t nlink;
+  uint32_t size;
+  uint32_t addrs[NDIRECT+1];
 };
 
 // table mapping major device number to
@@ -41,21 +43,10 @@ struct devsw {
 
 extern struct devsw devsw[];
 
-#define CONSOLE 1
-
-struct stat {
-  short type;  // Type of file
-  int dev;     // File system's disk device
-  uint ino;    // Inode number
-  short nlink; // Number of links to file
-  uint size;   // Size of file in bytes
-};
-
-// fs.c
 void            readsb(int dev, struct superblock *sb);
-int             dirlink(struct inode *, char *, uint);
-struct inode *  dirlookup(struct inode *, char *, uint *);
-struct inode *  ialloc(uint, short);
+int             dirlink(struct inode *, char *, uint32_t);
+struct inode *  dirlookup(struct inode *, char *, size_t *);
+struct inode *  ialloc(uint32_t, short);
 struct inode *  idup(struct inode *);
 void            iinit(int dev);
 void            ilock(struct inode *);
@@ -66,15 +57,15 @@ void            iupdate(struct inode *);
 int             namecmp(const char *, const char *);
 struct inode *  namei(char *);
 struct inode *  nameiparent(char *, char *);
-int             readi(struct inode *, char *, uint, uint);
 void            stati(struct inode *, struct stat *);
-int             writei(struct inode *, char *, uint, uint);
+ssize_t         readi(struct inode *, char *, size_t, size_t);
+ssize_t         writei(struct inode *, char *, size_t, size_t);
 
-struct file *   filealloc(void);
+struct file *   filealloc();
 struct file *   filedup(struct file *f);
 void            fileclose(struct file *f);
 int             filestat(struct file *f, struct stat *st);
-int             fileread(struct file *f, char *addr, int n);
-int             filewrite(struct file *f, char *addr, int n);
+ssize_t         fileread(struct file *f, char *addr, ssize_t n);
+ssize_t         filewrite(struct file *f, char *addr, ssize_t n);
 
 #endif

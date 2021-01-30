@@ -4,57 +4,65 @@
 // user code, and calls into file.c and fs.c.
 //
 
-// #include <fcntl.h>
+#include <fcntl.h>
 
 #include "types.h"
 #include "defs.h"
 #include "mmu.h"
 #include "proc.h"
-#include "fs.h"
 #include "spinlock.h"
 #include "sleeplock.h"
-#include "file.h"
 #include "string.h"
+#include "console.h"
+#include "log.h"
+#include "fs.h"
+#include "file.h"
 
-#define O_RDONLY  0x000
-#define O_WRONLY  0x001
-#define O_RDWR    0x002
-#define O_CREATE  0x100
+// #define O_RDONLY  0x00000
+// #define O_WRONLY  0x00001
+// #define O_RDWR    0x00002
+// #define O_CREATE  0x00100
+// #define O_LARGE   0x20000
+
+// #define AT_FDCWD  (-100)
 
 struct iovec {
     void  *iov_base;    /* Starting address. */
     size_t iov_len;     /* Number of bytes to transfer. */
 };
 
-// Fetch the nth word-sized system call argument as a file descriptor
-// and return both the descriptor and the corresponding struct file.
+/*
+ * Fetch the nth word-sized system call argument as a file descriptor
+ * and return both the descriptor and the corresponding struct file.
+ */
 static int
 argfd(int n, int *pfd, struct file **pf)
 {
-  int fd;
-  struct file *f;
+    int fd;
+    struct file *f;
 
-  if(argint(n, &fd) < 0)
-    return -1;
-  if(fd < 0 || fd >= NOFILE || (f=thisproc()->ofile[fd]) == 0)
-    return -1;
-  if(pfd)
-    *pfd = fd;
-  if(pf)
-    *pf = f;
-  return 0;
+    if (argint(n, &fd) < 0)
+        return -1;
+    if (fd < 0 || fd >= NOFILE || (f = thisproc()->ofile[fd]) == 0)
+        return -1;
+    if (pfd)
+        *pfd = fd;
+    if (pf)
+        *pf = f;
+    return 0;
 }
 
-// Allocate a file descriptor for the given file.
-// Takes over file reference from caller on success.
+/*
+ * Allocate a file descriptor for the given file.
+ * Takes over file reference from caller on success.
+ */
 static int
 fdalloc(struct file *f)
 {
-    int fd;
     struct proc *curproc = thisproc();
 
-    for (fd = 0; fd < NOFILE; fd++){
-        if (curproc->ofile[fd] == 0){
+    for (int fd = 0; fd < NOFILE; fd++) {
+        if (curproc->ofile[fd] == 0) {
             curproc->ofile[fd] = f;
             return fd;
         }
@@ -77,41 +85,43 @@ sys_dup()
     return fd;
 }
 
-int
-sys_read(void)
+ssize_t
+sys_read()
 {
-  struct file *f;
-  int n;
-  char *p;
+    struct file *f;
+    ssize_t n;
+    char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
-    return -1;
-  return fileread(f, p, n);
+    if (argfd(0, 0, &f) < 0 || argu64(2, &n) < 0 || argptr(1, &p, n) < 0)
+        return -1;
+    return fileread(f, p, n);
 }
 
-int
-sys_write(void)
+ssize_t
+sys_write()
 {
-  struct file *f;
-  int n;
-  char *p;
+    struct file *f;
+    ssize_t n;
+    char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
-    return -1;
-  return filewrite(f, p, n);
+    if (argfd(0, 0, &f) < 0 || argu64(2, &n) < 0 || argptr(1, &p, n) < 0)
+        return -1;
+    return filewrite(f, p, n);
 }
 
 
-size_t
+ssize_t
 sys_writev()
 {
     struct file *f;
     int fd, iovcnt;
     struct iovec *iov, *p;
-    if (argfd(0, &fd, &f) < 0 || argint(2, &iovcnt) < 0 || argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
+    if (argfd(0, &fd, &f) < 0 ||
+        argint(2, &iovcnt) < 0 ||
+        argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
         return -1;
     }
-    cprintf("writev: fd %d, iovcnt: %d\n", fd, iovcnt);
+    // cprintf("writev: fd %d, iovcnt: %d\n", fd, iovcnt);
 
     size_t tot = 0;
     for (p = iov; p < iov + iovcnt; p++) {
@@ -123,32 +133,70 @@ sys_writev()
 }
 
 int
-sys_close(void)
+sys_close()
 {
-  int fd;
-  struct file *f;
+    int fd;
+    struct file *f;
 
-  if(argfd(0, &fd, &f) < 0)
-    return -1;
-  thisproc()->ofile[fd] = 0;
-  fileclose(f);
-  return 0;
+    if (argfd(0, &fd, &f) < 0)
+        return -1;
+    thisproc()->ofile[fd] = 0;
+    fileclose(f);
+    return 0;
 }
 
 int
-sys_fstat(void)
+sys_fstat()
 {
-  struct file *f;
-  struct stat *st;
+    int fd;
+    struct file *f;
+    struct stat *st;
 
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
-    return -1;
-  return filestat(f, st);
+    if (argfd(0, &fd, &f) < 0 || argptr(1, (void *)&st, sizeof(*st)) < 0)
+        return -1;
+    // cprintf("sys_fstat: fd %d\n", fd);
+    return filestat(f, st);
 }
 
-// Create the path new as a link to the same inode as old.
 int
-sys_link(void)
+sys_fstatat()
+{
+    int dirfd, flags;
+    char *path;
+    struct stat *st;
+
+    if (argint(0, &dirfd) < 0 ||
+        argstr(1, &path) < 0 ||
+        argptr(2, (void *)&st, sizeof(*st)) < 0 ||
+        argint(3, &flags) < 0)
+        return -1;
+
+    if (dirfd != AT_FDCWD) {
+        cprintf("sys_fstatat: dirfd unimplemented\n");
+        return -1;
+    }
+    if (flags != 0) {
+        cprintf("sys_fstatat: flags unimplemented\n");
+        return -1;
+    }
+
+    struct inode *ip;
+    begin_op();
+    if ((ip = namei(path)) == 0) {
+        end_op();
+        return -1;
+    }
+    ilock(ip);
+    stati(ip, st);
+    iunlockput(ip);
+    end_op();
+
+    return 0;
+}
+
+/* Create the path new as a link to the same inode as old. */
+int
+sys_link()
 {
   char name[DIRSIZ], *new, *old;
   struct inode *dp, *ip;
@@ -196,81 +244,79 @@ bad:
   return -1;
 }
 
-// Is the directory dp empty except for "." and ".." ?
+/* Is the directory dp empty except for "." and ".." ? */
 static int
 isdirempty(struct inode *dp)
 {
-  int off;
-  struct dirent de;
+    struct dirent de;
 
-  for(off=2*sizeof(de); off<dp->size; off+=sizeof(de)){
-    if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-      panic("isdirempty: readi");
-    if(de.inum != 0)
-      return 0;
-  }
-  return 1;
+    for (ssize_t off = 2*sizeof(de); off < dp->size; off += sizeof(de)) {
+        if (readi(dp, (char *)&de, off, sizeof(de)) != sizeof(de))
+            panic("isdirempty: readi");
+        if (de.inum != 0)
+            return 0;
+    }
+    return 1;
 }
 
-//PAGEBREAK!
 int
-sys_unlink(void)
+sys_unlink()
 {
-  struct inode *ip, *dp;
-  struct dirent de;
-  char name[DIRSIZ], *path;
-  uint off;
+    struct inode *ip, *dp;
+    struct dirent de;
+    char name[DIRSIZ], *path;
+    ssize_t off;
 
-  if(argstr(0, &path) < 0)
-    return -1;
+    if (argstr(0, &path) < 0)
+        return -1;
 
-  begin_op();
-  if((dp = nameiparent(path, name)) == 0){
-    end_op();
-    return -1;
-  }
+    begin_op();
+    if ((dp = nameiparent(path, name)) == 0) {
+        end_op();
+        return -1;
+    }
 
-  ilock(dp);
+    ilock(dp);
 
-  // Cannot unlink "." or "..".
-  if(namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
-    goto bad;
+    /* Cannot unlink "." or "..". */
+    if (namecmp(name, ".") == 0 || namecmp(name, "..") == 0)
+        goto bad;
 
-  if((ip = dirlookup(dp, name, &off)) == 0)
-    goto bad;
-  ilock(ip);
+    if ((ip = dirlookup(dp, name, &off)) == 0)
+        goto bad;
+    ilock(ip);
 
-  if(ip->nlink < 1)
-    panic("unlink: nlink < 1");
-  if(ip->type == T_DIR && !isdirempty(ip)){
+    if (ip->nlink < 1)
+        panic("unlink: nlink < 1");
+    if (ip->type == T_DIR && !isdirempty(ip)) {
+        iunlockput(ip);
+        goto bad;
+    }
+
+    memset(&de, 0, sizeof(de));
+    if (writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+        panic("unlink: writei");
+    if (ip->type == T_DIR) {
+        dp->nlink--;
+        iupdate(dp);
+    }
+    iunlockput(dp);
+
+    ip->nlink--;
+    iupdate(ip);
     iunlockput(ip);
-    goto bad;
-  }
 
-  memset(&de, 0, sizeof(de));
-  if(writei(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
-    panic("unlink: writei");
-  if(ip->type == T_DIR){
-    dp->nlink--;
-    iupdate(dp);
-  }
-  iunlockput(dp);
+    end_op();
 
-  ip->nlink--;
-  iupdate(ip);
-  iunlockput(ip);
-
-  end_op();
-
-  return 0;
+    return 0;
 
 bad:
-  iunlockput(dp);
-  end_op();
-  return -1;
+    iunlockput(dp);
+    end_op();
+    return -1;
 }
 
-static struct inode*
+static struct inode *
 create(char *path, short type, short major, short minor)
 {
   struct inode *ip, *dp;
@@ -324,15 +370,19 @@ sys_openat()
 
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &omode) < 0)
         return -1;
-    if (dirfd != -100) {
-        cprintf("dirfd unimplemented\n");
+
+    if (dirfd != AT_FDCWD) {
+        cprintf("sys_openat: dirfd unimplemented\n");
         return -1;
     }
-    cprintf("openat: path '%s', flag 0x%x\n", path, omode);
+    if ((omode & O_LARGEFILE) == 0) {
+        cprintf("sys_openat: expect O_LARGEFILE in open flags\n");
+        return -1;
+    }
+    // cprintf("sys_openat: dirfd %d, path '%s', flag 0x%x\n", dirfd, path, omode);
 
     begin_op();
-
-    if (omode & O_CREATE) {
+    if (omode & O_CREAT) {
         // FIXME: acl mode are ignored.
         ip = create(path, T_FILE, 0, 0);
         if (ip == 0) {
@@ -345,12 +395,13 @@ sys_openat()
             return -1;
         }
         ilock(ip);
-        if (ip->type == T_DIR && omode != O_RDONLY) {
+        if (ip->type == T_DIR && omode != (O_RDONLY | O_LARGEFILE)) {
             iunlockput(ip);
             end_op();
             return -1;
         }
     }
+    // cprintf("sys_open: ip->type %x\n", ip->type);
 
     if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
         if (f)
@@ -371,19 +422,32 @@ sys_openat()
 }
 
 int
-sys_mkdir(void)
+sys_mkdirat()
 {
-  char *path;
-  struct inode *ip;
+    int dirfd, mode;
+    char *path;
+    struct inode *ip;
 
-  begin_op();
-  if(argstr(0, &path) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0){
+    if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &mode) < 0)
+        return -1;
+    if (dirfd != AT_FDCWD) {
+        cprintf("sys_mkdirat: dirfd unimplemented\n");
+        return -1;
+    }
+    if (mode != 0) {
+        cprintf("sys_mkdirat: mode unimplemented\n");
+        return -1;
+    }
+    // cprintf("sys_mkdirat: path '%s', mode 0x%x\n", path, mode);
+
+    begin_op();
+    if ((ip = create(path, T_DIR, 0, 0)) == 0) {
+        end_op();
+        return -1;
+    }
+    iunlockput(ip);
     end_op();
-    return -1;
-  }
-  iunlockput(ip);
-  end_op();
-  return 0;
+    return 0;
 }
 
 int
@@ -395,8 +459,9 @@ sys_mknodat()
 
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &major) < 0 || argint(3, &minor))
         return -1;
-    if (dirfd != -100) {
-        cprintf("dirfd unimplemented\n");
+
+    if (dirfd != AT_FDCWD) {
+        cprintf("sys_mknodat: dirfd unimplemented\n");
         return -1;
     }
     cprintf("mknodat: path '%s', major:minor %d:%d\n", path, major, minor);
@@ -412,28 +477,28 @@ sys_mknodat()
 }
 
 int
-sys_chdir(void)
+sys_chdir()
 {
-  char *path;
-  struct inode *ip;
-  struct proc *curproc = thisproc();
+    char *path;
+    struct inode *ip;
+    struct proc *curproc = thisproc();
   
-  begin_op();
-  if(argstr(0, &path) < 0 || (ip = namei(path)) == 0){
+    begin_op();
+    if (argstr(0, &path) < 0 || (ip = namei(path)) == 0) {
+        end_op();
+        return -1;
+    }
+    ilock(ip);
+    if (ip->type != T_DIR) {
+        iunlockput(ip);
+        end_op();
+        return -1;
+    }
+    iunlock(ip);
+    iput(curproc->cwd);
     end_op();
-    return -1;
-  }
-  ilock(ip);
-  if(ip->type != T_DIR){
-    iunlockput(ip);
-    end_op();
-    return -1;
-  }
-  iunlock(ip);
-  iput(curproc->cwd);
-  end_op();
-  curproc->cwd = ip;
-  return 0;
+    curproc->cwd = ip;
+    return 0;
 }
 
 // int

@@ -75,7 +75,6 @@ proc_alloc()
 
     p->state = EMBRYO;
     p->pid = p - proc;
-    cprintf("- proc alloc: pid %d\n", p->pid);
 
     void *sp = p->kstack + PGSIZE;
     assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 8*16);
@@ -207,7 +206,6 @@ forkret()
 {
     static int first = 1;
     release(&ptable.lock);
-    cprintf("- forkret\n");
     if (first && thisproc() != thiscpu()->idle) {
         first = 0;
         iinit(ROOTDEV);
@@ -351,7 +349,7 @@ wait()
         LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
             if (p->state == ZOMBIE) {
                 assert(p->parent == cp);
-                cprintf("wait: weap proc %d\n", p->pid);
+                // cprintf("wait: weap proc %d\n", p->pid);
 
                 list_drop(&p->clink);
 
@@ -429,7 +427,7 @@ exit(int code)
     struct proc *p, *np;
     LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
         assert(p->parent == cp);
-        cprintf("exit: pass child %d to init\n", p->pid);
+        // cprintf("exit: pass child %d to init\n", p->pid);
         p->parent = initproc;
 
         list_drop(&p->clink);

@@ -76,7 +76,7 @@ kalloc()
     void *p = freelist_alloc(&freelist);
     if (p) {
         memset(p, 0xAC, PGSIZE);
-        cprintf("kalloc 0x%p\n", p);
+        // cprintf("kalloc 0x%p\n", p);
     }
     else cprintf("- kalloc null\n");
     release(&memlock);
@@ -89,11 +89,11 @@ kalloc()
 void
 kfree(void *va)
 {
-    cprintf("kfree 0x%p...", va);
+    // cprintf("kfree 0x%p...", va);
     acquire(&memlock);
     freelist_free(&freelist, va);
     release(&memlock);
-    cprintf("finished\n");
+    // cprintf("finished\n");
 }
 
 

@@ -26,93 +26,89 @@
 #include "sd.h"
 
 struct {
-  struct spinlock lock;
-  struct buf buf[NBUF];
+    struct spinlock lock;
+    struct buf buf[NBUF];
 
-  // Linked list of all buffers, through prev/next.
-  // head.next is most recently used.
-  struct buf head;
+    // Linked list of all buffers, through prev/next.
+    // head.next is most recently used.
+    struct buf head;
 } bcache;
 
 void
 binit(void)
 {
-  struct buf *b;
+    struct buf *b;
 
-  // initlock(&bcache.lock, "bcache");
-  cprintf("binit\n");
+    // initlock(&bcache.lock, "bcache");
+    cprintf("binit\n");
 
-  // Create linked list of buffers
-  list_init(&bcache.head.clink);
-  for (b = bcache.buf; b < bcache.buf+NBUF; b++) {
-    list_push_back(&bcache.head.clink, &b->clink);
-  }
+    // Create linked list of buffers
+    list_init(&bcache.head.clink);
+    for (b = bcache.buf; b < bcache.buf+NBUF; b++) {
+        list_push_back(&bcache.head.clink, &b->clink);
+    }
 }
 
 // Look through buffer cache for block on device dev.
 // If not found, allocate a buffer.
 // In either case, return locked buffer.
-static struct buf*
-bget(uint dev, uint blockno)
+static struct buf *
+bget(uint32_t dev, uint32_t blockno)
 {
-  cprintf("bget - dev %d, bno %d\n", dev, blockno);
-  struct buf *b;
+    // cprintf("bget - dev %d, bno %d\n", dev, blockno);
+    struct buf *b;
 
-  acquire(&bcache.lock);
+    acquire(&bcache.lock);
 
-  // Is the block already cached?
-  LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
-    // cprintf("bget foreach dev %d, blockno %d\n", b->dev, b->blockno);
-    if(b->dev == dev && b->blockno == blockno){
-      b->refcnt++;
-      release(&bcache.lock);
-      acquiresleep(&b->lock);
-      return b;
+    // Is the block already cached?
+    LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
+        // cprintf("bget foreach dev %d, blockno %d\n", b->dev, b->blockno);
+        if (b->dev == dev && b->blockno == blockno) {
+            b->refcnt++;
+            release(&bcache.lock);
+            acquiresleep(&b->lock);
+            return b;
+        }
     }
-  }
 
-  cprintf("bget - not cached\n");
+    // cprintf("bget - not cached\n");
 
-  // Not cached; recycle an unused buffer.
-  // Even if refcnt==0, B_DIRTY indicates a buffer is in use
-  // because log.c has modified it but not yet committed it.
-  LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head.clink, clink) {
-    if(b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
-      b->dev = dev;
-      b->blockno = blockno;
-      b->flags = 0;
-      b->refcnt = 1;
-      release(&bcache.lock);
-      acquiresleep(&b->lock);
-      return b;
+    // Not cached; recycle an unused buffer.
+    // Even if refcnt==0, B_DIRTY indicates a buffer is in use
+    // because log.c has modified it but not yet committed it.
+    LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head.clink, clink) {
+        if (b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
+            b->dev = dev;
+            b->blockno = blockno;
+            b->flags = 0;
+            b->refcnt = 1;
+            release(&bcache.lock);
+            acquiresleep(&b->lock);
+            return b;
+        }
     }
-  }
-  panic("bget: no buffers");
+    panic("bget: no buffers");
 }
 
 // Return a locked buf with the contents of the indicated block.
-struct buf*
-bread(uint dev, uint blockno)
+struct buf *
+bread(uint32_t dev, uint32_t blockno)
 {
-  struct buf *b;
-  // FIXME: offset determined by dev.
-  // blockno += 133120; // offset from MBR and boot, dirty hack
-  b = bget(dev, blockno);
-  if((b->flags & B_VALID) == 0) {
-    cprintf("sdrw - %d,%d\n", dev, blockno);
-    sdrw(b);
-  }
-  return b;
+    struct buf *b = bget(dev, blockno);
+    if ((b->flags & B_VALID) == 0) {
+        sdrw(b);
+    }
+    return b;
 }
 
 // Write b's contents to disk.  Must be locked.
 void
 bwrite(struct buf *b)
 {
-  if(!holdingsleep(&b->lock))
-    panic("bwrite");
-  b->flags |= B_DIRTY;
-  sdrw(b);
+    if (!holdingsleep(&b->lock))
+        panic("bwrite");
+    b->flags |= B_DIRTY;
+    sdrw(b);
 }
 
 // Release a locked buffer.
@@ -120,21 +116,19 @@ bwrite(struct buf *b)
 void
 brelse(struct buf *b)
 {
-  if(!holdingsleep(&b->lock))
-    panic("brelse");
+    if(!holdingsleep(&b->lock))
+        panic("brelse");
 
-  releasesleep(&b->lock);
+    releasesleep(&b->lock);
 
-  acquire(&bcache.lock);
-  b->refcnt--;
-  if (b->refcnt == 0) {
-    // no one is waiting for it.
-    list_drop(&b->clink);
-    list_push_back(&bcache.head.clink, &b->clink);
-  }
+    acquire(&bcache.lock);
+    b->refcnt--;
+    if (b->refcnt == 0) {
+        // no one is waiting for it.
+        list_drop(&b->clink);
+        list_push_back(&bcache.head.clink, &b->clink);
+    }
   
-  release(&bcache.lock);
+    release(&bcache.lock);
 }
-//PAGEBREAK!
-// Blank page.
 

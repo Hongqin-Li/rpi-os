@@ -9,6 +9,26 @@ sys_yield()
     return 0;
 }
 
+size_t
+sys_brk()
+{
+    struct proc *p = thisproc();
+    size_t sz, newsz, oldsz = p->sz;
+
+    if (argu64(0, &newsz) < 0)
+        return oldsz;
+
+    if (newsz < oldsz) {
+        p->sz = uvm_dealloc(p->pgdir, p->base, oldsz, newsz);
+    } else {
+        sz = uvm_alloc(p->pgdir, p->base, p->stksz, oldsz, newsz);
+        if (sz == 0)
+            return oldsz;
+        p->sz = sz;
+    }
+    return p->sz;
+}
+
 int
 sys_clone()
 {
@@ -20,7 +40,7 @@ sys_clone()
         cprintf("sys_clone: flags other than SIGCHLD are not supported.\n");
         return -1;
     }
-    cprintf("sys_clone: flags 0x%llx, child stack 0x%p\n", flag, childstk);
+    // cprintf("sys_clone: flags 0x%llx, child stack 0x%p\n", flag, childstk);
     return fork();
 }
 

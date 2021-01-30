@@ -31,7 +31,7 @@ static uint64_t *
 pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
 {
     uint64_t *pgt = pgdir, va = (uint64_t)vap;
-    cprintf("pgdir_walk: 0x%p\n", pgdir);
+    // cprintf("pgdir_walk: 0x%p\n", pgdir);
     for (int i = 0; i < 3; i++) {
         int idx = (va >> (12+(3-i)*9)) & 0x1FF;
         if (!(pgt[idx] & PTE_VALID)) {
@@ -45,7 +45,7 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
                 return 0;
             }
         }
-        cprintf("pgt: 0x%p\n", pgt);
+        // cprintf("pgt: 0x%p\n", pgt);
         pgt = P2V(PTE_ADDR(pgt[idx]));
     }
     return &pgt[(va >> 12) & 0x1FF];
@@ -98,8 +98,8 @@ uvm_copy(uint64_t *pgdir)
 void
 vm_free(uint64_t *pgdir)
 {
-    cprintf("--- vm free: 0x%p\n", pgdir);
-    vm_stat(pgdir);
+    // cprintf("--- vm free: 0x%p\n", pgdir);
+    // vm_stat(pgdir);
     for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
         assert(pgdir[i] & PTE_TABLE);
         uint64_t *pgt1 = P2V(PTE_ADDR(pgdir[i]));
@@ -125,7 +125,7 @@ vm_free(uint64_t *pgdir)
         kfree(pgt1);
     }
     kfree(pgdir);
-    cprintf("--- vm free end\n\n");
+    // cprintf("--- vm free end\n\n");
 }
 
 /*
@@ -137,7 +137,7 @@ vm_free(uint64_t *pgdir)
 int
 uvm_map(uint64_t *pgdir, void *va, size_t sz, uint64_t pa)
 {
-    cprintf("uvm_map: pgdir 0x%p, va 0x%p, pa 0x%llx\n", pgdir, va, pa);
+    // cprintf("uvm_map: pgdir 0x%p, va 0x%p, pa 0x%llx\n", pgdir, va, pa);
     assert(pa < KERNBASE);
     pa = ROUNDDOWN(pa, PGSIZE);
     void *p = ROUNDDOWN(va, PGSIZE), *end = va + sz;
@@ -149,7 +149,7 @@ uvm_map(uint64_t *pgdir, void *va, size_t sz, uint64_t pa)
         }
         if (*pte & PTE_VALID) panic("remap.");
         *pte = pa | PTE_UDATA;
-        cprintf("pte: 0x%llx, *pte: 0x%llx\n", pte, *pte);
+        // cprintf("pte: 0x%llx, *pte: 0x%llx\n", pte, *pte);
     }
     return 0;
 }
@@ -173,37 +173,39 @@ uvm_load(uint64_t *pgdir, char *addr, struct inode *ip, size_t offset, size_t sz
 int
 uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz)
 {
-    assert(stksz == ROUNDUP(stksz, PGSIZE) && stksz == ROUNDDOWN(stksz, PGSIZE));
-    size_t old_top = base + oldsz;
-    size_t new_top = base + newsz;
-    cprintf("--- uvm alloc: base 0x%p, stksz 0x%p, oldsz 0x%p, newsz 0x%p\n", base, stksz, oldsz, newsz);
-    if (!(stksz < USERTOP && base <= old_top && old_top <= new_top && new_top < USERTOP - stksz)) {
+    assert(stksz % PGSIZE == 0);
+    // cprintf("--- uvm alloc: base 0x%p, stksz 0x%p, oldsz 0x%p, newsz 0x%p\n", base, stksz, oldsz, newsz);
+    if (!(stksz < USERTOP &&
+          base <= oldsz &&
+          oldsz <= newsz &&
+          newsz < USERTOP - stksz)) {
+
         cprintf("- uvm alloc: invalid arg\n");
         return 0;
     }
 
-    cprintf("before alloc\n");
-    vm_stat(pgdir);
+    // cprintf("before alloc\n");
+    // vm_stat(pgdir);
 
-    for (size_t a = ROUNDUP(old_top, PGSIZE); a < new_top; a += PGSIZE) {
-        void *p;
-        if ((p = kalloc()) == 0) {
+    for (size_t a = ROUNDUP(oldsz, PGSIZE); a < newsz; a += PGSIZE) {
+        void *p = kalloc();
+        if (p == 0) {
             cprintf("- uvm alloc: memory used out\n");
-            kfree(p);
-            uvm_dealloc(pgdir, base, stksz, newsz, oldsz);
+            uvm_dealloc(pgdir, base, newsz, oldsz);
             return 0;
         }
         if (uvm_map(pgdir, a, PGSIZE, V2P(p)) < 0) {
             cprintf("- uvm alloc: memory used out\n");
-            uvm_dealloc(pgdir, base, stksz, newsz, oldsz);
+            kfree(p);
+            uvm_dealloc(pgdir, base, newsz, oldsz);
             return 0;
         }
     }
 
-    cprintf("after alloc\n");
-    vm_stat(pgdir);
-    cprintf("--- uvm alloc end\n\n");
-
+    // cprintf("after alloc\n");
+    // vm_stat(pgdir);
+    // cprintf("--- uvm alloc end\n\n");
+    
     return newsz;
 }
 
@@ -214,9 +216,25 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
  * process size.  Returns the new process size.
  */
 int
-uvm_dealloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz)
+uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz)
 {
-    panic("unimplemented. ");
+    if (newsz >= oldsz || newsz < base)
+        return oldsz;
+
+    for (size_t a = ROUNDUP(newsz, PGSIZE); a < oldsz; a += PGSIZE) {
+        uint64_t *pte = pgdir_walk(pgdir, (char *)a, 0);
+        if (pte && (*pte & PTE_VALID)) {
+            uint64_t pa = PTE_ADDR(*pte);
+            if (pa == 0)
+                panic("kfree");
+            char *v = P2V(pa);
+            kfree(v);
+            *pte = 0;
+        } else {
+            cprintf("uvm_dealloc: attempt to free unallocated page.\n");
+        }
+    }
+    return newsz;
 }
 
 void

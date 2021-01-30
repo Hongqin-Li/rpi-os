@@ -1,6 +1,8 @@
 
+// #include "../libc/include/elf.h"
+#include <elf.h>
+
 #include "trap.h"
-#include "../libc/include/elf.h"
 
 #include "file.h"
 #include "log.h"
@@ -15,10 +17,14 @@
 int
 execve(const char *path, char *const argv[], char *const envp[])
 {
-    char *s;
-    fetchstr(path, &s);
+    // Save previous page table.
+    struct proc *curproc = thisproc();
+    void *oldpgdir = curproc->pgdir;
 
-    cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
+    char *s;
+    if (fetchstr(path, &s) < 0) return -1;
+
+    // cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
    
     // asserts(envp == 0, "envp unimplemented. ");
     // asserts(argv == 0, "argv unimplemented. ");
@@ -44,7 +50,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         cprintf("- 64 bit program not supported\n");
         goto bad;
     }
-    cprintf("exec: check elf header finish\n");
+    // cprintf("exec: check elf header finish\n");
 
     char *pgdir = vm_init();
     if (pgdir == 0) {
@@ -52,40 +58,23 @@ execve(const char *path, char *const argv[], char *const envp[])
         goto bad;
     }
 
-    // Allocate user stack.
-    void *stk_p = kalloc();
-    if (stk_p == 0) {
-        cprintf("exec: allocate user stack failed\n");
-        goto bad;
-    }
-    uvm_map(pgdir, USERTOP - PGSIZE, PGSIZE, V2P(stk_p));
-
     int i;
     uint64_t off;
     Elf64_Phdr ph;
 
-    // Save previous page table.
-    struct proc *curproc = thisproc();
-    void *oldpgdir = curproc->pgdir;
     curproc->pgdir = pgdir; // Required since readi(sdrw) involves context switch(switch page table).
 
-    // Save program name for debugging.
-    char *last;
-    for (last = path, *s = path; *s; s++)
-        if(*s == '/') last = s + 1;
-    safestrcpy(curproc->name, last, sizeof(curproc->name));
-
-    cprintf("exec: allocate user stack finished\n");
+    // cprintf("exec: allocate user stack finished\n");
 
     // Load program into memory.
-    size_t sz = 0, base = 0, stksz = PGSIZE;
+    size_t sz = 0, base = 0, stksz = 0;
     int first = 1;
     for (i = 0, off = elf.e_phoff; i < elf.e_phnum; i++, off += sizeof(ph)) {
         if (readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
             goto bad;
 
         if (ph.p_type != PT_LOAD) {
-            cprintf("unsupported type 0x%x, skipped\n", ph.p_type);
+            // cprintf("unsupported type 0x%x, skipped\n", ph.p_type);
             continue;
         }
 
@@ -99,16 +88,17 @@ execve(const char *path, char *const argv[], char *const envp[])
         }
 
         if (first) {
-            first = 0; base = ph.p_vaddr;
+            first = 0;
+            sz = base = ph.p_vaddr;
             if (base % PGSIZE != 0) {
                 cprintf("first section should be page aligned!\n");
                 goto bad;
             }
         }
 
-        cprintf("phdr: vaddr 0x%p, memsz 0x%p, filesz 0x%p\n", ph.p_vaddr, ph.p_memsz, ph.p_filesz);
+        // cprintf("phdr: vaddr 0x%p, memsz 0x%p, filesz 0x%p\n", ph.p_vaddr, ph.p_memsz, ph.p_filesz);
 
-        if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz - base)) == 0)
+        if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz)) == 0)
             goto bad;
 
         disb();
@@ -116,31 +106,46 @@ execve(const char *path, char *const argv[], char *const envp[])
         disb();
 
         // Check accessibility.
-        for (char *p = ph.p_vaddr; p < ph.p_vaddr + ph.p_memsz; p++) {
-            char x = *p;
-            cprintf("%d\r", x);
-        }
-        memset(ph.p_vaddr, 0, ph.p_memsz);
-        cprintf("checked [0x%p, 0x%p)\n", ph.p_vaddr, ph.p_vaddr + ph.p_memsz);
+        // for (char *p = ph.p_vaddr; p < ph.p_vaddr + ph.p_memsz; p++) {
+        //     char x = *p;
+        //     cprintf("%d\r", x);
+        // }
+        // memset(ph.p_vaddr, 0, ph.p_memsz);
+        // cprintf("checked [0x%p, 0x%p)\n", ph.p_vaddr, ph.p_vaddr + ph.p_memsz);
 
         if (readi(ip, ph.p_vaddr, ph.p_offset, ph.p_filesz) != ph.p_filesz) {
             goto bad;
         }
         // Initialize BSS.
         memset(ph.p_vaddr + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);
-        cprintf("exec: memset finished\n");
-
     }
-    cprintf("exec: load binary finished\n");
 
     iunlockput(ip);
     end_op();
     ip = 0;
 
+    // Allocate user stack.
     char *sp = USERTOP;
+    int stkpg = 10;
+    for (int i = 0; i < stkpg; i++) {
+        stksz += PGSIZE;
+        if (sz >= USERTOP - stksz - PGSIZE)
+            goto bad;
 
-  // TODO:
-  // Push argument strings, prepare rest of stack in ustack.
+        void *p = kalloc();
+        if (p == 0) {
+            cprintf("exec: allocate user stack failed\n");
+            goto bad;
+        }
+        if (uvm_map(pgdir, USERTOP - stksz, PGSIZE, V2P(p)) < 0) {
+            kfree(p);
+            goto bad;
+        }
+    }
+
+    // Push argument strings, prepare rest of stack in ustack.
+
+
   // for(argc = 0; argv[argc]; argc++) {
   //   if(argc >= MAXARG)
   //     goto bad;
@@ -159,8 +164,19 @@ execve(const char *path, char *const argv[], char *const envp[])
   // if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
   //   goto bad;
     
+    // uvm_switch(oldpgdir);
+    // Strings(envs/args) here.
+    // int argc;
+    // FIXME: check it.
+    // for (argc = 0; argv[argc]; argc++) {
+    //    
+    // }
+
+    uvm_switch(pgdir);
+
     sp -= 8; *(size_t *)sp = AT_NULL;
 
+    // auxv here.
     sp -= 8; *(size_t *)sp = PGSIZE;
     sp -= 8; *(size_t *)sp = AT_PAGESZ;
 
@@ -174,6 +190,7 @@ execve(const char *path, char *const argv[], char *const envp[])
     
     sp -= 8; *(size_t *)sp = 0; // argc
 
+    assert(sp > USERTOP - stksz);
 
     // Commit to the user image.
     curproc->pgdir = pgdir;
@@ -185,19 +202,23 @@ execve(const char *path, char *const argv[], char *const envp[])
     curproc->tf->elr = elf.e_entry;
     curproc->tf->sp = sp;
     // cprintf("exec: curproc->tf 0x%p\n", tf);
-    cprintf("exec: entry 0x%p\n", elf.e_entry);
-
-    vm_free(oldpgdir);
-    vm_stat(pgdir);
+    // cprintf("exec: entry 0x%p\n", elf.e_entry);
+    
+    uvm_switch(oldpgdir);
+    // Save program name for debugging.
+    char *last;
+    for (last = path, *s = path; *s; s++)
+        if (*s == '/') last = s + 1;
+    safestrcpy(curproc->name, last, sizeof(curproc->name));
 
     uvm_switch(curproc->pgdir);
-    cprintf("exec: finish\n");
+    vm_free(oldpgdir);
     return 0;
 
 bad:
     if (pgdir) vm_free(pgdir);
     if (ip) iunlockput(ip), end_op();
-    panic("exec: bad.\n"); // FIXME: donot panic
+    thisproc()->pgdir = oldpgdir;
     return -1;
 }
 

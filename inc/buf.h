@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include "list.h"
 #include "sleeplock.h"
-#include "defs.h"
 
 #define BSIZE   512
 
@@ -15,15 +14,17 @@ struct buf {
     int flags;
     uint32_t dev;
     uint32_t blockno;
-    struct sleeplock lock;
     uint32_t refcnt;
+    uint8_t data[BSIZE];
+
+    struct sleeplock lock;
     struct list_head clink; /* LRU cache list. */
     struct list_head dlink; /* Disk buffer list. */
-    uint8_t data[BSIZE];
 };
 
-struct buf* bread(uint dev, uint blockno);
-void binit(void);
-void bwrite(struct buf *b);
-void brelse(struct buf *b);
+void        binit();
+void        bwrite(struct buf *b);
+void        brelse(struct buf *b);
+struct buf *bread(uint32_t dev, uint32_t blockno);
+
 #endif

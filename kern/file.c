@@ -1,6 +1,4 @@
-//
-// File descriptors
-//
+/* File descriptors */
 
 #include "types.h"
 #include "defs.h"
@@ -17,15 +15,16 @@ struct {
     struct file file[NFILE];
 } ftable;
 
+/* Optional since BSS is zero-initialized. */
 void
-fileinit(void)
+fileinit()
 {
     initlock(&ftable.lock);
 }
 
-// Allocate a file structure.
-struct file*
-filealloc(void)
+/* Allocate a file structure. */
+struct file *
+filealloc()
 {
     struct file *f;
 
@@ -41,8 +40,8 @@ filealloc(void)
     return 0;
 }
 
-// Increment ref count for file f.
-struct file*
+/* Increment ref count for file f. */
+struct file *
 filedup(struct file *f)
 {
     acquire(&ftable.lock);
@@ -53,7 +52,7 @@ filedup(struct file *f)
     return f;
 }
 
-// Close file f.  (Decrement ref count, close when reaches 0.)
+/* Close file f. (Decrement ref count, close when reaches 0.) */
 void
 fileclose(struct file *f)
 {
@@ -80,7 +79,7 @@ fileclose(struct file *f)
     }
 }
 
-// Get metadata about file f.
+/* Get metadata about file f. */
 int
 filestat(struct file *f, struct stat *st)
 {
@@ -93,11 +92,11 @@ filestat(struct file *f, struct stat *st)
     return -1;
 }
 
-// Read from file f.
-int
-fileread(struct file *f, char *addr, int n)
+/* Read from file f. */
+ssize_t
+fileread(struct file *f, char *addr, ssize_t n)
 {
-    int r;
+    ssize_t r;
 
     if (f->readable == 0)
         return -1;
@@ -113,27 +112,29 @@ fileread(struct file *f, char *addr, int n)
     panic("fileread");
 }
 
-// Write to file f.
-int
-filewrite(struct file *f, char *addr, int n)
+/* Write to file f. */
+ssize_t
+filewrite(struct file *f, char *addr, ssize_t n)
 {
-    int r;
+    ssize_t r;
 
     if (f->writable == 0)
         return -1;
     if (f->type == FD_PIPE)
         return pipewrite(f->pipe, addr, n);
     if (f->type == FD_INODE) {
-        // write a few blocks at a time to avoid exceeding
-        // the maximum log transaction size, including
-        // i-node, indirect block, allocation blocks,
-        // and 2 blocks of slop for non-aligned writes.
-        // this really belongs lower down, since writei()
-        // might be writing a device like the console.
-        int max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
-        int i = 0;
+        /*
+         * Write a few blocks at a time to avoid exceeding
+         * the maximum log transaction size, including
+         * i-node, indirect block, allocation blocks,
+         * and 2 blocks of slop for non-aligned writes.
+         * This really belongs lower down, since writei()
+         * might be writing a device like the console.
+         */
+        ssize_t max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
+        ssize_t i = 0;
         while (i < n) {
-            int n1 = n - i;
+            ssize_t n1 = n - i;
             if (n1 > max)
                 n1 = max;
 
