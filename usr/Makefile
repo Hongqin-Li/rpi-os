@@ -4,8 +4,6 @@ LIBC_LIBS = $(wildcard ../libc/lib/*)
 LIBC_INCS = $(wildcard ../libc/obj/include/**/*) $(wildcard ../libc/include/**/*)
 LIBC_DEPS = $(LIBC_LIBS) $(LIBC_INCS)
 
-# $(info $$LIBC_DEPS is [$(LIBC_DEPS)])
-
 OBJ = ../obj/usr
 LIBC_SPEC_OUT = $(OBJ)/musl-gcc.specs
 

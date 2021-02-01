@@ -23,9 +23,9 @@ vm_init()
 }
 
 /*
- * Return the address of the PTE in user page table
+ * return the address of the pte in user page table
  * pgdir that corresponds to virtual address va.
- * If alloc != 0, create any required page table pages.
+ * if alloc != 0, create any required page table pages.
  */
 static uint64_t *
 pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
@@ -41,7 +41,7 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
                 memset(p, 0, PGSIZE);
                 pgt[idx] = V2P(p) | PTE_TABLE;
             } else {
-                panic("pages used out.");
+                cprintf("pgdir_walk: pages used out\n");
                 return 0;
             }
         }
@@ -50,6 +50,44 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
     }
     return &pgt[(va >> 12) & 0x1FF];
 }
+
+/*
+ * Iterater over physical pages whose low address lies in range [start, end)
+ * and callback function f with arguments va and pa, indicating the page maps
+ * from va to pa. If f returns non-zero value, free this page.
+ * If alloc != 0, create any required page table pages.
+ * The newly created pages won't be freed if the iteration failed.
+ */
+// int
+// page_iter(void *pgdir, size_t start, size_t end, int alloc, int (*f)(size_t, size_t))
+// {
+//     void *p;
+//     size_t va, pa;
+//     uint64_t *pte;
+//     assert(start % PGSIZE == 0 && end % PGSIZE == 0);
+//     assert(start < end && end <= USERTOP);
+// 
+//     for (va = start; va < end; va += PGSIZE) {
+//         if (alloc) {
+//             if ((pte = pgdir_walk(pgdir, start, 1)) == 0)
+//                 return -1;
+//             if (!(*pte & PTE_VALID) & !(p = kalloc()))
+//                 return -1;
+//             pa = V2P(p);
+//             *pte = pa | PTE_UDATA;
+//         } else {
+//             if ((pte = pgdir_walk(pgdir, start, 0)) == 0)
+//                 continue;
+//             if (!(*pte & PTE_VALID))
+//                 continue;
+//             pa = PTE_ADDR(*pte); 
+//         }
+//         if (f(va, *pte) != 0) {
+//             kfree(P2V(pa));
+//             *pte = 0;
+//         }
+//     }
+// }
 
 /* Fork a process's page table. */
 uint64_t *
@@ -154,16 +192,6 @@ uvm_map(uint64_t *pgdir, void *va, size_t sz, uint64_t pa)
     return 0;
 }
 
-/* TODO
- * Load a program segment into pgdir.  addr must be page-aligned
- * and the pages from addr to addr+sz must already be mapped.
-int
-uvm_load(uint64_t *pgdir, char *addr, struct inode *ip, size_t offset, size_t sz)
-{
-
-}
- */
-
 /*
  * Allocate page tables and physical memory to grow process
  * from oldsz to newsz, which need not be page aligned.
@@ -245,15 +273,41 @@ uvm_switch(uint64_t *pgdir)
 
 /*
  * Copy len bytes from p to user address va in page table pgdir.
+ * Allocate physical pages if required.
  * Most useful when pgdir is not the current page table.
- * uva2ka ensures this only works for PTE_U pages.
  */
-void
-copyout()
+int
+copyout(uint64_t *pgdir, void *va, void *p, size_t len)
 {
+    // cprintf("copyout %lld bytes from 0x%p to va 0x%p\n", len, p, va);
+    // vm_stat(pgdir);
 
+    void *page;
+    size_t n, pgoff;
+    uint64_t *pte;
+    if (va + len > USERTOP)
+        return -1;
+    for (; len; len -= n, va += n) {
+        pgoff = va - ROUNDDOWN(va, PGSIZE);
+        if ((pte = pgdir_walk(pgdir, va, 1)) == 0)
+            return -1;
+        if (*pte & PTE_VALID) {
+            page = P2V(PTE_ADDR(*pte));
+        } else {
+            if ((page = kalloc()) == 0)
+                return -1;
+            *pte = V2P(page) | PTE_UDATA;
+        }
+        n = MIN(PGSIZE - pgoff, len);
+        if (p) {
+            memmove(page + pgoff, p, n);
+            p += n;
+        }
+        else memset(page + pgoff, 0, n);
+    }
+    // vm_stat(pgdir);
+    // cprintf("copyout: end\n");
 }
-
 
 void
 vm_stat(uint64_t *pgdir)

@@ -10,15 +10,14 @@
 
 #define NPROC           100
 #define NCPU            4
-#define NOFILE       16  // open files per process
+#define NOFILE          16      // Open files per process
 
 /* Stack must always be 16 bytes aligned. */
-
 struct context {
     uint64_t lr0, lr, fp;
     uint64_t x[10];             /* X28 ... X19 */
     uint64_t padding;
-    uint64_t q0[2];             /* V0 */
+    // uint64_t q0[2];             /* V0 */
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };

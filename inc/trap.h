@@ -22,5 +22,6 @@ int argint(int n, int *ip);
 int argu64(int n, uint64_t *ip);
 int argptr(int n, char **pp, size_t size);
 int argstr(int n, char **pp);
+int fetchstr(uint64_t addr, char **pp);
 
 #endif

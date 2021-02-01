@@ -32,8 +32,8 @@ consputc(int c)
         uart_putchar(c);
 }
 
-static int
-console_write(struct inode *ip, char *buf, size_t n)
+static ssize_t
+console_write(struct inode *ip, char *buf, ssize_t n)
 {
     iunlock(ip);
     acquire(&conslock);
@@ -44,8 +44,8 @@ console_write(struct inode *ip, char *buf, size_t n)
     return n;
 }
 
-static int
-console_read(struct inode *ip, char *dst, size_t n)
+static ssize_t
+console_read(struct inode *ip, char *dst, ssize_t n)
 {
     iunlock(ip);
     size_t target = n;

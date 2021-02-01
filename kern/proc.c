@@ -77,7 +77,7 @@ proc_alloc()
     p->pid = p - proc;
 
     void *sp = p->kstack + PGSIZE;
-    assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 8*16);
+    assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 7*16);
 
     sp -= sizeof(*p->tf);
     p->tf = sp;

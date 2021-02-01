@@ -19,7 +19,7 @@
 /* CPACR_EL1, Architectural Feature Access Control Register. */
 #define CPACR_FP_EN                 (3 << 20)
 #define CPACR_TRACE_EN              (0 << 28)
-#define CPACR_VALUE                 (CPACR_FP_EN | CPACR_TRACE_EN)                    
+#define CPACR_VALUE                 (CPACR_FP_EN | CPACR_TRACE_EN)
 
 /* SCR_EL3, Secure Configuration Register (EL3). */
 #define SCR_RESERVED                (3 << 4)

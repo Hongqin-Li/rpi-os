@@ -3,47 +3,50 @@
 
 #include <sys/stat.h>
 #include "types.h"
-#include "defs.h"
 #include "sleeplock.h"
 #include "fs.h"
 
+#define NFILE 100  // Open files per system
+
 struct file {
-  enum { FD_NONE, FD_PIPE, FD_INODE } type;
-  int ref; // reference count
-  char readable;
-  char writable;
-  struct pipe *pipe;
-  struct inode *ip;
-  size_t off;
+    enum { FD_NONE, FD_PIPE, FD_INODE } type;
+    int ref;
+    char readable;
+    char writable;
+    struct pipe *pipe;
+    struct inode *ip;
+    size_t off;
 };
 
 
-// in-memory copy of an inode
+/* In-memory copy of an inode. */
 struct inode {
-  size_t dev;           // Device number
-  size_t inum;          // Inode number
-  int ref;            // Reference count
-  struct sleeplock lock; // protects everything below here
-  int valid;          // inode has been read from disk?
+    uint32_t dev;             // Device number
+    uint32_t inum;            // Inode number
+    int ref;                  // Reference count
+    struct sleeplock lock;    // Protects everything below here
+    int valid;                // Inode has been read from disk?
 
-  uint16_t type;         // copy of disk inode
-  uint16_t major;
-  uint16_t minor;
-  uint16_t nlink;
-  uint32_t size;
-  uint32_t addrs[NDIRECT+1];
+    uint16_t type;            // Copy of disk inode
+    uint16_t major;
+    uint16_t minor;
+    uint16_t nlink;
+    uint32_t size;
+    uint32_t addrs[NDIRECT+1];
 };
 
-// table mapping major device number to
-// device functions
+/*
+ * Table mapping major device number to
+ * device functions
+ */
 struct devsw {
-  int (*read)(struct inode*, char*, int);
-  int (*write)(struct inode*, char*, int);
+    ssize_t (*read)(struct inode *, char *, ssize_t);
+    ssize_t (*write)(struct inode *, char *, ssize_t);
 };
 
 extern struct devsw devsw[];
 
-void            readsb(int dev, struct superblock *sb);
+void            readsb(int, struct superblock *);
 int             dirlink(struct inode *, char *, uint32_t);
 struct inode *  dirlookup(struct inode *, char *, size_t *);
 struct inode *  ialloc(uint32_t, short);

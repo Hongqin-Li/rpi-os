@@ -58,15 +58,14 @@ int
 fetchstr(uint64_t addr, char **pp)
 {
     struct proc *p = thisproc();
-
-    *pp = (char *)addr;
+    char *s;
+    *pp = s = (char *)addr;
+    // cprintf("fetchstr: at 0x%p to 0x%p, p->sz 0x%llx, p->base 0x%llx\n", addr, pp, p->sz, p->base);
     if (p->base <= addr && addr < p->sz) {
-        // cprintf("fetchstr: at heap 0x%p to 0x%p\n", addr, pp);
-        for (char *s = (void *)addr; (uint64_t)s < p->sz; s++)
+        for (; (uint64_t)s < p->sz; s++)
             if (*s == 0) return s - *pp;
     } else if (USERTOP - p->stksz <= addr && addr < USERTOP) {
-        // cprintf("fetchstr: at stack 0x%p to 0x%p\n", addr, pp);
-        for (char *s = (void *)addr; (uint64_t)s < USERTOP; s++)
+        for (; (uint64_t)s < USERTOP; s++)
             if (*s == 0) return s - *pp;
     }
     return -1;

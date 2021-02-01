@@ -1,7 +1,6 @@
 /* File descriptors */
 
 #include "types.h"
-#include "defs.h"
 #include "fs.h"
 #include "spinlock.h"
 #include "sleeplock.h"

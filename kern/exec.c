@@ -1,5 +1,3 @@
-
-// #include "../libc/include/elf.h"
 #include <elf.h>
 
 #include "trap.h"
@@ -14,6 +12,8 @@
 #include "mm.h"
 #include "memlayout.h"
 
+static uint64_t auxv[][2] = {{AT_PAGESZ, PGSIZE}};
+
 int
 execve(const char *path, char *const argv[], char *const envp[])
 {
@@ -25,9 +25,6 @@ execve(const char *path, char *const argv[], char *const envp[])
     if (fetchstr(path, &s) < 0) return -1;
 
     // cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
-   
-    // asserts(envp == 0, "envp unimplemented. ");
-    // asserts(argv == 0, "argv unimplemented. ");
 
     begin_op();
     struct inode *ip = namei(path);
@@ -63,8 +60,6 @@ execve(const char *path, char *const argv[], char *const envp[])
     Elf64_Phdr ph;
 
     curproc->pgdir = pgdir; // Required since readi(sdrw) involves context switch(switch page table).
-
-    // cprintf("exec: allocate user stack finished\n");
 
     // Load program into memory.
     size_t sz = 0, base = 0, stksz = 0;
@@ -124,71 +119,63 @@ execve(const char *path, char *const argv[], char *const envp[])
     end_op();
     ip = 0;
 
-    // Allocate user stack.
+    // Push argument strings, prepare rest of stack in ustack.
+    uvm_switch(oldpgdir);
     char *sp = USERTOP;
-    int stkpg = 10;
-    for (int i = 0; i < stkpg; i++) {
-        stksz += PGSIZE;
-        if (sz >= USERTOP - stksz - PGSIZE)
-            goto bad;
-
-        void *p = kalloc();
-        if (p == 0) {
-            cprintf("exec: allocate user stack failed\n");
-            goto bad;
+    int argc = 0, envc = 0;
+    size_t len;
+    if (argv) {
+        for (; in_user(argv+argc, sizeof(*argv)) && argv[argc]; argc++) {
+            if ((len = fetchstr(argv[argc], &s)) < 0)
+                goto bad;
+            // cprintf("argv[%d] = '%s', len: %d\n", argc, argv[argc], len);
+            sp -= len + 1;
+            if (copyout(pgdir, sp, argv[argc], len+1) < 0) // include '\0';
+                goto bad;
         }
-        if (uvm_map(pgdir, USERTOP - stksz, PGSIZE, V2P(p)) < 0) {
-            kfree(p);
-            goto bad;
+    }
+    if (envp) {
+        for (; in_user(envp+envc, sizeof(*envp)) && envp[envc]; envc++) {
+            if ((len = fetchstr(envp[envc], &s)) < 0)
+                goto bad;
+            // cprintf("envp[%d] = '%s', len: %d\n", envc, envp[envc], len);
+            sp -= len + 1;
+            if (copyout(pgdir, sp, envp[envc], len+1) < 0) // include '\0';
+                goto bad;
         }
     }
 
-    // Push argument strings, prepare rest of stack in ustack.
 
-
-  // for(argc = 0; argv[argc]; argc++) {
-  //   if(argc >= MAXARG)
-  //     goto bad;
-  //   sp = (sp - (strlen(argv[argc]) + 1)) & ~3;
-  //   if(copyout(pgdir, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-  //     goto bad;
-  //   ustack[3+argc] = sp;
-  // }
-  // ustack[3+argc] = 0;
-
-  // ustack[0] = 0xffffffff;  // fake return PC
-  // ustack[1] = argc;
-  // ustack[2] = sp - (argc+1)*4;  // argv pointer
-
-  // sp -= (3+argc+1) * 4;
-  // if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
-  //   goto bad;
-    
-    // uvm_switch(oldpgdir);
-    // Strings(envs/args) here.
-    // int argc;
-    // FIXME: check it.
-    // for (argc = 0; argv[argc]; argc++) {
-    //    
-    // }
+    // Align to 16B. 3 zero terminator of auxv/envp/argv and 1 argc.
+    void *newsp = ROUNDDOWN((size_t)sp - sizeof(auxv) - (envc+argc+4)*8, 16);
+    if (copyout(pgdir, newsp, 0, (size_t)sp - (size_t)newsp) < 0)
+        goto bad;
 
     uvm_switch(pgdir);
 
-    sp -= 8; *(size_t *)sp = AT_NULL;
+    uint64_t *newargv = newsp + 8;
+    uint64_t *newenvp = (void *)newargv + 8*(argc+1);
+    uint64_t *newauxv = (void *)newenvp + 8*(envc+1);
+    memmove(newauxv, auxv, sizeof(auxv));
+    // cprintf("auxv size %d, newauxv: %p\n", sizeof(auxv), newauxv);
 
-    // auxv here.
-    sp -= 8; *(size_t *)sp = PGSIZE;
-    sp -= 8; *(size_t *)sp = AT_PAGESZ;
+    for (int i = envc-1; i >= 0; i--) {
+        newenvp[i] = sp;
+        for (; *sp; sp++) ;
+        sp++;
+    }
+    for (int i = argc-1; i >= 0; i--) {
+        newargv[i] = sp;
+        for (; *sp; sp++) ;
+    }
+    *(size_t *)(newsp) = argc;
 
-    sp -= 8; *(size_t *)sp = 0;
+    sp = newsp;
 
-    // envp here.
-
-    sp -= 8; *(size_t *)sp = 0;
-
-    // argv here.
-    
-    sp -= 8; *(size_t *)sp = 0; // argc
+    // Allocate user stack.
+    stksz = ROUNDUP(USERTOP - (size_t)sp, 2*PGSIZE);
+    if (copyout(pgdir, USERTOP - stksz, 0, stksz - (USERTOP - (size_t)sp)) < 0)
+        goto bad;
 
     assert(sp > USERTOP - stksz);
 
@@ -201,10 +188,12 @@ execve(const char *path, char *const argv[], char *const envp[])
 
     curproc->tf->elr = elf.e_entry;
     curproc->tf->sp = sp;
+
     // cprintf("exec: curproc->tf 0x%p\n", tf);
     // cprintf("exec: entry 0x%p\n", elf.e_entry);
     
     uvm_switch(oldpgdir);
+
     // Save program name for debugging.
     char *last;
     for (last = path, *s = path; *s; s++)
@@ -219,6 +208,7 @@ bad:
     if (pgdir) vm_free(pgdir);
     if (ip) iunlockput(ip), end_op();
     thisproc()->pgdir = oldpgdir;
+    cprintf("exec: bad\n");
     return -1;
 }
 

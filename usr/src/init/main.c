@@ -6,8 +6,11 @@
 #include <sys/wait.h>
 
 char *argv[] = { "sh", 0 };
+char *envp[] = { "TEST_ENV=FROM_INIT", 0 };
 
-int main() {
+int
+main()
+{
     int pid, wpid;
 
     if (open("console", O_RDWR) < 0) {
@@ -25,7 +28,7 @@ int main() {
             exit(1);
         }
         if (pid == 0) {
-            execv("sh", argv);
+            execve("sh", argv, envp);
             printf("init: exec sh failed\n");
             exit(1);
         }
