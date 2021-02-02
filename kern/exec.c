@@ -19,15 +19,22 @@ execve(const char *path, char *const argv[], char *const envp[])
 {
     // Save previous page table.
     struct proc *curproc = thisproc();
-    void *oldpgdir = curproc->pgdir;
-
+    char *oldpgdir = curproc->pgdir, *pgdir = vm_init();
     char *s;
-    if (fetchstr(path, &s) < 0) return -1;
+    struct inode *ip = 0;
+
+    if (pgdir == 0) {
+        cprintf("exec: vm init failed\n");
+        goto bad;
+    }
+
+    if (fetchstr(path, &s) < 0) 
+        return -1;
 
     // cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
 
     begin_op();
-    struct inode *ip = namei(path);
+    ip = namei(path);
     if (ip == 0) {
         end_op();
         cprintf("exec: failed\n");
@@ -40,20 +47,14 @@ execve(const char *path, char *const argv[], char *const envp[])
         goto bad;
     if (!(elf.e_ident[EI_MAG0] == ELFMAG0 && elf.e_ident[EI_MAG1] == ELFMAG1 &&
         elf.e_ident[EI_MAG2] == ELFMAG2 && elf.e_ident[EI_MAG3] == ELFMAG3)) {
-        cprintf("- elf header magic invalid\n");
+        cprintf("exec: elf header magic invalid\n");
         goto bad;
     }
     if (elf.e_ident[EI_CLASS] != ELFCLASS64) {
-        cprintf("- 64 bit program not supported\n");
+        cprintf("exec: 64 bit program not supported\n");
         goto bad;
     }
     // cprintf("exec: check elf header finish\n");
-
-    char *pgdir = vm_init();
-    if (pgdir == 0) {
-        cprintf("exec: vm init failed\n");
-        goto bad;
-    }
 
     int i;
     uint64_t off;
@@ -96,9 +97,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz)) == 0)
             goto bad;
 
-        disb();
         uvm_switch(pgdir);
-        disb();
 
         // Check accessibility.
         // for (char *p = ph.p_vaddr; p < ph.p_vaddr + ph.p_memsz; p++) {

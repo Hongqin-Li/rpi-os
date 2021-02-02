@@ -62,6 +62,15 @@ dccivac(void *p, int n)
         asm volatile("dc civac, %[x]" : : [x]"r"(p + n));
 }
 
+/* Invalidate all TLB. */
+static inline void
+tlbi_all()
+{
+    // FIXME:
+    asm volatile("tlbi vmalle1is");
+    asm volatile("tlbi aside1is, %[x]" : : [x]"r"(0));
+}
+
 /* Read Exception Syndrome Register (EL1) */
 static inline uint64_t
 resr()

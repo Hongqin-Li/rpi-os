@@ -27,12 +27,14 @@ static void idle_init();
 struct cpu cpu[NCPU];
 
 struct {
+  struct proc proc[NPROC];
   struct list_head slpque[SQSIZE];
   struct list_head sched_que;
   struct spinlock lock;
 } ptable;
 
 struct proc *initproc;
+static int pid = 0;
 
 void
 proc_init()
@@ -54,13 +56,13 @@ proc_init()
 static struct proc *
 proc_alloc()
 {
-    static struct proc proc[NPROC];
     struct proc *p;
     int found = 0;
 
     acquire(&ptable.lock);
-    for (p = proc; p < &proc[NPROC]; p++) {
+    for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
         if (p->state == UNUSED) {
+            p->pid = ++pid;
             found = 1;
             break;
         }
@@ -74,7 +76,7 @@ proc_alloc()
     memset(p, 0, sizeof(p));
 
     p->state = EMBRYO;
-    p->pid = p - proc;
+    p->name[0] = 0;
 
     void *sp = p->kstack + PGSIZE;
     assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 7*16);
@@ -115,6 +117,9 @@ idle_init()
     p->stksz = 0;
     p->sz = PGSIZE;
     p->base = 0;
+
+    safestrcpy(p->name, "idle", sizeof(p->name));
+    // p->cwd = namei("/");
 
     p->tf->elr = 0;
 
@@ -222,7 +227,9 @@ yield()
     acquire(&ptable.lock);
     if (p != thiscpu()->idle)
         list_push_back(&ptable.sched_que, &p->link);
+    p->state = RUNNABLE;
     swtch(&p->context, thiscpu()->scheduler);
+    p->state = RUNNING;
     release(&ptable.lock);
 }
 
@@ -245,9 +252,11 @@ sleep(void *chan, struct spinlock *lk)
     p->chan = chan;
     list_push_back(&ptable.slpque[i], &p->link);
 
+    p->state = SLEEPING;
     // cprintf("- cpu %d: sleep pid %d on chan 0x%p\n", cpuid(), p->pid, chan);
     swtch(&thisproc()->context, thiscpu()->scheduler);
     // cprintf("- cpu %d: wake on chan 0x%p\n", cpuid(), chan);
+    p->state = RUNNING;
 
     if (lk != &ptable.lock) {
         acquire(lk);
@@ -271,6 +280,7 @@ wakeup1(void *chan)
             // cprintf("- wakeup1: pid %d\n", p->pid);
             list_drop(&p->link);
             list_push_back(&ptable.sched_que, &p->link);
+            p->state = RUNNABLE;
         }
     }
 
@@ -327,6 +337,7 @@ fork()
     acquire(&ptable.lock);
     list_push_back(&cp->child, &np->clink);
     list_push_back(&ptable.sched_que, &np->link);
+    np->state = RUNNABLE;
     release(&ptable.lock);
 
     return pid;
@@ -400,9 +411,11 @@ void
 exit(int code)
 {
     struct proc *cp = thisproc();
-
     if (cp == initproc)
         panic("init exiting");
+
+    cprintf("exit: pid %d\n", cp->pid);
+    procdump();
 
     // Close all open files.
     for (int fd = 0; fd < NOFILE; fd++) {
@@ -439,6 +452,7 @@ exit(int code)
  
     // Jump into the scheduler, never to return.
     cp->state = ZOMBIE;
+
     swtch(&cp->context, thiscpu()->scheduler);
     panic("zombie exit");
 }
@@ -449,33 +463,22 @@ exit(int code)
 void
 procdump(void)
 {
-    panic("not implemented");
-//   static char *states[] = {
-//   [UNUSED]    "unused",
-//   [EMBRYO]    "embryo",
-//   [SLEEPING]  "sleep ",
-//   [RUNNABLE]  "runble",
-//   [RUNNING]   "run   ",
-//   [ZOMBIE]    "zombie"
-//   };
-//   int i;
-//   struct proc *p;
-//   char *state;
-//   uint pc[10];
+    static char *states[] = {
+        [UNUSED]    "unused",
+        [EMBRYO]    "embryo",
+        [SLEEPING]  "sleep ",
+        [RUNNABLE]  "runble",
+        [RUNNING]   "run   ",
+        [ZOMBIE]    "zombie"
+    };
+    int i;
+    struct proc *p;
+    char *state;
 
-//   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-//     if(p->state == UNUSED)
-//       continue;
-//     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-//       state = states[p->state];
-//     else
-//       state = "???";
-//     cprintf("%d %s %s", p->pid, state, p->name);
-//     if(p->state == SLEEPING){
-//       getcallerpcs((uint*)p->context->ebp+2, pc);
-//       for(i=0; i<10 && pc[i] != 0; i++)
-//         cprintf(" %p", pc[i]);
-//     }
-//     cprintf("\n");
-//   }
+    acquire(&ptable.lock);
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->state == UNUSED) continue;
+        cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
+    }
+    release(&ptable.lock);
 }

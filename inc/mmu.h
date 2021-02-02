@@ -20,8 +20,8 @@
 #define SH_INNER        (3 << 8)       /* Inner shareable */
 #define AF_USED         (1 << 10)
 
-#define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_OUTER)
-// #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
+// #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_OUTER)
+#define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
 #define PTE_DEVICE      ((MT_DEVICE_nGnRnE << 2) | AF_USED)
 
 /* PTE flags */
@@ -33,11 +33,13 @@
 
 #define PTE_KERN        (0 << 6)
 #define PTE_USER        (1 << 6)
+#define PTE_NG          (1 << 11)
 
 /* 1GB/2MB block for kernel, and 4KB page for user. */
 #define PTE_KDATA       (PTE_KERN | PTE_NORMAL | PTE_BLOCK)
 #define PTE_KDEV        (PTE_KERN | PTE_DEVICE | PTE_BLOCK)
-#define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+// #define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+#define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE | PTE_NG)
 
 /* Address in table or block entry, only support 32 bit physical address. */
 #define PTE_ADDR(pte)   ((pte) & ~0xFFF)
@@ -57,7 +59,7 @@
 
 #define TCR_VALUE       (TCR_T0SZ           | TCR_T1SZ      |   \
                          TCR_TG0_4K         | TCR_TG1_4K    |   \
-                         TCR_SH0_OUTER      | TCR_SH1_OUTER |   \
+                         TCR_SH0_INNER      | TCR_SH1_INNER |   \
                          TCR_ORGN0_IRGN0    | TCR_ORGN1_IRGN1)
 
 #endif

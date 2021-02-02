@@ -268,7 +268,15 @@ uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz)
 void
 uvm_switch(uint64_t *pgdir)
 {
+    // FIXME: Use NG and ASID for efficiency.
+    disb();
+    tlbi_all();
+    disb();
     lttbr0(V2P(pgdir));
+    // cprintf("uvm_switch: to 0x%p\n", V2P(pgdir));
+    disb();
+    tlbi_all();
+    disb();
 }
 
 /*

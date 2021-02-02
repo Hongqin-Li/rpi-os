@@ -138,7 +138,6 @@ argstr(int n, char **pp)
 void
 trap(struct trapframe *tf)
 {
-    // cprintf("- trap: cpu %d\n", cpuid());
     int src = get32(IRQ_SRC_CORE(cpuid()));
     if (src & IRQ_CNTPNSIRQ)
         timer(), timer_reset();
@@ -146,13 +145,12 @@ trap(struct trapframe *tf)
         clock(), clock_reset();
     else if (src & IRQ_GPU) {
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
-        if (p1 & AUX_INT)
+        if (p1 & AUX_INT) {
             uart_intr();
-        else if (p2 & VC_ARASANSDIO_INT)
+        } else if (p2 & VC_ARASANSDIO_INT) {
             sd_intr();
-        else {
-            cprintf("- trap: unexpected gpu intr p1 %x, p2 %x, sd %d.\n", p1, p2, p2 & VC_ARASANSDIO_INT);
-            goto bad;
+        } else {
+            cprintf("trap: unexpected gpu intr p1 %x, p2 %x, sd %d, omitted\n", p1, p2, p2 & VC_ARASANSDIO_INT);
         }
     } else {
         int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
@@ -168,10 +166,14 @@ trap(struct trapframe *tf)
         default:
 bad:
             debug_reg();
-            cprintf("- IRQ_SRC_CORE(%d): 0x%x\n", cpuid(), src);
-            cprintf("- IRQ_PENDING_1: 0x%x\n", get32(IRQ_PENDING_1));
-            cprintf("- IRQ_PENDING_2: 0x%x\n", get32(IRQ_PENDING_2));
-            panic("Unexpected irq.\n");
+            cprintf("trap: IRQ_SRC_CORE(%d): 0x%x\n", cpuid(), src);
+            cprintf("trap: IRQ_PENDING_1: 0x%x\n", get32(IRQ_PENDING_1));
+            cprintf("trap: IRQ_PENDING_2: 0x%x\n", get32(IRQ_PENDING_2));
+            cprintf("trap: unexpected irq\n");
+            vm_stat(thisproc()->pgdir);
+            cprintf("trap: proc '%s' terminated\n", thisproc()->name);
+            lesr(0);
+            exit(1);
         }
     }
     disb();
