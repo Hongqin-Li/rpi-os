@@ -18,7 +18,6 @@ extern void trapret();
 extern void swtch(struct context **old, struct context *new);
 
 static void forkret();
-static void user_init();
 static void idle_init();
 
 #define SQSIZE  0x100    /* Must be power of 2. */
@@ -42,8 +41,6 @@ proc_init()
     list_init(&ptable.sched_que);
     for (int i = 0; i < SQSIZE; i++)
         list_init(&ptable.slpque[i]);
-    // FIXME: 
-    user_init();
 }
 
 // TODO: use kmalloc
@@ -62,6 +59,7 @@ proc_alloc()
     acquire(&ptable.lock);
     for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
         if (p->state == UNUSED) {
+            memset(p, 0, sizeof(*p));
             p->pid = ++pid;
             found = 1;
             break;
@@ -73,9 +71,9 @@ proc_alloc()
         return 0;
     }
 
-    memset(p, 0, sizeof(p));
-
     p->state = EMBRYO;
+    release(&ptable.lock);
+
     p->name[0] = 0;
 
     void *sp = p->kstack + PGSIZE;
@@ -93,7 +91,6 @@ proc_alloc()
 
     list_init(&p->child);
    
-    release(&ptable.lock);
     return p;
 }
 
@@ -101,8 +98,6 @@ proc_alloc()
 static void
 idle_init()
 {
-    cprintf("- idle init\n");
-
     struct proc *p;
     if (!(p = proc_alloc()))
         panic("idle init: failed\n");
@@ -114,15 +109,15 @@ idle_init()
     extern char ispin[], eicode[];
     memmove(va, ispin, eicode - ispin);
     assert((size_t)(eicode - ispin) <= PGSIZE);
+
     p->stksz = 0;
     p->sz = PGSIZE;
     p->base = 0;
 
-    safestrcpy(p->name, "idle", sizeof(p->name));
-    // p->cwd = namei("/");
-
     p->tf->elr = 0;
 
+    safestrcpy(p->name, "idle", sizeof(p->name));
+    // p->cwd = namei("/");
     thiscpu()->idle = p;
 }
 
@@ -133,11 +128,9 @@ idle_init()
  * - set up link register in trap frame.
  * - mark as RUNNABLE so that our scheduler can swtch to it.
  */
-static void
+void
 user_init()
 {
-    cprintf("- user init\n");
-
     struct proc *p = proc_alloc();
     if (p == 0)
         panic("user init: failed\n");
@@ -186,17 +179,13 @@ scheduler()
         struct list_head *head = &ptable.sched_que;
         if (list_empty(head)) {
             p = thiscpu()->idle;
-            // cprintf("- scheduler: cpu %d to idle\n", cpuid());
         } else {
             p = container_of(list_front(head), struct proc, link);
             list_pop_front(head);
-            // cprintf("- scheduler: cpu %d to pid %d\n", cpuid(), p->pid);
         }
         uvm_switch(p->pgdir);
         thiscpu()->proc = p;
         swtch(&thiscpu()->scheduler, p->context);
-        // cprintf("- scheduler: cpu %d back to scheduler from pid %d\n", cpuid(), p->pid);
-        thiscpu()->proc = 0;
         release(&ptable.lock);
     }
 }
@@ -210,13 +199,15 @@ static void
 forkret()
 {
     static int first = 1;
-    release(&ptable.lock);
     if (first && thisproc() != thiscpu()->idle) {
         first = 0;
+        release(&ptable.lock);
         iinit(ROOTDEV);
         initlog(ROOTDEV);
-        cprintf("- initlog done!\n");
+    } else {
+        release(&ptable.lock);
     }
+    trace("proc '%s'", thisproc()->name);
 }
 
 /* Give up CPU. */
@@ -290,16 +281,16 @@ wakeup1(void *chan)
 void
 wakeup(void *chan)
 {
-    // cprintf("- wakeup: chan 0x%p\n", chan);
     acquire(&ptable.lock);
     wakeup1(chan);
     release(&ptable.lock);
 }
 
-// FIXME: not tested.
-// Create a new process copying p as the parent.
-// Sets up stack to return as if from system call.
-// Caller must set state of returned proc to RUNNABLE.
+/*
+ * Create a new process copying p as the parent.
+ * Sets up stack to return as if from system call.
+ * Caller must set state of returned proc to RUNNABLE.
+ */
 int
 fork()
 {
@@ -308,7 +299,6 @@ fork()
 
     if ((np->pgdir = uvm_copy(cp->pgdir)) == 0) {
         kfree(np->kstack);
-        np->kstack = 0;
 
         acquire(&ptable.lock);
         np->state = UNUSED;
@@ -316,6 +306,8 @@ fork()
 
         return -1;
     }
+
+    np->parent = cp;
 
     np->base = cp->base;
     np->sz = cp->sz;
@@ -332,7 +324,6 @@ fork()
     np->cwd = idup(cp->cwd);
 
     int pid = np->pid;
-    np->parent = cp;
 
     acquire(&ptable.lock);
     list_push_back(&cp->child, &np->clink);
@@ -344,9 +335,10 @@ fork()
 }
 
 
-// FIXME: not tested.
-// Wait for a child process to exit and return its pid.
-// Return -1 if this process has no children.
+/*
+ * Wait for a child process to exit and return its pid.
+ * Return -1 if this process has no children.
+ */
 int
 wait()
 {   
@@ -360,7 +352,6 @@ wait()
         LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
             if (p->state == ZOMBIE) {
                 assert(p->parent == cp);
-                // cprintf("wait: weap proc %d\n", p->pid);
 
                 list_drop(&p->clink);
 
@@ -403,19 +394,22 @@ kill(int pid)
 //   return -1;
 }
 
-// FIXME: not tested.
-// Exit the current process.  Does not return.
-// An exited process remains in the zombie state
-// until its parent calls wait() to find out it exited.
+/*
+ * Exit the current process.  Does not return.
+ * An exited process remains in the zombie state
+ * until its parent calls wait() to find out it exited.
+ */
 void
-exit(int code)
+exit(int err)
 {
     struct proc *cp = thisproc();
     if (cp == initproc)
-        panic("init exiting");
+        panic("init exit");
 
-    cprintf("exit: pid %d\n", cp->pid);
-    procdump();
+    if (err) {
+        cprintf("exit: pid %d, err %d\n", cp->pid, err);
+        procdump();
+    }
 
     // Close all open files.
     for (int fd = 0; fd < NOFILE; fd++) {
@@ -457,11 +451,12 @@ exit(int code)
     panic("zombie exit");
 }
 
-// Print a process listing to console.  For debugging.
-// Runs when user types ^P on console.
-// No lock to avoid wedging a stuck machine further.
+/*
+ * Print a process listing to console. For debugging.
+ * Runs when user types ^P on console.
+ */
 void
-procdump(void)
+procdump()
 {
     static char *states[] = {
         [UNUSED]    "unused",

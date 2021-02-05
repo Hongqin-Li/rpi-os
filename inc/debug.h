@@ -32,18 +32,20 @@ debug_reg()
     cprintf("SPSel: 0x%llx\n", spsel);
     cprintf("SPSR_EL1: 0x%llx\n", spsr);
 
-    /* Stack pointer */
+    /* Frame pointer and stack pointer */
     uint64_t sp, sp0;
     asm volatile("mov %[x], sp": [x]"=r"(sp));
     asm volatile("mrs %[x], sp_el0": [x]"=r"(sp0));
     cprintf("SP: 0x%llx\n", sp);
     cprintf("SP_EL0: 0x%llx\n", sp0);
 
-    /* Exception link and exception syndrome */
-    int64_t elr, esr;
+    /* Exception link, exception syndrome and fault address */
+    int64_t elr, esr, far;
     asm volatile("mrs %[x], elr_el1": [x]"=r"(elr));
     asm volatile("mrs %[x], esr_el1": [x]"=r"(esr));
+    asm volatile("mrs %[x], far_el1": [x]"=r"(far));
     cprintf("ELR_EL1: 0x%llx, EC: 0x%llx, ISS: 0x%llx. \n", elr, esr >> 26, esr & 0x1FFFFFF);
+    cprintf("FAR_EL1: 0x%llx\n", far);
 }
 
 #endif

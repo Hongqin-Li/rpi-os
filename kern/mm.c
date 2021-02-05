@@ -8,6 +8,13 @@
 #include "console.h"
 #include "peripherals/mbox.h"
 
+#ifdef DEBUG
+
+#define MAX_PAGES 1000
+static void *alloc_ptr[MAX_PAGES];
+
+#endif
+
 extern char end[];
 
 struct freelist {
@@ -76,7 +83,18 @@ kalloc()
     void *p = freelist_alloc(&freelist);
     if (p) {
         memset(p, 0xAC, PGSIZE);
-        // cprintf("kalloc 0x%p\n", p);
+#ifdef DEBUG
+        int i;
+        for (i = 0; i < MAX_PAGES; i++) {
+            if (!alloc_ptr[i]) {
+                alloc_ptr[i] = p;
+                break;
+            }
+        }
+        if (i == MAX_PAGES) {
+            panic("mm: no more space for debug. ");
+        }
+#endif
     }
     else cprintf("- kalloc null\n");
     release(&memlock);
@@ -89,18 +107,41 @@ kalloc()
 void
 kfree(void *va)
 {
-    // cprintf("kfree 0x%p...", va);
     acquire(&memlock);
+    memset(va, 0xAF, PGSIZE); // For debug.
     freelist_free(&freelist, va);
+#ifdef DEBUG
+    int i;
+    for (i = 0; i < MAX_PAGES; i++) {
+        if (alloc_ptr[i] == va) {
+            alloc_ptr[i] = 0;
+            break;
+        }
+    }
+    if (i == MAX_PAGES) {
+        panic("kfree: not allocated. ");
+    }
+#endif
     release(&memlock);
-    // cprintf("finished\n");
 }
 
 
 void
+mm_dump()
+{
+#ifdef DEBUG
+    int cnt = 0;
+    for (int i = 0; i < MAX_PAGES; i++) {
+        if (alloc_ptr[i]) cnt++;
+    }
+    cprintf("allocated: %d pages\n", cnt);
+#endif
+}
+
+void
 mm_test()
 {
-    cprintf("- mm test begin\n");
+#ifdef DEBUG
     static void *p[0x100000000/PGSIZE];
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
@@ -109,5 +150,5 @@ mm_test()
     }
     while (i--)
         kfree(p[i]);
-    cprintf("- mm test end\n");
+#endif
 }

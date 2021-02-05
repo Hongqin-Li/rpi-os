@@ -10,7 +10,7 @@
 
 #define CONSOLE 1
 
-static struct spinlock conslock;
+struct spinlock conslock;
 static int panicked = -1;
 
 #define INPUT_BUF 128
@@ -26,7 +26,7 @@ struct {
 static void
 consputc(int c)
 {
-    if(c == BACKSPACE) {
+    if (c == BACKSPACE) {
         uart_putchar('\b'); uart_putchar(' '); uart_putchar('\b');
     } else
         uart_putchar(c);
@@ -163,6 +163,14 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
     }
 }
 
+void
+cprintf1(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vprintfmt(uart_putchar, fmt, ap);
+    va_end(ap);
+}
+
 /* Print to the console. */
 void
 cprintf(const char *fmt, ...)
@@ -183,7 +191,7 @@ cprintf(const char *fmt, ...)
 void
 console_intr(int (*getc)())
 {
-    int c, doprocdump = 0;
+    int c, prof = 0;
 
     acquire(&conslock);
     if (panicked >= 0) {
@@ -194,15 +202,14 @@ console_intr(int (*getc)())
     while ((c = getc()) >= 0) {
         switch (c) {
         case C('P'):  // Process listing.
-            // procdump() locks cons.lock indirectly; invoke later
-            doprocdump = 1;
+            prof = 1;
             break;
         case C('U'):  // Kill line.
             while (input.e != input.w && input.buf[(input.e-1) % INPUT_BUF] != '\n') {
                 input.e--;
                 consputc(BACKSPACE);
             }
-        break;
+            break;
         case C('H'): case '\x7f':  // Backspace
             if (input.e != input.w){
                 input.e--;
@@ -224,7 +231,10 @@ console_intr(int (*getc)())
     }
     release(&conslock);
 
-    if (doprocdump) procdump();
+    if (prof) {
+        mm_dump();
+        procdump();
+    }
 }
 
 void

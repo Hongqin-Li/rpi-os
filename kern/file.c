@@ -115,6 +115,13 @@ fileread(struct file *f, char *addr, ssize_t n)
 ssize_t
 filewrite(struct file *f, char *addr, ssize_t n)
 {
+#ifdef DEBUG
+    // cprintf("filewrite: addr 0x%p, n %lld: [ ", addr, n);
+    // for (ssize_t i = 0; i < n; i++)
+    //     cprintf("0x%x ", addr[i]);
+    // cprintf("]\n");
+#endif
+
     ssize_t r;
 
     if (f->writable == 0)

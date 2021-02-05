@@ -17,8 +17,11 @@ uint64_t *
 vm_init()
 {
     uint64_t *pgdir = kalloc();
-    if (pgdir)
+    if (pgdir) {
         memset(pgdir, 0, PGSIZE);
+    } else {
+        warn("failed");
+    }
     return pgdir;
 }
 
@@ -41,7 +44,7 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
                 memset(p, 0, PGSIZE);
                 pgt[idx] = V2P(p) | PTE_TABLE;
             } else {
-                cprintf("pgdir_walk: pages used out\n");
+                warn("failed");
                 return 0;
             }
         }
@@ -113,15 +116,20 @@ uvm_copy(uint64_t *pgdir)
 
                     assert(PTE_ADDR(pgt3[i3]) < KERNBASE);
 
-                    uint64_t *p = P2V(PTE_ADDR(pgt3[i3]));
+                    uint64_t pa = PTE_ADDR(pgt3[i3]);
                     uint64_t va = (uint64_t)i << (12 + 9*3) | (uint64_t)i1 << (12 + 9*2)| (uint64_t)i2 << (12 + 9) | i3 << 12;
 
                     void *np = kalloc();
-                    memmove(np, p, PGSIZE);
+                    if (np == 0) {
+                        vm_free(newpgdir);
+                        warn("kalloc failed");
+                        return 0;
+                    }
+                    memmove(np, P2V(pa), PGSIZE);
                     if (uvm_map(newpgdir, va, PGSIZE, V2P(np)) < 0) {
                         vm_free(newpgdir);
                         kfree(np);
-                        cprintf("- uvmcopy failed.\n");
+                        warn("uvm_map failed");
                         return 0;
                     }
                 }
@@ -148,11 +156,6 @@ vm_free(uint64_t *pgdir)
                 assert(pgt2[i] & PTE_TABLE);
                 uint64_t *pgt3 = P2V(PTE_ADDR(pgt2[i]));
                 for (int i = 0; i < 512; i++) if (pgt3[i] & PTE_VALID) {
-
-                    assert(pgt3[i] & PTE_PAGE);
-                    assert(pgt3[i] & PTE_USER);
-                    assert(pgt3[i] & PTE_NORMAL);
-
                     uint64_t *p = P2V(PTE_ADDR(pgt3[i]));
                     kfree(p);
                 }
@@ -175,19 +178,18 @@ vm_free(uint64_t *pgdir)
 int
 uvm_map(uint64_t *pgdir, void *va, size_t sz, uint64_t pa)
 {
-    // cprintf("uvm_map: pgdir 0x%p, va 0x%p, pa 0x%llx\n", pgdir, va, pa);
-    assert(pa < KERNBASE);
-    pa = ROUNDDOWN(pa, PGSIZE);
     void *p = ROUNDDOWN(va, PGSIZE), *end = va + sz;
+    assert(pa < USERTOP);
+    pa = ROUNDDOWN(pa, PGSIZE);
     for (; p < end; pa += PGSIZE, p += PGSIZE) {
         uint64_t *pte = pgdir_walk(pgdir, p, 1);
         if (!pte) {
-            panic("walk failed.");
+            warn("walk failed");
             return -1;
         }
-        if (*pte & PTE_VALID) panic("remap.");
+        if (*pte & PTE_VALID)
+            panic("remap.");
         *pte = pa | PTE_UDATA;
-        // cprintf("pte: 0x%llx, *pte: 0x%llx\n", pte, *pte);
     }
     return 0;
 }
@@ -208,7 +210,7 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
           oldsz <= newsz &&
           newsz < USERTOP - stksz)) {
 
-        cprintf("- uvm alloc: invalid arg\n");
+        warn("invalid arg");
         return 0;
     }
 
@@ -218,18 +220,17 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
     for (size_t a = ROUNDUP(oldsz, PGSIZE); a < newsz; a += PGSIZE) {
         void *p = kalloc();
         if (p == 0) {
-            cprintf("- uvm alloc: memory used out\n");
+            warn("kalloc failed");
             uvm_dealloc(pgdir, base, newsz, oldsz);
             return 0;
         }
         if (uvm_map(pgdir, a, PGSIZE, V2P(p)) < 0) {
-            cprintf("- uvm alloc: memory used out\n");
+            warn("uvm_map failed");
             kfree(p);
             uvm_dealloc(pgdir, base, newsz, oldsz);
             return 0;
         }
     }
-
     // cprintf("after alloc\n");
     // vm_stat(pgdir);
     // cprintf("--- uvm alloc end\n\n");
@@ -253,10 +254,8 @@ uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz)
         uint64_t *pte = pgdir_walk(pgdir, (char *)a, 0);
         if (pte && (*pte & PTE_VALID)) {
             uint64_t pa = PTE_ADDR(*pte);
-            if (pa == 0)
-                panic("kfree");
-            char *v = P2V(pa);
-            kfree(v);
+            assert(pa);
+            kfree(P2V(pa));
             *pte = 0;
         } else {
             cprintf("uvm_dealloc: attempt to free unallocated page.\n");
@@ -269,14 +268,39 @@ void
 uvm_switch(uint64_t *pgdir)
 {
     // FIXME: Use NG and ASID for efficiency.
-    disb();
-    tlbi_all();
-    disb();
     lttbr0(V2P(pgdir));
-    // cprintf("uvm_switch: to 0x%p\n", V2P(pgdir));
-    disb();
-    tlbi_all();
-    disb();
+
+#ifdef DEBUG
+    for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
+        assert(pgdir[i] & PTE_TABLE);
+        uint64_t *pgt1 = P2V(PTE_ADDR(pgdir[i]));
+        for (int i1 = 0; i1 < 512; i1++) if (pgt1[i1] & PTE_VALID) {
+            assert(pgt1[i1] & PTE_TABLE);
+            uint64_t *pgt2 = P2V(PTE_ADDR(pgt1[i1]));
+            for (int i2 = 0; i2 < 512; i2++) if (pgt2[i2] & PTE_VALID) {
+                assert(pgt2[i2] & PTE_TABLE);
+                uint64_t *pgt3 = P2V(PTE_ADDR(pgt2[i2]));
+                for (int i3 = 0; i3 < 512; i3++) if (pgt3[i3] & PTE_VALID) {
+
+                    assert(PTE_FLAGS(pgt3[i3]) == PTE_UDATA);
+                    assert(PTE_ADDR(pgt3[i3]) < USERTOP);
+
+                    char *p = P2V(PTE_ADDR(pgt3[i3]));
+                    char *va = (char *)((uint64_t)i << (12 + 9*3) |
+                                        (uint64_t)i1 << (12 + 9*2) |
+                                        (uint64_t)i2 << (12 + 9) |
+                                        i3 << 12);
+
+                    dccivac(p, PGSIZE);
+                    for (int i = 0; i < PGSIZE; i++) {
+                        assert(va[i] == p[i]);
+                    }
+                }
+            }
+        }
+    }
+#endif
+
 }
 
 /*
@@ -313,6 +337,7 @@ copyout(uint64_t *pgdir, void *va, void *p, size_t len)
         }
         else memset(page + pgoff, 0, n);
     }
+    return 0;
     // vm_stat(pgdir);
     // cprintf("copyout: end\n");
 }
@@ -366,6 +391,24 @@ vm_stat(uint64_t *pgdir)
 void
 vm_test()
 {
+#ifdef DEBUG
     void *pgdir = vm_init();
+    void *p = kalloc(), *p2 = kalloc(), *va = 0x1000;
+    memset(p, 0xAB, PGSIZE);
+    memset(p2, 0xAC, PGSIZE);
+    uvm_map(pgdir, va, PGSIZE, V2P(p));
+    uvm_switch(pgdir);
+    for (char *i = va; i < va + PGSIZE; i++) {
+        assert(*i == 0xAB);
+    }
+    uvm_dealloc(pgdir, va, va + PGSIZE, va);
+
+    uvm_map(pgdir, va, PGSIZE, V2P(p2));
+    uvm_switch(pgdir);
+    for (char *i = va; i < va + PGSIZE; i++) {
+        assert(*i == 0xAC);
+    }
     vm_free(pgdir);
+    info("vm test pass");
+#endif
 }

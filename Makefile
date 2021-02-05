@@ -6,15 +6,16 @@ OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
 
 CORTEX_A53_FLAGS := -mno-outline-atomics -mcpu=cortex-a53 -mtune=cortex-a53
-CFLAGS := -Wall -g -O2 \
+CFLAGS := -Wall -g -O0 \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
+		  -DDEBUG -DLOG_DEBUG \
 		  $(CORTEX_A53_FLAGS)
 
-CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include
+CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include -Ilibc/arch/generic
 SRC_DIRS := kern
 BUILD_DIR = obj
 

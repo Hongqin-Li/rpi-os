@@ -1,9 +1,9 @@
-#include <stdio.h>
+#include <stdlib.h>
 
-volatile int a = 2;
+volatile int a = 0xBB00;
 
 int main() {
-    if (a != 2)
-        printf("utest2: expect 2, found %d\n", a);
+    if (a != 0xBB00)
+        exit(a);
     return 0;
 }

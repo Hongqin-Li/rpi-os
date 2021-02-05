@@ -2,6 +2,8 @@
 #include "trap.h"
 #include "console.h"
 
+#include <sys/mman.h>
+
 int
 sys_yield()
 {
@@ -15,7 +17,14 @@ sys_brk()
     struct proc *p = thisproc();
     size_t sz, newsz, oldsz = p->sz;
 
+    panic("sys_brk: unimplemented. ");
+
     if (argu64(0, &newsz) < 0)
+        return oldsz;
+
+    trace("name %s: 0x%llx to 0x%llx", p->name, oldsz, newsz);
+
+    if (newsz == 0)
         return oldsz;
 
     if (newsz < oldsz) {
@@ -29,6 +38,41 @@ sys_brk()
     return p->sz;
 }
 
+size_t
+sys_mmap()
+{
+    void *addr;
+    size_t len, off;
+    int prot, flags, fd;
+    if (argu64(0, &addr) < 0 ||
+        argu64(1, &len) < 0 ||
+        argint(2, &prot) < 0 ||
+        argint(3, &flags) < 0 ||
+        argint(4, &fd) < 0 ||
+        argu64(5, &off) < 0)
+        return -1;
+
+    if ((flags & MAP_PRIVATE) == 0 || (flags & MAP_ANON) == 0 || fd != -1 || off != 0) {
+        warn("non-private mmap unimplemented: flags 0x%x, fd %d, off %d", flags, fd, off);
+        return -1;
+    }
+
+    if (addr) {
+        if (prot != PROT_NONE) {
+            warn("mmap unimplemented");
+            return -1;
+        }
+        trace("map none at 0x%p", addr);
+        return addr;
+    } else {
+        if (prot != (PROT_READ | PROT_WRITE)) {
+            warn("non-rw unimplemented");
+            return -1;
+        }
+        panic("unimplemented. ");
+    }
+}
+
 int
 sys_clone()
 {
@@ -37,10 +81,10 @@ sys_clone()
     if (argu64(0, &flag) < 0 || argu64(1, &childstk) < 0)
         return -1;
     if (flag != 17) {
-        cprintf("sys_clone: flags other than SIGCHLD are not supported.\n");
+        warn("flags other than SIGCHLD are not supported");
         return -1;
     }
-    // cprintf("sys_clone: flags 0x%llx, child stack 0x%p\n", flag, childstk);
+    trace("flags 0x%llx, child stack 0x%p", flag, childstk);
     return fork();
 }
 
@@ -59,7 +103,7 @@ sys_wait4()
 
     // FIXME:
     if (pid != -1 || wstatus != 0 || opt != 0 || rusage != 0) {
-        cprintf("sys_wait4: unimplemented. pid %d, wstatus 0x%p, opt 0x%x, rusage 0x%p\n", pid, wstatus, opt, rusage);
+        warn("unimplemented. pid %d, wstatus 0x%p, opt 0x%x, rusage 0x%p", pid, wstatus, opt, rusage);
         return -1;
     }
 

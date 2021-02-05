@@ -608,7 +608,6 @@ sd_intr()
         int write = b->flags & B_DIRTY;
         if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
-            // FIXME: don't panic
             cprintf("sd intr unexpected: 0x%x, restarted.\n", i);
         } else {
             if (!write) {

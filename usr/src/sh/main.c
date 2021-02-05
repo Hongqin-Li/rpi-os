@@ -17,9 +17,13 @@
 
 #define MAXARGS 10
 
+#define NCMD    100
+
 struct cmd {
     int type;
 };
+
+struct cmd cmd[NCMD];
 
 struct execcmd {
     int type;
@@ -56,6 +60,17 @@ struct backcmd {
 int fork1(void);                // Fork but panics on failure.
 void panic(char *);
 struct cmd *parsecmd(char *);
+
+struct cmd *
+alloccmd()
+{
+    int ncmd = 0;
+    if (ncmd ++ > NCMD) {
+        fprintf(stderr, "no more free cmd\n");
+        exit(1);
+    }
+    return &cmd[ncmd - 1];
+}
 
 // Execute cmd.  Never returns.
 void
@@ -209,7 +224,7 @@ execcmd(void)
 {
     struct execcmd *cmd;
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = alloccmd();
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = EXEC;
     return (struct cmd *) cmd;
@@ -220,7 +235,7 @@ redircmd(struct cmd *subcmd, char *file, char *efile, int mode, int fd)
 {
     struct redircmd *cmd;
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = alloccmd();
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = REDIR;
     cmd->cmd = subcmd;
@@ -236,7 +251,7 @@ pipecmd(struct cmd *left, struct cmd *right)
 {
     struct pipecmd *cmd;
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = alloccmd();
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = PIPE;
     cmd->left = left;
@@ -249,7 +264,7 @@ listcmd(struct cmd *left, struct cmd *right)
 {
     struct listcmd *cmd;
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = alloccmd();
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = LIST;
     cmd->left = left;
@@ -262,7 +277,7 @@ backcmd(struct cmd *subcmd)
 {
     struct backcmd *cmd;
 
-    cmd = malloc(sizeof(*cmd));
+    cmd = alloccmd();
     memset(cmd, 0, sizeof(*cmd));
     cmd->type = BACK;
     cmd->cmd = subcmd;

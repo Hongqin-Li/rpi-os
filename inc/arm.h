@@ -58,25 +58,20 @@ disb()
 static inline void
 dccivac(void *p, int n)
 {
+    disb();
     while (n--)
         asm volatile("dc civac, %[x]" : : [x]"r"(p + n));
-}
-
-/* Invalidate all TLB. */
-static inline void
-tlbi_all()
-{
-    // FIXME:
-    asm volatile("tlbi vmalle1is");
-    asm volatile("tlbi aside1is, %[x]" : : [x]"r"(0));
+    disb();
 }
 
 /* Read Exception Syndrome Register (EL1) */
 static inline uint64_t
 resr()
 {
+    disb();
     uint64_t r;
     asm volatile("mrs %[x], esr_el1" : [x]"=r"(r));
+    disb();
     return r;
 }
 
@@ -84,8 +79,10 @@ resr()
 static inline uint64_t
 relr()
 {
+    disb();
     uint64_t r;
     asm volatile("mrs %[x], elr_el1" : [x]"=r"(r));
+    disb();
     return r;
 }
 
@@ -93,7 +90,9 @@ relr()
 static inline void
 lesr()
 {
+    disb();
     asm volatile("msr esr_el1, %[x]" : : [x]"r"(0));
+    disb();
 }
 
 /* Load vector base (virtual) address register (EL1) */
@@ -109,9 +108,10 @@ lvbar(void *p)
 static inline void
 lttbr0(uint64_t p)
 {
+    disb();
     asm volatile("msr ttbr0_el1, %[x]" : : [x]"r"(p));
     disb();
-    asm volatile("tlbi vmalle1");
+    asm volatile("tlbi vmalle1is");
     disb();
 }
 
@@ -119,9 +119,10 @@ lttbr0(uint64_t p)
 static inline void
 lttbr1(uint64_t p)
 {
+    disb();
     asm volatile("msr ttbr1_el1, %[x]" : : [x]"r"(p));
     disb();
-    asm volatile("tlbi vmalle1");
+    asm volatile("tlbi vmalle1is");
     disb();
 }
 

@@ -40,18 +40,20 @@ main(uint64_t sp, uint64_t ent)
         irq_init();
 
         proc_init();
+        user_init();
+
         binit();
 
-
         // Tests
+        mbox_test();
         // mm_test();
         vm_test();
     }
-    cprintf("- cpu: %d. hello, world\n", cpuid());
     release(&mp.lock);
 
-    lvbar(vectors);
     timer_init();
+    lvbar(vectors);
+    lesr(0);
 
     scheduler();
 

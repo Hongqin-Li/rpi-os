@@ -79,7 +79,7 @@ sys_dup()
         return -1;
     if ((fd = fdalloc(f)) < 0)
         return -1;
-    cprintf("dup: fd %d\n", fd);
+    trace("fd %d", fd);
     filedup(f);
     return fd;
 }
@@ -120,7 +120,7 @@ sys_writev()
         argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
         return -1;
     }
-    // cprintf("writev: fd %d, iovcnt: %d\n", fd, iovcnt);
+    trace("fd %d, iovcnt: %d", fd, iovcnt);
 
     size_t tot = 0;
     for (p = iov; p < iov + iovcnt; p++) {
@@ -153,7 +153,7 @@ sys_fstat()
 
     if (argfd(0, &fd, &f) < 0 || argptr(1, (void *)&st, sizeof(*st)) < 0)
         return -1;
-    // cprintf("sys_fstat: fd %d\n", fd);
+    trace("fd %d", fd);
     return filestat(f, st);
 }
 
@@ -171,11 +171,11 @@ sys_fstatat()
         return -1;
 
     if (dirfd != AT_FDCWD) {
-        cprintf("sys_fstatat: dirfd unimplemented\n");
+        warn("dirfd unimplemented");
         return -1;
     }
     if (flags != 0) {
-        cprintf("sys_fstatat: flags unimplemented\n");
+        warn("flags unimplemented");
         return -1;
     }
 
@@ -318,45 +318,45 @@ bad:
 static struct inode *
 create(char *path, short type, short major, short minor)
 {
-  struct inode *ip, *dp;
-  char name[DIRSIZ];
+    struct inode *ip, *dp;
+    char name[DIRSIZ];
 
-  if((dp = nameiparent(path, name)) == 0)
-    return 0;
-  ilock(dp);
+    if ((dp = nameiparent(path, name)) == 0)
+        return 0;
+    ilock(dp);
 
-  if((ip = dirlookup(dp, name, 0)) != 0){
-    iunlockput(dp);
+    if ((ip = dirlookup(dp, name, 0)) != 0) {
+        iunlockput(dp);
+        ilock(ip);
+        if (type == T_FILE && ip->type == T_FILE)
+            return ip;
+        iunlockput(ip);
+        return 0;
+    }
+
+    if ((ip = ialloc(dp->dev, type)) == 0)
+        panic("create: ialloc");
+
     ilock(ip);
-    if(type == T_FILE && ip->type == T_FILE)
-      return ip;
-    iunlockput(ip);
-    return 0;
-  }
+    ip->major = major;
+    ip->minor = minor;
+    ip->nlink = 1;
+    iupdate(ip);
 
-  if((ip = ialloc(dp->dev, type)) == 0)
-    panic("create: ialloc");
+    if (type == T_DIR) {  // Create . and .. entries.
+        dp->nlink++;  // for ".."
+        iupdate(dp);
+        // No ip->nlink++ for ".": avoid cyclic ref count.
+        if (dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+            panic("create dots");
+    }
 
-  ilock(ip);
-  ip->major = major;
-  ip->minor = minor;
-  ip->nlink = 1;
-  iupdate(ip);
+    if (dirlink(dp, name, ip->inum) < 0)
+        panic("create: dirlink");
 
-  if(type == T_DIR){  // Create . and .. entries.
-    dp->nlink++;  // for ".."
-    iupdate(dp);
-    // No ip->nlink++ for ".": avoid cyclic ref count.
-    if(dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
-      panic("create dots");
-  }
+    iunlockput(dp);
 
-  if(dirlink(dp, name, ip->inum) < 0)
-    panic("create: dirlink");
-
-  iunlockput(dp);
-
-  return ip;
+    return ip;
 }
 
 int
@@ -371,14 +371,14 @@ sys_openat()
         return -1;
 
     if (dirfd != AT_FDCWD) {
-        cprintf("sys_openat: dirfd unimplemented\n");
+        warn("dirfd unimplemented");
         return -1;
     }
     if ((omode & O_LARGEFILE) == 0) {
-        cprintf("sys_openat: expect O_LARGEFILE in open flags\n");
+        warn("expect O_LARGEFILE in open flags");
         return -1;
     }
-    // cprintf("sys_openat: dirfd %d, path '%s', flag 0x%x\n", dirfd, path, omode);
+    trace("dirfd %d, path '%s', flag 0x%x", dirfd, path, omode);
 
     begin_op();
     if (omode & O_CREAT) {
@@ -400,7 +400,6 @@ sys_openat()
             return -1;
         }
     }
-    // cprintf("sys_open: ip->type %x\n", ip->type);
 
     if ((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0) {
         if (f)
@@ -430,14 +429,14 @@ sys_mkdirat()
     if (argint(0, &dirfd) < 0 || argstr(1, &path) < 0 || argint(2, &mode) < 0)
         return -1;
     if (dirfd != AT_FDCWD) {
-        cprintf("sys_mkdirat: dirfd unimplemented\n");
+        warn("dirfd unimplemented");
         return -1;
     }
     if (mode != 0) {
-        cprintf("sys_mkdirat: mode unimplemented\n");
+        warn("mode unimplemented");
         return -1;
     }
-    // cprintf("sys_mkdirat: path '%s', mode 0x%x\n", path, mode);
+    trace("path '%s', mode 0x%x", path, mode);
 
     begin_op();
     if ((ip = create(path, T_DIR, 0, 0)) == 0) {
@@ -460,10 +459,10 @@ sys_mknodat()
         return -1;
 
     if (dirfd != AT_FDCWD) {
-        cprintf("sys_mknodat: dirfd unimplemented\n");
+        warn("dirfd unimplemented");
         return -1;
     }
-    cprintf("mknodat: path '%s', major:minor %d:%d\n", path, major, minor);
+    trace("path '%s', major:minor %d:%d", path, major, minor);
 
     begin_op();
     if((ip = create(path, T_DEV, major, minor)) == 0) {

@@ -34,23 +34,6 @@ in_user(void *s, size_t n)
     return 0;
 }
 
-// User code makes a system call with INT T_SYSCALL. System call number
-// in r0. Arguments on the stack, from the user call to the C library
-// system call function. The saved user sp points to the first argument.
-
-// Fetch the int at addr from the current process.
-// int
-// fetchint(uint64_t addr, long *ip)
-// {
-//     struct proc *proc = thisproc();
-//     if(addr >= proc->sz || addr+8 > proc->sz) {
-//         return -1;
-//     }
-// 
-//     *ip = *(long*)(addr);
-//     return 0;
-// }
-
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
@@ -72,13 +55,13 @@ fetchstr(uint64_t addr, char **pp)
 }
 
 // Fetch the nth (starting from 0) 32-bit system call argument.
-// In our ABI, x8 contains system call index, x0-r3 contain parameters.
-// now we support system calls with at most 4 parameters.
+// In our ABI, x8 contains system call index, x0-x5 contain parameters.
+// now we support system calls with at most 6 parameters.
 int
 argint(int n, int *ip)
 {
     struct proc *proc = thisproc();
-    if (n > 3) {
+    if (n > 5) {
         cprintf("too many system call parameters\n");
         return -1;
     }
@@ -88,13 +71,13 @@ argint(int n, int *ip)
 }
 
 // Fetch the nth (starting from 0) 64-bit system call argument.
-// In our ABI, x8 contains system call index, x0-r3 contain parameters.
-// now we support system calls with at most 4 parameters.
+// In our ABI, x8 contains system call index, x0-x5 contain parameters.
+// now we support system calls with at most 6 parameters.
 int
 argu64(int n, size_t *ip)
 {
     struct proc *proc = thisproc();
-    if (n > 3) {
+    if (n > 5) {
         cprintf("too many system call parameters\n");
         return -1;
     }
@@ -136,46 +119,82 @@ argstr(int n, char **pp)
 }
 
 void
-trap(struct trapframe *tf)
+interrupt(struct trapframe *tf)
 {
     int src = get32(IRQ_SRC_CORE(cpuid()));
-    if (src & IRQ_CNTPNSIRQ)
-        timer(), timer_reset();
-    else if (src & IRQ_TIMER)
-        clock(), clock_reset();
-    else if (src & IRQ_GPU) {
+    if (src & IRQ_CNTPNSIRQ) {
+        timer_reset();
+        timer();
+    } else if (src & IRQ_TIMER) {
+        clock_reset();
+        clock();
+    } else if (src & IRQ_GPU) {
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
         if (p1 & AUX_INT) {
             uart_intr();
         } else if (p2 & VC_ARASANSDIO_INT) {
             sd_intr();
         } else {
-            cprintf("trap: unexpected gpu intr p1 %x, p2 %x, sd %d, omitted\n", p1, p2, p2 & VC_ARASANSDIO_INT);
+            warn("unexpected gpu intr p1 %x, p2 %x, sd %d, omitted", p1, p2, p2 & VC_ARASANSDIO_INT);
+            panic(""); // FIXME:
         }
     } else {
-        int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
-        switch (ec) {
-        case EC_SVC64:
-            if (iss == 0) {
-                tf->x[0] = syscall1(tf);
-            } else {
-                cprintf("Unexpected svc number %d, omitted.\n", iss);
-            }
-            lesr(0);  /* Clear esr. */
-            break;
-        default:
-bad:
-            debug_reg();
-            cprintf("trap: IRQ_SRC_CORE(%d): 0x%x\n", cpuid(), src);
-            cprintf("trap: IRQ_PENDING_1: 0x%x\n", get32(IRQ_PENDING_1));
-            cprintf("trap: IRQ_PENDING_2: 0x%x\n", get32(IRQ_PENDING_2));
-            cprintf("trap: unexpected irq\n");
-            vm_stat(thisproc()->pgdir);
-            cprintf("trap: proc '%s' terminated\n", thisproc()->name);
-            lesr(0);
-            exit(1);
-        }
+        warn("unexpected interrupt at cpu %d", cpuid());
+        panic(""); // FIXME:
     }
+}
+
+void
+trap(struct trapframe *tf)
+{
+#ifdef DEBUG
+    uint64_t sp, sp0;
+    uint64_t elr, esr, far;
+    if (thisproc() != thiscpu()->idle) {
+        trace("%s(%d) trap on cpu %d", thisproc()->name, thisproc()->pid, cpuid());
+        trace("fp 0x%p, sp 0x%p, elr 0x%p", tf->x[29], tf->sp, tf->elr);
+    }
+#endif
+
+    int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
+    lesr(0);  /* Clear esr. */
+    switch (ec) {
+    case EC_UNKNOWN:
+        interrupt(tf);
+        break;
+        
+    case EC_SVC64:
+        if (iss == 0) {
+            tf->x[0] = syscall1(tf);
+        } else {
+            warn("unexpected svc iss 0x%x", iss);
+            panic(""); // FIXME:
+        }
+        break;
+
+    default:
+#ifdef DEBUG
+        sp0 = tf->sp;
+        elr = tf->elr;
+        if (sp0 < USERTOP && in_user(sp0, USERTOP - sp0))
+            debug_mem(sp0, USERTOP - sp0);
+        if (in_user(elr, 0x10))
+            debug_mem(elr, 0x10);
+        for (int i = 0; i < 32; i++) {
+            debug("x[%d] = 0x%llx(%lld)", i, tf->x[i], tf->x[i]);
+        }
+        debug("ec: %llx, iss: %llx", ec, iss);
+        debug_reg();
+        vm_stat(thisproc()->pgdir);
+        debug("trap: proc '%s' terminated on cpu %d", thisproc()->name, cpuid());
+#endif
+        exit(1);
+    }
+
+#ifdef DEBUG
+    if (thisproc() != thiscpu()->idle)
+        trace("%s(%d) trap finish on cpu %d", thisproc()->name, thisproc()->pid, cpuid());
+#endif
     disb();
 }
 

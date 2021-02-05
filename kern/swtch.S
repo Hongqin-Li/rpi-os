@@ -9,6 +9,7 @@
  */
 .global swtch
 swtch:
+    dsb     sy; isb
     /* Save old callee-saved registers. */
     # str     q0, [sp, #-16]!
 
@@ -37,4 +38,5 @@ swtch:
     # ldr     q0, [sp], #16
 
     /* Why not simply ret by x30? This is a hack for forkret. */
+    dsb     sy; isb
     ret     x15

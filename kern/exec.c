@@ -17,28 +17,27 @@ static uint64_t auxv[][2] = {{AT_PAGESZ, PGSIZE}};
 int
 execve(const char *path, char *const argv[], char *const envp[])
 {
-    // Save previous page table.
-    struct proc *curproc = thisproc();
-    char *oldpgdir = curproc->pgdir, *pgdir = vm_init();
     char *s;
-    struct inode *ip = 0;
-
-    if (pgdir == 0) {
-        cprintf("exec: vm init failed\n");
-        goto bad;
-    }
-
     if (fetchstr(path, &s) < 0) 
         return -1;
 
-    // cprintf("- execve: path='%s', argv=0x%p, envp=0x%p\n", s, argv, envp);
+    // Save previous page table.
+    struct proc *curproc = thisproc();
+    char *oldpgdir = curproc->pgdir, *pgdir = vm_init();
+    struct inode *ip = 0;
+
+    if (pgdir == 0) {
+        debug("vm init failed");
+        goto bad;
+    }
+
+    trace("path='%s', argv=0x%p, envp=0x%p", s, argv, envp);
 
     begin_op();
     ip = namei(path);
     if (ip == 0) {
         end_op();
-        cprintf("exec: failed\n");
-        return -1;
+        goto bad;
     }
     ilock(ip);
 
@@ -47,11 +46,11 @@ execve(const char *path, char *const argv[], char *const envp[])
         goto bad;
     if (!(elf.e_ident[EI_MAG0] == ELFMAG0 && elf.e_ident[EI_MAG1] == ELFMAG1 &&
         elf.e_ident[EI_MAG2] == ELFMAG2 && elf.e_ident[EI_MAG3] == ELFMAG3)) {
-        cprintf("exec: elf header magic invalid\n");
+        debug("exec: elf header magic invalid");
         goto bad;
     }
     if (elf.e_ident[EI_CLASS] != ELFCLASS64) {
-        cprintf("exec: 64 bit program not supported\n");
+        debug("exec: 64 bit program not supported");
         goto bad;
     }
     // cprintf("exec: check elf header finish\n");
@@ -70,16 +69,16 @@ execve(const char *path, char *const argv[], char *const envp[])
             goto bad;
 
         if (ph.p_type != PT_LOAD) {
-            // cprintf("unsupported type 0x%x, skipped\n", ph.p_type);
+            // debug("unsupported type 0x%x, skipped\n", ph.p_type);
             continue;
         }
 
         if (ph.p_memsz < ph.p_filesz) {
-            cprintf("memsz smaller than filesz!\n");
+            debug("memsz smaller than filesz");
             goto bad;
         }
         if (ph.p_vaddr + ph.p_memsz < ph.p_vaddr) {
-            cprintf("vaddr + memsz overflow!\n");
+            debug("vaddr + memsz overflow");
             goto bad;
         }
 
@@ -87,7 +86,7 @@ execve(const char *path, char *const argv[], char *const envp[])
             first = 0;
             sz = base = ph.p_vaddr;
             if (base % PGSIZE != 0) {
-                cprintf("first section should be page aligned!\n");
+                debug("first section should be page aligned!");
                 goto bad;
             }
         }
@@ -112,6 +111,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         }
         // Initialize BSS.
         memset(ph.p_vaddr + ph.p_filesz, 0, ph.p_memsz - ph.p_filesz);
+        trace("init bss [0x%p, 0x%p)", ph.p_vaddr + ph.p_filesz, ph.p_vaddr + ph.p_memsz);
     }
 
     iunlockput(ip);
@@ -127,7 +127,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         for (; in_user(argv+argc, sizeof(*argv)) && argv[argc]; argc++) {
             if ((len = fetchstr(argv[argc], &s)) < 0)
                 goto bad;
-            // cprintf("argv[%d] = '%s', len: %d\n", argc, argv[argc], len);
+            trace("argv[%d] = '%s', len: %d", argc, argv[argc], len);
             sp -= len + 1;
             if (copyout(pgdir, sp, argv[argc], len+1) < 0) // include '\0';
                 goto bad;
@@ -137,7 +137,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         for (; in_user(envp+envc, sizeof(*envp)) && envp[envc]; envc++) {
             if ((len = fetchstr(envp[envc], &s)) < 0)
                 goto bad;
-            // cprintf("envp[%d] = '%s', len: %d\n", envc, envp[envc], len);
+            trace("envp[%d] = '%s', len: %d", envc, envp[envc], len);
             sp -= len + 1;
             if (copyout(pgdir, sp, envp[envc], len+1) < 0) // include '\0';
                 goto bad;
@@ -155,8 +155,8 @@ execve(const char *path, char *const argv[], char *const envp[])
     uint64_t *newargv = newsp + 8;
     uint64_t *newenvp = (void *)newargv + 8*(argc+1);
     uint64_t *newauxv = (void *)newenvp + 8*(envc+1);
+    trace("argv: 0x%p, envp: 0x%p, auxv: 0x%p", newargv, newenvp, newauxv);
     memmove(newauxv, auxv, sizeof(auxv));
-    // cprintf("auxv size %d, newauxv: %p\n", sizeof(auxv), newauxv);
 
     for (int i = envc-1; i >= 0; i--) {
         newenvp[i] = sp;
@@ -170,9 +170,10 @@ execve(const char *path, char *const argv[], char *const envp[])
     *(size_t *)(newsp) = argc;
 
     sp = newsp;
+    trace("newsp: 0x%p", sp);
 
     // Allocate user stack.
-    stksz = ROUNDUP(USERTOP - (size_t)sp, 2*PGSIZE);
+    stksz = ROUNDUP(USERTOP - (size_t)sp, 10*PGSIZE);
     if (copyout(pgdir, USERTOP - stksz, 0, stksz - (USERTOP - (size_t)sp)) < 0)
         goto bad;
 
@@ -185,11 +186,12 @@ execve(const char *path, char *const argv[], char *const envp[])
     curproc->sz = sz;
     curproc->stksz = stksz;
 
+    memset(curproc->tf, 0, sizeof(*curproc->tf));
+
     curproc->tf->elr = elf.e_entry;
     curproc->tf->sp = sp;
 
-    // cprintf("exec: curproc->tf 0x%p\n", tf);
-    // cprintf("exec: entry 0x%p\n", elf.e_entry);
+    trace("entry 0x%p", elf.e_entry);
     
     uvm_switch(oldpgdir);
 
@@ -201,13 +203,14 @@ execve(const char *path, char *const argv[], char *const envp[])
 
     uvm_switch(curproc->pgdir);
     vm_free(oldpgdir);
+    trace("finish %s", curproc->name);
     return 0;
 
 bad:
     if (pgdir) vm_free(pgdir);
     if (ip) iunlockput(ip), end_op();
     thisproc()->pgdir = oldpgdir;
-    cprintf("exec: bad\n");
+    debug("bad");
     return -1;
 }
 
