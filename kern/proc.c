@@ -297,6 +297,9 @@ fork()
     struct proc *cp = thisproc();
     struct proc *np = proc_alloc();
 
+    if (np == 0)
+        return -1;
+
     if ((np->pgdir = uvm_copy(cp->pgdir)) == 0) {
         kfree(np->kstack);
 
