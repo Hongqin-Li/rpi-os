@@ -69,6 +69,17 @@ mm_init()
 {
     int phystop = mbox_get_arm_memory();
     free_range(ROUNDUP((void *)end, PGSIZE), P2V(phystop));
+#ifdef DEBUG
+    for (int i = 0; i < MAX_PAGES; i++) {
+        void *p = freelist_alloc(&freelist);
+        memset(p, 0xAC, PGSIZE);
+        alloc_ptr[i] = p;
+    }
+    for (int i = 0; i < MAX_PAGES; i++) {
+        freelist_free(&freelist, alloc_ptr[i]);
+        alloc_ptr[i] = 0;
+    }
+#endif
 }
 
 /*
@@ -81,9 +92,12 @@ kalloc()
 {
     acquire(&memlock);
     void *p = freelist_alloc(&freelist);
-    if (p) {
-        memset(p, 0xAC, PGSIZE);
 #ifdef DEBUG
+    if (p) {
+        for (int i = 8; i < PGSIZE; i++) {
+            assert(*(char *)(p + i) == 0xAC);
+        }
+
         int i;
         for (i = 0; i < MAX_PAGES; i++) {
             if (!alloc_ptr[i]) {
@@ -94,23 +108,20 @@ kalloc()
         if (i == MAX_PAGES) {
             panic("mm: no more space for debug. ");
         }
-#endif
     }
-    else cprintf("- kalloc null\n");
+    else warn("null");
+#endif
     release(&memlock);
     return p;
 }
 
-/*
- * Free the physical memory pointed at by v.
- */
+/* Free the physical memory pointed at by v. */
 void
 kfree(void *va)
 {
     acquire(&memlock);
-    memset(va, 0xAF, PGSIZE); // For debug.
-    freelist_free(&freelist, va);
 #ifdef DEBUG
+    memset(va, 0xAC, PGSIZE); // For debug.
     int i;
     for (i = 0; i < MAX_PAGES; i++) {
         if (alloc_ptr[i] == va) {
@@ -122,6 +133,7 @@ kfree(void *va)
         panic("kfree: not allocated. ");
     }
 #endif
+    freelist_free(&freelist, va);
     release(&memlock);
 }
 
