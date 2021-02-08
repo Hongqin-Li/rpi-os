@@ -37,20 +37,23 @@ execve(const char *path, char *const argv[], char *const envp[])
     ip = namei(path);
     if (ip == 0) {
         end_op();
+        debug("namei bad");
         goto bad;
     }
     ilock(ip);
 
     Elf64_Ehdr elf;
-    if (readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
+    if (readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf)) {
+        debug("readelf bad");
         goto bad;
+    }
     if (!(elf.e_ident[EI_MAG0] == ELFMAG0 && elf.e_ident[EI_MAG1] == ELFMAG1 &&
         elf.e_ident[EI_MAG2] == ELFMAG2 && elf.e_ident[EI_MAG3] == ELFMAG3)) {
-        debug("exec: elf header magic invalid");
+        debug("elf header magic invalid");
         goto bad;
     }
     if (elf.e_ident[EI_CLASS] != ELFCLASS64) {
-        debug("exec: 64 bit program not supported");
+        debug("64 bit program not supported");
         goto bad;
     }
     // cprintf("exec: check elf header finish\n");
@@ -65,8 +68,10 @@ execve(const char *path, char *const argv[], char *const envp[])
     size_t sz = 0, base = 0, stksz = 0;
     int first = 1;
     for (i = 0, off = elf.e_phoff; i < elf.e_phnum; i++, off += sizeof(ph)) {
-        if (readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
+        if (readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph)) {
+            debug("readi bad");
             goto bad;
+        }
 
         if (ph.p_type != PT_LOAD) {
             // debug("unsupported type 0x%x, skipped\n", ph.p_type);
@@ -93,8 +98,10 @@ execve(const char *path, char *const argv[], char *const envp[])
 
         // cprintf("phdr: vaddr 0x%p, memsz 0x%p, filesz 0x%p\n", ph.p_vaddr, ph.p_memsz, ph.p_filesz);
 
-        if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz)) == 0)
+        if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz)) == 0) {
+            debug("uvm_alloc bad");
             goto bad;
+        }
 
         uvm_switch(pgdir);
 
@@ -107,6 +114,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         // cprintf("checked [0x%p, 0x%p)\n", ph.p_vaddr, ph.p_vaddr + ph.p_memsz);
 
         if (readi(ip, ph.p_vaddr, ph.p_offset, ph.p_filesz) != ph.p_filesz) {
+            debug("read section bad");
             goto bad;
         }
         // Initialize BSS.
@@ -125,8 +133,10 @@ execve(const char *path, char *const argv[], char *const envp[])
     size_t len;
     if (argv) {
         for (; in_user(argv+argc, sizeof(*argv)) && argv[argc]; argc++) {
-            if ((len = fetchstr(argv[argc], &s)) < 0)
+            if ((len = fetchstr(argv[argc], &s)) < 0) {
+                debug("argv fetchstr bad");
                 goto bad;
+            }
             trace("argv[%d] = '%s', len: %d", argc, argv[argc], len);
             sp -= len + 1;
             if (copyout(pgdir, sp, argv[argc], len+1) < 0) // include '\0';
@@ -135,8 +145,10 @@ execve(const char *path, char *const argv[], char *const envp[])
     }
     if (envp) {
         for (; in_user(envp+envc, sizeof(*envp)) && envp[envc]; envc++) {
-            if ((len = fetchstr(envp[envc], &s)) < 0)
+            if ((len = fetchstr(envp[envc], &s)) < 0) {
+                debug("envp fetchstr bad");
                 goto bad;
+            }
             trace("envp[%d] = '%s', len: %d", envc, envp[envc], len);
             sp -= len + 1;
             if (copyout(pgdir, sp, envp[envc], len+1) < 0) // include '\0';
@@ -186,7 +198,7 @@ execve(const char *path, char *const argv[], char *const envp[])
     curproc->sz = sz;
     curproc->stksz = stksz;
 
-    memset(curproc->tf, 0, sizeof(*curproc->tf));
+    // memset(curproc->tf, 0, sizeof(*curproc->tf));
 
     curproc->tf->elr = elf.e_entry;
     curproc->tf->sp = sp;
@@ -197,7 +209,7 @@ execve(const char *path, char *const argv[], char *const envp[])
 
     // Save program name for debugging.
     char *last;
-    for (last = path, *s = path; *s; s++)
+    for (last = path, s = path; *s; s++)
         if (*s == '/') last = s + 1;
     safestrcpy(curproc->name, last, sizeof(curproc->name));
 

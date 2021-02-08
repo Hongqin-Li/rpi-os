@@ -46,6 +46,7 @@ debug_reg()
     asm volatile("mrs %[x], far_el1": [x]"=r"(far));
     cprintf("ELR_EL1: 0x%llx, EC: 0x%llx, ISS: 0x%llx. \n", elr, esr >> 26, esr & 0x1FFFFFF);
     cprintf("FAR_EL1: 0x%llx\n", far);
+
 }
 
 #endif

@@ -60,7 +60,6 @@ proc_alloc()
     for (p = ptable.proc; p < ptable.proc + NPROC; p++) {
         if (p->state == UNUSED) {
             memset(p, 0, sizeof(*p));
-            p->pid = ++pid;
             found = 1;
             break;
         }
@@ -71,6 +70,7 @@ proc_alloc()
         return 0;
     }
 
+    p->pid = ++pid;
     p->state = EMBRYO;
     release(&ptable.lock);
 
@@ -131,6 +131,7 @@ idle_init()
 void
 user_init()
 {
+    info("cpu %d", cpuid());
     struct proc *p = proc_alloc();
     if (p == 0)
         panic("user init: failed\n");
@@ -207,7 +208,8 @@ forkret()
     } else {
         release(&ptable.lock);
     }
-    trace("proc '%s'", thisproc()->name);
+    trace("proc '%s'(%d)", thisproc()->name, thisproc()->pid);
+    release_kern();
 }
 
 /* Give up CPU. */
@@ -297,8 +299,10 @@ fork()
     struct proc *cp = thisproc();
     struct proc *np = proc_alloc();
 
-    if (np == 0)
+    if (np == 0) {
+        debug("proc_alloc returns null");
         return -1;
+    }
 
     if ((np->pgdir = uvm_copy(cp->pgdir)) == 0) {
         kfree(np->kstack);
@@ -307,6 +311,7 @@ fork()
         np->state = UNUSED;
         release(&ptable.lock);
 
+        debug("uvm_copy returns null");
         return -1;
     }
 
@@ -333,6 +338,8 @@ fork()
     list_push_back(&ptable.sched_que, &np->link);
     np->state = RUNNABLE;
     release(&ptable.lock);
+
+    trace("'%s'(%d) fork '%s'(%d)", cp->name, cp->pid, np->name, np->pid);
 
     return pid;
 }
@@ -476,7 +483,10 @@ procdump()
     acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->state == UNUSED) continue;
-        cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
+        if (p->parent)
+            cprintf("%d %s %s fa: %d\n", p->pid, states[p->state], p->name, p->parent->pid);
+        else 
+            cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
     }
     release(&ptable.lock);
 }

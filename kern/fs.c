@@ -267,7 +267,7 @@ iget(uint32_t dev, uint32_t inum)
             release(&icache.lock);
             return ip;
         }
-        if(empty == 0 && ip->ref == 0)    // Remember empty slot.
+        if (empty == 0 && ip->ref == 0)    // Remember empty slot.
             empty = ip;
     }
 
@@ -573,11 +573,11 @@ dirlookup(struct inode *dp, char *name, size_t *poff)
         panic("dirlookup not DIR");
 
     for (off = 0; off < dp->size; off += sizeof(de)) {
-        if(readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
+        if (readi(dp, (char*)&de, off, sizeof(de)) != sizeof(de))
             panic("dirlookup read");
-        if(de.inum == 0)
+        if (de.inum == 0)
             continue;
-        if(namecmp(name, de.name) == 0){
+        if (namecmp(name, de.name) == 0) {
             // entry matches path element
             if (poff)
                 *poff = off;

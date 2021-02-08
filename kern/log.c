@@ -72,9 +72,7 @@ initlog(int dev)
 static void
 install_trans()
 {
-    int tail;
-
-    for (tail = 0; tail < log.lh.n; tail++) {
+    for (int tail = 0; tail < log.lh.n; tail++) {
         struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
         struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
         memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
@@ -134,9 +132,9 @@ begin_op()
     while (1) {
         if (log.committing) {
             sleep(&log, &log.lock);
-        } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE){
-        // this op might exhaust log space; wait for commit.
-        sleep(&log, &log.lock);
+        } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE) {
+            // This op might exhaust log space; wait for commit.
+            sleep(&log, &log.lock);
         } else {
             log.outstanding += 1;
             release(&log.lock);
@@ -184,9 +182,7 @@ end_op()
 static void
 write_log()
 {
-    int tail;
-
-    for (tail = 0; tail < log.lh.n; tail++) {
+    for (int tail = 0; tail < log.lh.n; tail++) {
         struct buf *to = bread(log.dev, log.start+tail+1); // log block
         struct buf *from = bread(log.dev, log.lh.block[tail]); // cache block
         memmove(to->data, from->data, BSIZE);
@@ -203,7 +199,9 @@ commit()
         write_log();     // Write modified blocks from cache to log
         write_head();    // Write header to disk -- the real commit
         install_trans(); // Now install writes to home locations
+        disb();
         log.lh.n = 0;
+        disb();
         write_head();    // Erase the transaction from the log
     }
 }

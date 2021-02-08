@@ -71,4 +71,9 @@ int             filestat(struct file *f, struct stat *st);
 ssize_t         fileread(struct file *f, char *addr, ssize_t n);
 ssize_t         filewrite(struct file *f, char *addr, ssize_t n);
 
+int             pipealloc(struct file **f0, struct file **f1);
+void            pipeclose(struct pipe *p, int writable);
+ssize_t         pipewrite(struct pipe *p, char *addr, ssize_t n);
+ssize_t         piperead(struct pipe *p, char *addr, ssize_t n);
+
 #endif

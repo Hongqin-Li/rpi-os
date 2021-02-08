@@ -12,7 +12,7 @@ CFLAGS := -Wall -g -O0 \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
-		  -DDEBUG -DLOG_DEBUG \
+		  -DDEBUG -DKERNLOCK -DLOG_DEBUG \
 		  $(CORTEX_A53_FLAGS)
 
 CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include -Ilibc/arch/generic

@@ -147,6 +147,8 @@ interrupt(struct trapframe *tf)
 void
 trap(struct trapframe *tf)
 {
+    acquire_kern();
+
 #ifdef DEBUG
     uint64_t sp, sp0;
     uint64_t elr, esr, far;
@@ -196,6 +198,7 @@ trap(struct trapframe *tf)
         trace("%s(%d) trap finish on cpu %d", thisproc()->name, thisproc()->pid, cpuid());
 #endif
     disb();
+    release_kern();
 }
 
 void

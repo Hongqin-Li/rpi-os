@@ -2,8 +2,10 @@
 
 extern void test_fork();
 
-int main() {
+int
+main()
+{
     test_fork();
 
-   return 0;
+    return 0;
 }

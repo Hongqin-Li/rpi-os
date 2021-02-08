@@ -16,5 +16,6 @@ int         uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, 
 int         uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz);
 
 void        vm_stat(uint64_t *);
+void        vm_test();
 
 #endif

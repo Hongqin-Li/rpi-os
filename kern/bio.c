@@ -36,12 +36,12 @@ struct {
 } bcache;
 
 void
-binit(void)
+binit()
 {
     struct buf *b;
 
     // initlock(&bcache.lock, "bcache");
-    cprintf("binit\n");
+    info("binit");
 
     // Create linked list of buffers
     list_init(&bcache.head.clink);
@@ -74,7 +74,7 @@ bget(uint32_t dev, uint32_t blockno)
         }
     }
 
-    // cprintf("bget - not cached\n");
+    debug("not cached: bno %d", blockno);
 
     // Not cached; recycle an unused buffer.
     // Even if refcnt==0, B_DIRTY indicates a buffer is in use
@@ -133,7 +133,6 @@ brelse(struct buf *b)
         list_drop(&b->clink);
         list_push_back(&bcache.head.clink, &b->clink);
     }
-  
     release(&bcache.lock);
 }
 

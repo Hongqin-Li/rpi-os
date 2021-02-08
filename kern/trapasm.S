@@ -72,5 +72,6 @@ trapret:
 
     ldr     q0, [sp], #16
 
+    tlbi    vmalle1is
     dsb     sy; isb
     eret

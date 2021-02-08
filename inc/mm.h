@@ -7,5 +7,6 @@ void mm_init();
 void *kalloc();
 void kfree(void *v);
 void mm_test();
+void mm_dump();
 
 #endif

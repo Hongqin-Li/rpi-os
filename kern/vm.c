@@ -119,14 +119,18 @@ uvm_copy(uint64_t *pgdir)
                     uint64_t pa = PTE_ADDR(pgt3[i3]);
                     uint64_t va = (uint64_t)i << (12 + 9*3) | (uint64_t)i1 << (12 + 9*2)| (uint64_t)i2 << (12 + 9) | i3 << 12;
 
+
                     void *np = kalloc();
                     if (np == 0) {
                         vm_free(newpgdir);
                         warn("kalloc failed");
                         return 0;
                     }
-                    memmove(np, P2V(pa), PGSIZE);
-                    if (uvm_map(newpgdir, va, PGSIZE, V2P(np)) < 0) {
+                    // FIXME: current page table should be pgdir
+                    // memmove(np, P2V(pa), PGSIZE);
+                    memmove(np, va, PGSIZE);
+
+                    if (uvm_map(newpgdir, (void *)va, PGSIZE, V2P((uint64_t)np)) < 0) {
                         vm_free(newpgdir);
                         kfree(np);
                         warn("uvm_map failed");
@@ -224,7 +228,7 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
             uvm_dealloc(pgdir, base, newsz, oldsz);
             return 0;
         }
-        if (uvm_map(pgdir, a, PGSIZE, V2P(p)) < 0) {
+        if (uvm_map(pgdir, (void *)a, PGSIZE, V2P((uint64_t)p)) < 0) {
             warn("uvm_map failed");
             kfree(p);
             uvm_dealloc(pgdir, base, newsz, oldsz);
@@ -317,7 +321,7 @@ copyout(uint64_t *pgdir, void *va, void *p, size_t len)
     void *page;
     size_t n, pgoff;
     uint64_t *pte;
-    if (va + len > USERTOP)
+    if ((size_t)va + len > USERTOP)
         return -1;
     for (; len; len -= n, va += n) {
         pgoff = va - ROUNDDOWN(va, PGSIZE);
@@ -393,19 +397,19 @@ vm_test()
 {
 #ifdef DEBUG
     void *pgdir = vm_init();
-    void *p = kalloc(), *p2 = kalloc(), *va = 0x1000;
+    void *p = kalloc(), *p2 = kalloc(), *va = (void *)0x1000;
     memset(p, 0xAB, PGSIZE);
     memset(p2, 0xAC, PGSIZE);
-    uvm_map(pgdir, va, PGSIZE, V2P(p));
+    uvm_map(pgdir, va, PGSIZE, V2P((uint64_t)p));
     uvm_switch(pgdir);
-    for (char *i = va; i < va + PGSIZE; i++) {
+    for (char *i = va; (void *)i < va + PGSIZE; i++) {
         assert(*i == 0xAB);
     }
-    uvm_dealloc(pgdir, va, va + PGSIZE, va);
+    uvm_dealloc(pgdir, (size_t)va, (size_t)va + PGSIZE, (size_t)va);
 
-    uvm_map(pgdir, va, PGSIZE, V2P(p2));
+    uvm_map(pgdir, va, PGSIZE, V2P((uint64_t)p2));
     uvm_switch(pgdir);
-    for (char *i = va; i < va + PGSIZE; i++) {
+    for (char *i = va; (void *)i < va + PGSIZE; i++) {
         assert(*i == 0xAC);
     }
     vm_free(pgdir);

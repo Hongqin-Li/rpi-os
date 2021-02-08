@@ -27,38 +27,38 @@
 static void sd_start(struct buf *b);
 static void sd_delayus(uint32_t cnt);
 static int sdInit();
-static void sdParseCID();
-static void sdParseCSD();
-static int sdSendCommand(int index);
-static int sdSendCommandA(int index, int arg);
-static int sdWaitForInterrupt(unsigned int mask);
-static int sdWaitForData();
-int fls_long (unsigned long x);
+static void sd_parse_cid();
+static void sd_parse_csd();
+static int sd_send(int index);
+static int sd_senda(int index, int arg);
+static int sd_wait_intr(uint32_t mask);
+static int sd_wait_data();
+int fls_long (uint64_t x);
 
 // EMMC registers
-#define EMMC_ARG2           ((volatile unsigned int*)(MMIO_BASE+0x00300000))
-#define EMMC_BLKSIZECNT     ((volatile unsigned int*)(MMIO_BASE+0x00300004))
-#define EMMC_ARG1           ((volatile unsigned int*)(MMIO_BASE+0x00300008))
-#define EMMC_CMDTM          ((volatile unsigned int*)(MMIO_BASE+0x0030000C))
-#define EMMC_RESP0          ((volatile unsigned int*)(MMIO_BASE+0x00300010))
-#define EMMC_RESP1          ((volatile unsigned int*)(MMIO_BASE+0x00300014))
-#define EMMC_RESP2          ((volatile unsigned int*)(MMIO_BASE+0x00300018))
-#define EMMC_RESP3          ((volatile unsigned int*)(MMIO_BASE+0x0030001C))
-#define EMMC_DATA           ((volatile unsigned int*)(MMIO_BASE+0x00300020))
-#define EMMC_STATUS         ((volatile unsigned int*)(MMIO_BASE+0x00300024))
-#define EMMC_CONTROL0       ((volatile unsigned int*)(MMIO_BASE+0x00300028))
-#define EMMC_CONTROL1       ((volatile unsigned int*)(MMIO_BASE+0x0030002C))
-#define EMMC_INTERRUPT      ((volatile unsigned int*)(MMIO_BASE+0x00300030))
-#define EMMC_IRPT_MASK      ((volatile unsigned int*)(MMIO_BASE+0x00300034))
-#define EMMC_IRPT_EN        ((volatile unsigned int*)(MMIO_BASE+0x00300038))
-#define EMMC_CONTROL2       ((volatile unsigned int*)(MMIO_BASE+0x0030003C))
-// #define EMMC_BOOT_TIMEOUT   ((volatile unsigned int*)(MMIO_BASE+0x00300070))
-// #define EMMC_EXRDFIFO_EN    ((volatile unsigned int*)(MMIO_BASE+0x00300084))
-// #define EMMC_SPI_INT_SPT    ((volatile unsigned int*)(MMIO_BASE+0x003000f0))
-#define EMMC_SLOTISR_VER    ((volatile unsigned int*)(MMIO_BASE+0x003000fc))
+#define EMMC_ARG2           ((volatile uint32_t*)(MMIO_BASE+0x00300000))
+#define EMMC_BLKSIZECNT     ((volatile uint32_t*)(MMIO_BASE+0x00300004))
+#define EMMC_ARG1           ((volatile uint32_t*)(MMIO_BASE+0x00300008))
+#define EMMC_CMDTM          ((volatile uint32_t*)(MMIO_BASE+0x0030000C))
+#define EMMC_RESP0          ((volatile uint32_t*)(MMIO_BASE+0x00300010))
+#define EMMC_RESP1          ((volatile uint32_t*)(MMIO_BASE+0x00300014))
+#define EMMC_RESP2          ((volatile uint32_t*)(MMIO_BASE+0x00300018))
+#define EMMC_RESP3          ((volatile uint32_t*)(MMIO_BASE+0x0030001C))
+#define EMMC_DATA           ((volatile uint32_t*)(MMIO_BASE+0x00300020))
+#define EMMC_STATUS         ((volatile uint32_t*)(MMIO_BASE+0x00300024))
+#define EMMC_CONTROL0       ((volatile uint32_t*)(MMIO_BASE+0x00300028))
+#define EMMC_CONTROL1       ((volatile uint32_t*)(MMIO_BASE+0x0030002C))
+#define EMMC_INTERRUPT      ((volatile uint32_t*)(MMIO_BASE+0x00300030))
+#define EMMC_IRPT_MASK      ((volatile uint32_t*)(MMIO_BASE+0x00300034))
+#define EMMC_IRPT_EN        ((volatile uint32_t*)(MMIO_BASE+0x00300038))
+#define EMMC_CONTROL2       ((volatile uint32_t*)(MMIO_BASE+0x0030003C))
+// #define EMMC_BOOT_TIMEOUT   ((volatile uint32_t*)(MMIO_BASE+0x00300070))
+// #define EMMC_EXRDFIFO_EN    ((volatile uint32_t*)(MMIO_BASE+0x00300084))
+// #define EMMC_SPI_INT_SPT    ((volatile uint32_t*)(MMIO_BASE+0x003000f0))
+#define EMMC_SLOTISR_VER    ((volatile uint32_t*)(MMIO_BASE+0x003000fc))
 
 // This register is not available on the Pi.
-// #define EMMC_HOST_CAPS      ((volatile unsigned int*)(MMIO_BASE+0x00300040))
+// #define EMMC_HOST_CAPS      ((volatile uint32_t*)(MMIO_BASE+0x00300040))
 
 // EMMC command flags
 #define CMD_TYPE_NORMAL  0x00000000
@@ -227,18 +227,17 @@ int fls_long (unsigned long x);
 #define RCA_NO     1
 #define RCA_YES    2
 
-typedef struct EMMCCommand
-{
-  const char* name;
-  unsigned int code;
-  unsigned char resp;
-  unsigned char rca;
-  int delay;
-} EMMCCommand;
+struct emmccmd {
+    const char* name;
+    uint32_t code;
+    uint8_t resp;
+    uint8_t rca;
+    int delay;
+};
 
 // Command table.
 // TODO: TM_DAT_DIR_CH required in any of these?
-static EMMCCommand sdCommandTable[] =
+static struct emmccmd cmdtable[] =
   {
     { "GO_IDLE_STATE", 0x00000000|CMD_RSPNS_NO                             , RESP_NO , RCA_NO  ,0},
     { "ALL_SEND_CID" , 0x02000000|CMD_RSPNS_136                            , RESP_R2I, RCA_NO  ,0},
@@ -447,10 +446,9 @@ static const char* STATUS_NAME[] =
 #define SD_TYPE_2_SC 3
 #define SD_TYPE_2_HC 4
 
-static const char* SD_TYPE_NAME[] =
-  {
+static const char* SD_TYPE_NAME[] = {
     "Unknown", "MMC", "Type 1", "Type 2 SC", "Type 2 HC"
-  };
+};
 
 // SD card functions supported values.
 #define SD_SUPP_SET_BLOCK_COUNT 0x80000000
@@ -460,35 +458,34 @@ static const char* SD_TYPE_NAME[] =
 
 
 // SD card descriptor
-typedef struct SDDescriptor {
-  // Static information about the SD Card.
-  unsigned long long capacity;
-  unsigned int cid[4];
-  unsigned int csd[4];
-  unsigned int scr[2];
-  unsigned int ocr;
-  unsigned int support;
-  unsigned int fileFormat;
-  unsigned char type;
-  unsigned char uhsi;
-  unsigned char init;
-  unsigned char absent;
+struct sddesc {
+    // Static information about the SD Card.
+    uint64_t capacity;
+    uint32_t cid[4];
+    uint32_t csd[4];
+    uint32_t scr[2];
+    uint32_t ocr;
+    uint32_t support;
+    uint32_t filefmt;
+    uint8_t type;
+    uint8_t uhsi;
+    uint8_t init;
+    uint8_t absent;
 
-  // Dynamic information.
-  unsigned int rca;
-  unsigned int cardState;
-  unsigned int status;
+    // Dynamic information.
+    uint32_t rca;
+    uint32_t card_state;
+    uint32_t status;
 
-  EMMCCommand* lastCmd;
-  unsigned int lastArg;
-} SDDescriptor;
+    struct emmccmd* lastcmd;
+    uint32_t lastarg;
+};
 
 // The SD card descriptor.
-static SDDescriptor sdCard;
+static struct sddesc sdcard;
 
-static int sdHostVer = 0;
-static int sdDebug = 0;
-static int sdBaseClock;
+static int sd_host_ver = 0;
+static int sd_base_clk;
 
 // necessary function
 #define MBX_PROP_CLOCK_EMMC 1
@@ -515,17 +512,17 @@ sd_init()
 {
     list_init(&sdque);
     sdInit();
-    assert(sdCard.init);
+    assert(sdcard.init);
 
     struct buf b;
     b.blockno = b.flags = 0;
     sd_start(&b);
-    sdWaitForInterrupt(INT_READ_RDY);
+    sd_wait_intr(INT_READ_RDY);
     asserts((((int64_t)b.data) & 0x03) == 0, "Only support word-aligned buffers. ");
     uint32_t *intbuf = (uint32_t *)b.data;
     for (int done = 0; done < 128; )
         intbuf[done++] = *EMMC_DATA;
-    sdWaitForInterrupt(INT_DATA_DONE);
+    sd_wait_intr(INT_DATA_DONE);
 
     assert(b.data[510] == 0x55 && b.data[511] == 0xAA);
     first_bno = *(uint32_t *)(b.data + 0x1CE + 0x8);
@@ -551,7 +548,7 @@ sd_start(struct buf *b)
     int write = b->flags & B_DIRTY;
     int bno = b->blockno + first_bno;
     // cprintf("- sd start: cpu %d, flag 0x%x, bno %d, write=%d\n", cpuid(), b->flags, bno, write);
-    bno = sdCard.type == SD_TYPE_2_HC ? bno : bno << 9;
+    bno = sdcard.type == SD_TYPE_2_HC ? bno : bno << 9;
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
@@ -568,9 +565,9 @@ sd_start(struct buf *b)
     // are transferred and stops the transfer once BLKCNT reaches 0.
     // TODO: TM_AUTO_CMD12 - is this needed?  What effect does it have?
     *EMMC_BLKSIZECNT = 512;
-    if ((resp = sdSendCommandA(cmd, bno))) {
+    if ((resp = sd_senda(cmd, bno))) {
         panic("* EMMC send command error.");
-        // return sdDebugResponse(resp);
+        // return sd_debug_resp(resp);
     }
 
     int done = 0;
@@ -579,9 +576,9 @@ sd_start(struct buf *b)
 
     if (write) {
         // Wait for ready interrupt for the next block.
-        if ((resp = sdWaitForInterrupt(INT_WRITE_RDY))) {
+        if ((resp = sd_wait_intr(INT_WRITE_RDY))) {
             panic("* EMMC ERROR: Timeout waiting for ready to write\n");
-            // return sdDebugResponse(resp);
+            // return sd_debug_resp(resp);
         }
         asserts(!*EMMC_INTERRUPT, "%d ", *EMMC_INTERRUPT);
         while (done < 128) *EMMC_DATA = intbuf[done++];
@@ -614,7 +611,7 @@ sd_intr()
                 uint32_t *intbuf = (uint32_t *)b->data;
                 for (int done = 0; done < 128; )
                     intbuf[done++] = *EMMC_DATA;
-                sdWaitForInterrupt(INT_DATA_DONE);
+                sd_wait_intr(INT_DATA_DONE);
             }
 
             b->flags |= B_VALID;
@@ -723,9 +720,9 @@ sd_test()
 }
 
 static int
-sdDebugResponse(int resp)
+sd_debug_resp(int resp)
 {
-    cprintf("- EMMC: Command %s resp %x: %x %x %x %x\n", sdCard.lastCmd->name, resp,
+    cprintf("- EMMC: Command %s resp %x: %x %x %x %x\n", sdcard.lastcmd->name, resp,
             *EMMC_RESP3, *EMMC_RESP2, *EMMC_RESP1, *EMMC_RESP0);
     cprintf("- EMMC: Status: %x, control1: %x, interrupt: %x\n", *EMMC_STATUS,
             *EMMC_CONTROL1, *EMMC_INTERRUPT);
@@ -734,7 +731,7 @@ sdDebugResponse(int resp)
 
 /* Wait for interrupt. */
 static int
-sdWaitForInterrupt(unsigned int mask)
+sd_wait_intr(uint32_t mask)
 {
     // Wait up to 1 second for the interrupt.
     int count = 1000000;
@@ -789,7 +786,7 @@ sdWaitForCommand()
 
 /* Wait for any data that may be in progress. */
 static int
-sdWaitForData()
+sd_wait_data()
 {
     // Check for status indicating data transfer in progress.
     // Spec indicates a maximum wait of 500ms.
@@ -812,17 +809,13 @@ sdWaitForData()
 
 /* Send command and handle response. */
 static int
-sdSendCommandP(EMMCCommand* cmd, int arg)
+sd_sendp(struct emmccmd* cmd, int arg)
 {
     // Check for command in progress
     if (sdWaitForCommand() != 0) return SD_BUSY;
 
-    if (sdDebug)
-        cprintf("- EMMC: Sending command %s code %x arg %x\n",
-                cmd->name, cmd->code, arg);
-
-    sdCard.lastCmd = cmd;
-    sdCard.lastArg = arg;
+    sdcard.lastcmd = cmd;
+    sdcard.lastarg = arg;
 
     //  printf("EMMC: Sending command %08x:%s arg %d\n",cmd->code,cmd->name,arg);
 
@@ -841,7 +834,7 @@ sdSendCommandP(EMMCCommand* cmd, int arg)
     if (cmd->delay) sd_delayus(cmd->delay);
 
     // Wait until command complete interrupt.
-    if ((result = sdWaitForInterrupt(INT_CMD_DONE))) return result;
+    if ((result = sd_wait_intr(INT_CMD_DONE))) return result;
 
     // Get response from RESP0.
     int resp0 = *EMMC_RESP0;
@@ -857,18 +850,18 @@ sdSendCommandP(EMMCCommand* cmd, int arg)
     // Return value non-zero if any error flag in the status value.
     case RESP_R1:
     case RESP_R1b:
-        sdCard.status = resp0;
+        sdcard.status = resp0;
         // Store the card state.  Note that this is the state the card was in before the
         // command was accepted, not the new state.
-        sdCard.cardState = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
+        sdcard.card_state = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
         return resp0 & R1_ERRORS_MASK;
 
     // RESP0..3 contains 128 bit CID or CSD shifted down by 8 bits as no CRC
     // Note: highest bits are in RESP3.
     case RESP_R2I:
     case RESP_R2S:
-        sdCard.status = 0;
-        unsigned int* data = cmd->resp == RESP_R2I ? sdCard.cid : sdCard.csd;
+        sdcard.status = 0;
+        uint32_t* data = cmd->resp == RESP_R2I ? sdcard.cid : sdcard.csd;
         data[0] = *EMMC_RESP3;
         data[1] = *EMMC_RESP2;
         data[2] = *EMMC_RESP1;
@@ -878,26 +871,26 @@ sdSendCommandP(EMMCCommand* cmd, int arg)
     // RESP0 contains OCR register
     // TODO: What is the correct time to wait for this?
     case RESP_R3:
-        sdCard.status = 0;
-        sdCard.ocr = resp0;
+        sdcard.status = 0;
+        sdcard.ocr = resp0;
         return SD_OK;
 
     // RESP0 contains RCA and status bits 23,22,19,12:0
     case RESP_R6:
-        sdCard.rca = resp0 & R6_RCA_MASK;
-        sdCard.status = ((resp0 & 0x00001fff))          // 12:0 map directly to status 12:0
+        sdcard.rca = resp0 & R6_RCA_MASK;
+        sdcard.status = ((resp0 & 0x00001fff))          // 12:0 map directly to status 12:0
                       | ((resp0 & 0x00002000) << 6)     // 13 maps to status 19 ERROR
                       | ((resp0 & 0x00004000) << 8)     // 14 maps to status 22 ILLEGAL_COMMAND
                       | ((resp0 & 0x00008000) << 8);    // 15 maps to status 23 COM_CRC_ERROR
         // Store the card state.  Note that this is the state the card was in before the
         // command was accepted, not the new state.
-        sdCard.cardState = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
-        return sdCard.status & R1_ERRORS_MASK;
+        sdcard.card_state = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
+        return sdcard.status & R1_ERRORS_MASK;
 
     // RESP0 contains voltage acceptance and check pattern, which should match
     // the argument.
     case RESP_R7:
-        sdCard.status = 0;
+        sdcard.status = 0;
         return resp0 == arg ? SD_OK : SD_ERROR;
     default:
         panic("Unexpected response.");
@@ -908,19 +901,19 @@ sdSendCommandP(EMMCCommand* cmd, int arg)
 
 /* Send APP_CMD. */
 static int
-sdSendAppCommand()
+sd_send_appcmd()
 {
   int resp;
   // If no RCA, send the APP_CMD and don't look for a response.
-  if (!sdCard.rca)
-    sdSendCommandP(&sdCommandTable[IX_APP_CMD],0x00000000);
+  if (!sdcard.rca)
+    sd_sendp(&cmdtable[IX_APP_CMD],0x00000000);
 
   // If there is an RCA, include that in APP_CMD and check card accepted it.
   else
     {
-      if ((resp = sdSendCommandP(&sdCommandTable[IX_APP_CMD_RCA],sdCard.rca))) return sdDebugResponse(resp);
+      if ((resp = sd_sendp(&cmdtable[IX_APP_CMD_RCA],sdcard.rca))) return sd_debug_resp(resp);
       // Debug - check that status indicates APP_CMD accepted.
-      if (!(sdCard.status & ST_APP_CMD))
+      if (!(sdcard.status & ST_APP_CMD))
         return SD_ERROR;
     }
 
@@ -933,23 +926,23 @@ sdSendAppCommand()
  * APP_CMD sent automatically if required.
  */
 static int
-sdSendCommand(int index)
+sd_send(int index)
 {
   // Issue APP_CMD if needed.
   int resp;
-  if (index >= IX_APP_CMD_START && (resp = sdSendAppCommand()))
-    return sdDebugResponse(resp);
+  if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
+    return sd_debug_resp(resp);
 
   // Get the command and set RCA if required.
-  EMMCCommand* cmd = &sdCommandTable[index];
+  struct emmccmd* cmd = &cmdtable[index];
   int arg = 0;
   if (cmd->rca == RCA_YES)
-    arg = sdCard.rca;
+    arg = sdcard.rca;
 
-  if ((resp = sdSendCommandP(cmd,arg))) return resp;
+  if ((resp = sd_sendp(cmd,arg))) return resp;
 
   // Check that APP_CMD was correctly interpreted.
-  if (index >= IX_APP_CMD_START && sdCard.rca && !(sdCard.status & ST_APP_CMD))
+  if (index >= IX_APP_CMD_START && sdcard.rca && !(sdcard.status & ST_APP_CMD))
     return SD_ERROR_APP_CMD;
 
   return resp;
@@ -960,18 +953,18 @@ sdSendCommand(int index)
  * APP_CMD sent automatically if required.
  */
 static int
-sdSendCommandA(int index, int arg)
+sd_senda(int index, int arg)
 {
   // Issue APP_CMD if needed.
   int resp;
-  if (index >= IX_APP_CMD_START && (resp = sdSendAppCommand()))
-    return sdDebugResponse(resp);
+  if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
+    return sd_debug_resp(resp);
 
   // Get the command and pass the argument through.
-  if ((resp = sdSendCommandP(&sdCommandTable[index],arg))) return resp;
+  if ((resp = sd_sendp(&cmdtable[index],arg))) return resp;
 
   // Check that APP_CMD was correctly interpreted.
-  if (index >= IX_APP_CMD_START && sdCard.rca && !(sdCard.status & ST_APP_CMD))
+  if (index >= IX_APP_CMD_START && sdcard.rca && !(sdcard.status & ST_APP_CMD))
     return SD_ERROR_APP_CMD;
 
   return resp;
@@ -979,28 +972,28 @@ sdSendCommandA(int index, int arg)
 
 /* Read card's SCR. */
 static int
-sdReadSCR()
+sd_read_scr()
 {
     // SEND_SCR command is like a READ_SINGLE but for a block of 8 bytes.
     // Ensure that any data operation has completed before reading the block.
-    if (sdWaitForData()) return SD_TIMEOUT;
+    if (sd_wait_data()) return SD_TIMEOUT;
 
     // Set BLKSIZECNT to 1 block of 8 bytes, send SEND_SCR command
     *EMMC_BLKSIZECNT = (1 << 16) | 8;
     int resp;
-    if ((resp = sdSendCommand(IX_SEND_SCR))) return sdDebugResponse(resp);
+    if ((resp = sd_send(IX_SEND_SCR))) return sd_debug_resp(resp);
 
     // Wait for READ_RDY interrupt.
-    if ((resp = sdWaitForInterrupt(INT_READ_RDY))) {
+    if ((resp = sd_wait_intr(INT_READ_RDY))) {
         cprintf("* ERROR EMMC: Timeout waiting for ready to read\n");
-        return sdDebugResponse(resp);
+        return sd_debug_resp(resp);
     }
 
     // Allow maximum of 100ms for the read operation.
     int numRead = 0, count = 100000;
     while (numRead < 2) {
         if (*EMMC_STATUS & SR_READ_AVAILABLE)
-            sdCard.scr[numRead++] = *EMMC_DATA;
+            sdcard.scr[numRead++] = *EMMC_DATA;
         else {
             sd_delayus(1);
             if (--count == 0) break;
@@ -1016,16 +1009,16 @@ sdReadSCR()
     }
 
     // Parse out the SCR.  Only interested in values in scr[0], scr[1] is mfr specific.
-    if (sdCard.scr[0] & SCR_SD_BUS_WIDTH_4) sdCard.support |= SD_SUPP_BUS_WIDTH_4;
-    if (sdCard.scr[0] & SCR_SD_BUS_WIDTH_1) sdCard.support |= SD_SUPP_BUS_WIDTH_1;
-    if (sdCard.scr[0] & SCR_CMD_SUPP_SET_BLKCNT) sdCard.support |= SD_SUPP_SET_BLOCK_COUNT;
-    if (sdCard.scr[0] & SCR_CMD_SUPP_SPEED_CLASS) sdCard.support |= SD_SUPP_SPEED_CLASS;
+    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_4) sdcard.support |= SD_SUPP_BUS_WIDTH_4;
+    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_1) sdcard.support |= SD_SUPP_BUS_WIDTH_1;
+    if (sdcard.scr[0] & SCR_CMD_SUPP_SET_BLKCNT) sdcard.support |= SD_SUPP_SET_BLOCK_COUNT;
+    if (sdcard.scr[0] & SCR_CMD_SUPP_SPEED_CLASS) sdcard.support |= SD_SUPP_SPEED_CLASS;
 
     return SD_OK;
 }
 
 int
-fls_long(unsigned long x)
+fls_long(uint64_t x)
 {
     int r = 32;
     if (!x) return 0;
@@ -1052,10 +1045,10 @@ fls_long(unsigned long x)
     return r;
 }
 
-unsigned long
-roundup_pow_of_two(unsigned long x)
+uint64_t
+roundup_pow_of_two(uint64_t x)
 {
-  return 1UL << fls_long(x - 1);
+    return 1UL << fls_long(x - 1);
 }
 
 /*
@@ -1078,7 +1071,7 @@ sdGetClockDivider(uint32_t freq)
     // It's only 8 bits maximum on HOST_SPEC_V2
     if (shiftcount > 7) shiftcount = 7;
     // Version 3 take closest
-    if (sdHostVer > HOST_SPEC_V2) divisor = closest;
+    if (sd_host_ver > HOST_SPEC_V2) divisor = closest;
     // Version 2 take power 2
     else divisor = (1 << shiftcount);
    
@@ -1089,7 +1082,7 @@ sdGetClockDivider(uint32_t freq)
 
     cprintf("- Divisor selected = %u, pow 2 shift count = %u\n", divisor, shiftcount);
     uint32_t hi = 0;
-    if (sdHostVer > HOST_SPEC_V2)
+    if (sd_host_ver > HOST_SPEC_V2)
         hi = (divisor & 0x300) >> 2;    // Only 10 bits on Hosts specs above 2
     uint32_t lo = (divisor & 0x0ff);    // Low part always valid
     uint32_t cdiv = (lo << 8) + hi;     // Join and roll to position
@@ -1098,7 +1091,7 @@ sdGetClockDivider(uint32_t freq)
 
 /* Set the SD clock to the given frequency. */
 static int
-sdSetClock(int freq)
+sd_set_clock(int freq)
 {
     // Wait for any pending inhibit bits
     int count = 100000;
@@ -1161,7 +1154,7 @@ sdResetCard(int resetType)
     sd_delayus(10);
 
     // Set clock to setup frequency.
-    if ((resp = sdSetClock(FREQ_SETUP))) return resp;
+    if ((resp = sd_set_clock(FREQ_SETUP))) return resp;
 
     // Enable interrupts for command completion values.
     // *EMMC_IRPT_EN   = INT_ALL_MASK;
@@ -1173,17 +1166,17 @@ sdResetCard(int resetType)
     // printf("EMMC: Status: %08x, control: %08x %08x %08x\n",*EMMC_STATUS,*EMMC_CONTROL0,*EMMC_CONTROL1,*EMMC_CONTROL2);
 
     // Reset card registers.
-    sdCard.rca = 0;
-    sdCard.ocr = 0;
-    sdCard.lastArg = 0;
-    sdCard.lastCmd = 0;
-    sdCard.status = 0;
-    sdCard.type = 0;
-    sdCard.uhsi = 0;
+    sdcard.rca = 0;
+    sdcard.ocr = 0;
+    sdcard.lastarg = 0;
+    sdcard.lastcmd = 0;
+    sdcard.status = 0;
+    sdcard.type = 0;
+    sdcard.uhsi = 0;
 
     // Send GO_IDLE_STATE
     cprintf("- Send IX_GO_IDLE_STATE command\n");
-    resp = sdSendCommand(IX_GO_IDLE_STATE);
+    resp = sd_send(IX_GO_IDLE_STATE);
 
     return resp;
 }
@@ -1200,27 +1193,27 @@ sdAppSendOpCond(int arg)
     // TODO: how to set ACMD41 timeout? Is that the wait?
     cprintf("- EMMC: Sending ACMD41 SEND_OP_COND status %x\n",*EMMC_STATUS);
     int resp, count;
-    if ((resp = sdSendCommandA(IX_APP_SEND_OP_COND, arg)) && resp != SD_TIMEOUT) {
+    if ((resp = sd_senda(IX_APP_SEND_OP_COND, arg)) && resp != SD_TIMEOUT) {
         cprintf("* EMMC: ACMD41 returned non-timeout error %d\n", resp);
         return resp;
     }
     count = 6;
-    while (!(sdCard.ocr & R3_COMPLETE) && count--) {
+    while (!(sdcard.ocr & R3_COMPLETE) && count--) {
         cprintf("- EMMC: Retrying ACMD SEND_OP_COND status %x\n",*EMMC_STATUS);
         // delay(400);
         delay(50000);
-        if ((resp = sdSendCommandA(IX_APP_SEND_OP_COND,arg)) && resp != SD_TIMEOUT) {
+        if ((resp = sd_senda(IX_APP_SEND_OP_COND,arg)) && resp != SD_TIMEOUT) {
             cprintf("* EMMC: ACMD41 returned non-timeout error %d\n", resp);
             return resp;
         }
     }
 
     // Return timeout error if still not busy.
-    if (!(sdCard.ocr & R3_COMPLETE))
+    if (!(sdcard.ocr & R3_COMPLETE))
         return SD_TIMEOUT;
 
     // Check that at least one voltage value was returned.
-    if (!(sdCard.ocr & ACMD41_VOLTAGE))
+    if (!(sdcard.ocr & ACMD41_VOLTAGE))
         return SD_ERROR_VOLTAGE;
 
     return SD_OK;
@@ -1263,12 +1256,12 @@ sdInitGPIO()
 int
 sdGetBaseClock()
 {
-    sdBaseClock = mbox_get_clock_rate(MBX_PROP_CLOCK_EMMC);
-    if (sdBaseClock == -1) {
+    sd_base_clk = mbox_get_clock_rate(MBX_PROP_CLOCK_EMMC);
+    if (sd_base_clk == -1) {
         cprintf("* EMMC: Error, failed to get base clock from mailbox\n");
         return SD_ERROR;
     }
-    cprintf("- SD base clock rate from mailbox: %d.\n", sdBaseClock);
+    cprintf("- SD base clock rate from mailbox: %d.\n", sd_base_clk);
     return SD_OK;
 }
 
@@ -1280,7 +1273,7 @@ int
 sdInit()
 {
     // Ensure we've initialized GPIO.
-    if (!sdCard.init) sdInitGPIO();
+    if (!sdcard.init) sdInitGPIO();
     //  wait(50);
 
     // Check GPIO 47 status
@@ -1296,9 +1289,9 @@ sdInit()
     // No card present, nothing can be done.
     // Only log the fact that the card is absent the first time we discover it.
     if (cardAbsent) {
-        sdCard.init = 0;
-        int wasAbsent = sdCard.absent;
-        sdCard.absent = 1;
+        sdcard.init = 0;
+        int wasAbsent = sdcard.absent;
+        sdcard.absent = 1;
         if (!wasAbsent) cprintf("* EMMC: no SD card detected");
         return SD_CARD_ABSENT;
     }
@@ -1308,22 +1301,21 @@ sdInit()
     // go back through init, and indicate that in the return value.
     // In this case we would expect INT_CARD_INSERT to be set.
     // Clear the insert and remove interrupts
-    sdCard.absent = 0;
-    if (cardEjected && sdCard.init) {
-        sdCard.init = 0;
-        memmove(oldCID, sdCard.cid, sizeof(int)*4);
+    sdcard.absent = 0;
+    if (cardEjected && sdcard.init) {
+        sdcard.init = 0;
+        memmove(oldCID, sdcard.cid, sizeof(int)*4);
     }
-    else if (!sdCard.init)
+    else if (!sdcard.init)
         memset(oldCID, 0, sizeof(int)*4);
 
     // If already initialized and card not replaced, nothing to do.
-    if (sdCard.init) return SD_OK;
+    if (sdcard.init) return SD_OK;
 
     // TODO: check version >= 1 and <= 3?
-    sdHostVer = (*EMMC_SLOTISR_VER & HOST_SPEC_NUM) >> HOST_SPEC_NUM_SHIFT;
+    sd_host_ver = (*EMMC_SLOTISR_VER & HOST_SPEC_NUM) >> HOST_SPEC_NUM_SHIFT;
 
     // Get base clock speed.
-    //  sdDebug = 0;
     int resp;
     if ((resp = sdGetBaseClock())) return resp;
 
@@ -1334,20 +1326,20 @@ sdInit()
     disb();
     // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
     // If voltage range and check pattern don't match, look for older card.
-    resp = sdSendCommandA(IX_SEND_IF_COND, 0x000001AA);
-    cprintf("- sdSendCommandA response: %d\n", resp);
+    resp = sd_senda(IX_SEND_IF_COND, 0x000001AA);
+    cprintf("- sd_senda response: %d\n", resp);
     if (resp == SD_OK) {
         // Card responded with voltage and check pattern.
         // Resolve voltage and check for high capacity card.
         // FIXME:
         delay(50);
-        if ((resp = sdAppSendOpCond(ACMD41_ARG_HC))) return sdDebugResponse(resp);
+        if ((resp = sdAppSendOpCond(ACMD41_ARG_HC))) return sd_debug_resp(resp);
 
         // Check for high or standard capacity.
-        if (sdCard.ocr & R3_CCS)
-            sdCard.type = SD_TYPE_2_HC;
+        if (sdcard.ocr & R3_CCS)
+            sdcard.type = SD_TYPE_2_HC;
         else
-            sdCard.type = SD_TYPE_2_SC;
+            sdcard.type = SD_TYPE_2_SC;
     }
 
     else if (resp == SD_BUSY) return resp;
@@ -1361,73 +1353,73 @@ sdInit()
 
         // delay(50);
         // Resolve voltage.
-        if ((resp = sdAppSendOpCond(ACMD41_ARG_SC))) return sdDebugResponse(resp);
+        if ((resp = sdAppSendOpCond(ACMD41_ARG_SC))) return sd_debug_resp(resp);
 
-        sdCard.type = SD_TYPE_1;
+        sdcard.type = SD_TYPE_1;
     }
 
     // If the switch to 1.8A is accepted, then we need to send a CMD11.
     // CMD11: Completion of voltage switch sequence is checked by high level of DAT[3:0].
     // Any bit of DAT[3:0] can be checked depends on ability of the host.
     // Appears for PI its any/all bits.
-    if ((sdCard.ocr & R3_S18A) && (resp = sdSwitchVoltage())) return resp;
+    if ((sdcard.ocr & R3_S18A) && (resp = sdSwitchVoltage())) return resp;
 
     // Send ALL_SEND_CID (CMD2)
-    if ((resp = sdSendCommand(IX_ALL_SEND_CID))) return sdDebugResponse(resp);
+    if ((resp = sd_send(IX_ALL_SEND_CID))) return sd_debug_resp(resp);
 
     // Send SEND_REL_ADDR (CMD3)
     // TODO: In theory, loop back to SEND_IF_COND to find additional cards.
-    if ((resp = sdSendCommand(IX_SEND_REL_ADDR))) return sdDebugResponse(resp);
+    if ((resp = sd_send(IX_SEND_REL_ADDR))) return sd_debug_resp(resp);
 
     // From now on the card should be in standby state.
     // Actually cards seem to respond in identify state at this point.
     // Check this with a SEND_STATUS (CMD13)
-    //if( (resp = sdSendCommand(IX_SEND_STATUS))) return sdDebugResponse(resp);
-    //  printf("Card current state: %08x %s\n",sdCard.status,STATUS_NAME[sdCard.cardState]);
+    //if( (resp = sd_send(IX_SEND_STATUS))) return sd_debug_resp(resp);
+    //  printf("Card current state: %08x %s\n",sdcard.status,STATUS_NAME[sdcard.card_state]);
 
     // Send SEND_CSD (CMD9) and parse the result.
-    if ((resp = sdSendCommand(IX_SEND_CSD))) return sdDebugResponse(resp);
-    sdParseCSD();
-    if (sdCard.fileFormat != CSD3VN_FILE_FORMAT_DOSFAT &&
-        sdCard.fileFormat != CSD3VN_FILE_FORMAT_HDD) {
-        cprintf("* EMMC: Error, unrecognised file format %02x\n",sdCard.fileFormat);
+    if ((resp = sd_send(IX_SEND_CSD))) return sd_debug_resp(resp);
+    sd_parse_csd();
+    if (sdcard.filefmt != CSD3VN_FILE_FORMAT_DOSFAT &&
+        sdcard.filefmt != CSD3VN_FILE_FORMAT_HDD) {
+        cprintf("* EMMC: Error, unrecognised file format %02x\n",sdcard.filefmt);
         return SD_ERROR;
     }
 
     // At this point, set the clock to full speed.
-    if ((resp = sdSetClock(FREQ_NORMAL))) return sdDebugResponse(resp);
+    if ((resp = sd_set_clock(FREQ_NORMAL))) return sd_debug_resp(resp);
 
     // Send CARD_SELECT  (CMD7)
     // TODO: Check card_is_locked status in the R1 response from CMD7 [bit 25], if so, use CMD42 to unlock
     // CMD42 structure [4.3.7] same as a single block write; data block includes
     // PWD setting mode, PWD len, PWD data.
-    if ((resp = sdSendCommand(IX_CARD_SELECT))) return sdDebugResponse(resp);
+    if ((resp = sd_send(IX_CARD_SELECT))) return sd_debug_resp(resp);
 
     // Get the SCR as well.
     // Need to do this before sending ACMD6 so that allowed bus widths are known.
-    if ((resp = sdReadSCR())) return sdDebugResponse(resp);
+    if ((resp = sd_read_scr())) return sd_debug_resp(resp);
 
     // Send APP_SET_BUS_WIDTH (ACMD6)
     // If supported, set 4 bit bus width and update the CONTROL0 register.
-    if (sdCard.support & SD_SUPP_BUS_WIDTH_4) {
-        if ((resp = sdSendCommandA(IX_SET_BUS_WIDTH, sdCard.rca | 2)))
-            return sdDebugResponse(resp);
+    if (sdcard.support & SD_SUPP_BUS_WIDTH_4) {
+        if ((resp = sd_senda(IX_SET_BUS_WIDTH, sdcard.rca | 2)))
+            return sd_debug_resp(resp);
         *EMMC_CONTROL0 |= C0_HCTL_DWITDH;
     }
 
     // Send SET_BLOCKLEN (CMD16)
     // TODO: only needs to be sent for SDSC cards.  For SDHC and SDXC cards block length is fixed
     // at 512 anyway.
-    if ((resp = sdSendCommandA(IX_SET_BLOCKLEN, 512))) return sdDebugResponse(resp);
+    if ((resp = sd_senda(IX_SET_BLOCKLEN, 512))) return sd_debug_resp(resp);
 
     // Print out the CID having got this far.
-    sdParseCID();
+    sd_parse_cid();
 
     // Initialisation complete.
-    sdCard.init = 1;
+    sdcard.init = 1;
 
     // Return value indicates whether the card was reinserted or replaced.
-    if (memcmp(oldCID, sdCard.cid, sizeof(int)*4) == 0)
+    if (memcmp(oldCID, sdcard.cid, sizeof(int)*4) == 0)
         return SD_CARD_REINSERTED;
 
     return SD_CARD_CHANGED;
@@ -1435,58 +1427,58 @@ sdInit()
 
 /* Parse CID. */
 static void
-sdParseCID()
+sd_parse_cid()
 {
     // For some reason cards I have looked at seem to have everything
     // shifted 8 bits down.
-    int manId = (sdCard.cid[0]&0x00ff0000) >> 16;
+    int manId = (sdcard.cid[0]&0x00ff0000) >> 16;
     char appId[3];
-    appId[0] = (sdCard.cid[0]&0x0000ff00) >> 8;
-    appId[1] = (sdCard.cid[0]&0x000000ff);
+    appId[0] = (sdcard.cid[0]&0x0000ff00) >> 8;
+    appId[1] = (sdcard.cid[0]&0x000000ff);
     appId[2] = 0;
     char name[6];
-    name[0] = (sdCard.cid[1]&0xff000000) >> 24;
-    name[1] = (sdCard.cid[1]&0x00ff0000) >> 16;
-    name[2] = (sdCard.cid[1]&0x0000ff00) >> 8;
-    name[3] = (sdCard.cid[1]&0x000000ff);
-    name[4] = (sdCard.cid[2]&0xff000000) >> 24;
+    name[0] = (sdcard.cid[1]&0xff000000) >> 24;
+    name[1] = (sdcard.cid[1]&0x00ff0000) >> 16;
+    name[2] = (sdcard.cid[1]&0x0000ff00) >> 8;
+    name[3] = (sdcard.cid[1]&0x000000ff);
+    name[4] = (sdcard.cid[2]&0xff000000) >> 24;
     name[5] = 0;
-    int revH = (sdCard.cid[2]&0x00f00000) >> 20;
-    int revL = (sdCard.cid[2]&0x000f0000) >> 16;
-    int serial = ((sdCard.cid[2]&0x0000ffff) << 16) +
-                 ((sdCard.cid[3]&0xffff0000) >> 16);
+    int revH = (sdcard.cid[2]&0x00f00000) >> 20;
+    int revL = (sdcard.cid[2]&0x000f0000) >> 16;
+    int serial = ((sdcard.cid[2]&0x0000ffff) << 16) +
+                 ((sdcard.cid[3]&0xffff0000) >> 16);
 
     // For some reason cards I have looked at seem to have the Y/M in
     // bits 11:0 whereas the spec says they should be in bits 19:8
-    int dateY = ((sdCard.cid[3]&0x00000ff0) >> 4) + 2000;
-    int dateM = (sdCard.cid[3]&0x0000000f);
+    int dateY = ((sdcard.cid[3]&0x00000ff0) >> 4) + 2000;
+    int dateM = (sdcard.cid[3]&0x0000000f);
 
     cprintf("- EMMC: SD Card %s %dMb UHS-I %d mfr %d '%s:%s' r%d.%d %d/%d, #%x RCA %x\n",
-            SD_TYPE_NAME[sdCard.type], (int)(sdCard.capacity>>20),sdCard.uhsi,
-            manId, appId, name, revH, revL, dateM, dateY, serial, sdCard.rca>>16);
+            SD_TYPE_NAME[sdcard.type], (int)(sdcard.capacity>>20),sdcard.uhsi,
+            manId, appId, name, revH, revL, dateM, dateY, serial, sdcard.rca>>16);
 }
 
 /* Parse CSD. */
 static void
-sdParseCSD()
+sd_parse_csd()
 {
-    int csdVersion = sdCard.csd[0] & CSD0_VERSION;
+    int csdVersion = sdcard.csd[0] & CSD0_VERSION;
 
     // For now just work out the size.
     if (csdVersion == CSD0_V1) {
-        int csize = ((sdCard.csd[1] & CSD1V1_C_SIZEH) << CSD1V1_C_SIZEH_SHIFT) +
-                    ((sdCard.csd[2] & CSD2V1_C_SIZEL) >> CSD2V1_C_SIZEL_SHIFT);
-        int mult = 1 << (((sdCard.csd[2] & CSD2V1_C_SIZE_MULT) >> CSD2V1_C_SIZE_MULT_SHIFT) + 2);
-        long long blockSize = 1 << ((sdCard.csd[1] & CSD1VN_READ_BL_LEN) >> CSD1VN_READ_BL_LEN_SHIFT);
+        int csize = ((sdcard.csd[1] & CSD1V1_C_SIZEH) << CSD1V1_C_SIZEH_SHIFT) +
+                    ((sdcard.csd[2] & CSD2V1_C_SIZEL) >> CSD2V1_C_SIZEL_SHIFT);
+        int mult = 1 << (((sdcard.csd[2] & CSD2V1_C_SIZE_MULT) >> CSD2V1_C_SIZE_MULT_SHIFT) + 2);
+        long long blockSize = 1 << ((sdcard.csd[1] & CSD1VN_READ_BL_LEN) >> CSD1VN_READ_BL_LEN_SHIFT);
         long long numBlocks = (csize+1LL)*mult;
 		  
-        sdCard.capacity = numBlocks * blockSize;
+        sdcard.capacity = numBlocks * blockSize;
     } else {
         // if (csdVersion == CSD0_V2)
-        long long csize = (sdCard.csd[2] & CSD2V2_C_SIZE) >> CSD2V2_C_SIZE_SHIFT;
-        sdCard.capacity = (csize+1LL)*512LL*1024LL;
+        long long csize = (sdcard.csd[2] & CSD2V2_C_SIZE) >> CSD2V2_C_SIZE_SHIFT;
+        sdcard.capacity = (csize+1LL)*512LL*1024LL;
     }
   
     // Get other attributes of the card.
-    sdCard.fileFormat = sdCard.csd[3] & CSD3VN_FILE_FORMAT;
+    sdcard.filefmt = sdcard.csd[3] & CSD3VN_FILE_FORMAT;
 }

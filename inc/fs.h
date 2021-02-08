@@ -11,7 +11,8 @@
 #define NDEV            10                  // Maximum major device number
 #define NINODE          50                  // Maximum number of active i-nodes
 #define MAXOPBLOCKS     10                  // Max # of blocks any FS op writes
-#define NBUF            (MAXOPBLOCKS*3)     // Size of disk block cache
+#define NBUF            (MAXOPBLOCKS*100)   // Size of disk block cache
+// FIXME: sd card driver has problem when rpi gets into low power, thus try to cache to memory
 
 // mkfs only
 #define FSSIZE          1000                // Size of file system in blocks

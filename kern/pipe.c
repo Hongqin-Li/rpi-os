@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "file.h"
+#include "mm.h"
 
 #define PIPESIZE 512
 

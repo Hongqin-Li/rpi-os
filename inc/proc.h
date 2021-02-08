@@ -46,7 +46,7 @@ struct proc {
     size_t base, sz;
     size_t stksz;
 
-    uint64_t  *pgdir;           /* User space page table. */
+    char *pgdir;                /* User space page table. */
     char *kstack;               /* Bottom of kernel stack for this process. */
     enum procstate state;       /* Process state. */
     int pid;                    /* Process ID. */
@@ -89,9 +89,11 @@ thisproc()
 }
 
 void proc_init();
+void user_init();
 void scheduler();
 void sleep(void *chan, struct spinlock *lk);
 void wakeup(void *chan);
 void exit(int);
+void procdump();
 
 #endif

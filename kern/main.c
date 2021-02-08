@@ -13,6 +13,7 @@
 #include "proc.h"
 
 extern char edata[], end[], vectors[];
+extern void mbox_test();
 
 /*
  * Keep it in data segment by explicitly initializing by zero,
@@ -26,7 +27,7 @@ static struct {
 void
 main(uint64_t sp, uint64_t ent)
 {
-    while (cpuid()) ;
+    acquire_kern();
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
         memset(edata, 0, end-edata);
@@ -54,6 +55,8 @@ main(uint64_t sp, uint64_t ent)
     timer_init();
     lvbar(vectors);
     lesr(0);
+
+    info("cpu %d init finished", cpuid());
 
     scheduler();
 

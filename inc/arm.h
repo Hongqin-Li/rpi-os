@@ -51,7 +51,7 @@ get32(uint64_t p)
 static inline void
 disb()
 {
-    asm volatile("dsb sy; isb");
+    asm volatile("dsb sy; isb" ::: "memory");
 }
 
 /* Data cache clean and invalidate by virtual address to point of coherency. */
@@ -59,8 +59,10 @@ static inline void
 dccivac(void *p, int n)
 {
     disb();
-    while (n--)
+    while (n--) {
         asm volatile("dc civac, %[x]" : : [x]"r"(p + n));
+        asm volatile("dc cvau, %[x]" : : [x]"r"(p + n));
+    }
     disb();
 }
 
@@ -104,15 +106,21 @@ lvbar(void *p)
     disb();
 }
 
+static inline void
+tlbi1()
+{
+    disb();
+    asm volatile("tlbi vmalle1is");
+    disb();
+}
+
 /* Load Translation Table Base Register 0 (EL1) */
 static inline void
 lttbr0(uint64_t p)
 {
     disb();
     asm volatile("msr ttbr0_el1, %[x]" : : [x]"r"(p));
-    disb();
-    asm volatile("tlbi vmalle1is");
-    disb();
+    tlbi1();
 }
 
 /* Load Translation Table Base Register 1 (EL1) */
@@ -121,9 +129,7 @@ lttbr1(uint64_t p)
 {
     disb();
     asm volatile("msr ttbr1_el1, %[x]" : : [x]"r"(p));
-    disb();
-    asm volatile("tlbi vmalle1is");
-    disb();
+    tlbi1();
 }
 
 static inline int

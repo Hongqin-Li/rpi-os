@@ -10,16 +10,20 @@
 /* Memory region attributes */
 #define MT_DEVICE_nGnRnE        0x0
 #define MT_NORMAL               0x1
+#define MT_NORMAL_NC            0x2
 #define MT_DEVICE_nGnRnE_FLAGS  0x00
 #define MT_NORMAL_FLAGS         0xFF    /* Inner/Outer Write-back Non-transient RW-Allocate */
+#define MT_NORMAL_NC_FLAGS      0x44    /* Inner/Outer Non-cacheable */
 
 #define MAIR_VALUE              ((MT_DEVICE_nGnRnE_FLAGS << (8 * MT_DEVICE_nGnRnE)) | \
-                                (MT_NORMAL_FLAGS << (8 * MT_NORMAL)))
+                                (MT_NORMAL_FLAGS << (8 * MT_NORMAL)) | \
+                                (MT_NORMAL_NC_FLAGS << (8 * MT_NORMAL_NC)))
 
 #define SH_OUTER        (2 << 8)
 #define SH_INNER        (3 << 8)       /* Inner shareable */
 #define AF_USED         (1 << 10)
 
+#define PTE_NORMAL_NC   ((MT_NORMAL_NC << 2) | AF_USED | SH_OUTER)
 #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_OUTER)
 // #define PTE_NORMAL      ((MT_NORMAL << 2) | AF_USED | SH_INNER)
 #define PTE_DEVICE      ((MT_DEVICE_nGnRnE << 2) | AF_USED)
@@ -38,9 +42,9 @@
 /* 1GB/2MB block for kernel, and 4KB page for user. */
 #define PTE_KDATA       (PTE_KERN | PTE_NORMAL | PTE_BLOCK)
 #define PTE_KDEV        (PTE_KERN | PTE_DEVICE | PTE_BLOCK)
-#define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+// #define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+#define PTE_UDATA       (PTE_USER | PTE_NORMAL_NC | PTE_PAGE)
 // #define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE | PTE_NG)
-// #define PTE_UDATA       (PTE_USER | PTE_DEVICE | PTE_PAGE)
 
 /* Address in table or block entry, only support 32 bit physical address. */
 #define PTE_ADDR(pte)   ((pte) & ~0xFFF)
@@ -55,6 +59,7 @@
 #define TCR_SH1_INNER   (3 << 28)
 #define TCR_SH0_OUTER   (2 << 12)
 #define TCR_SH1_OUTER   (2 << 28)
+// #define TCR_ORGN0_IRGN0 ((0 << 10) | (0 << 8))
 #define TCR_ORGN0_IRGN0 ((1 << 10) | (1 << 8))
 #define TCR_ORGN1_IRGN1 ((1 << 26) | (1 << 24))
 

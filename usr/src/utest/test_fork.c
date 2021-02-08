@@ -5,14 +5,20 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
-void fork1() {
+void
+fork1()
+{
     int pid = fork();
-    if (!pid) exit(0);
+    if (!pid)
+        exit(0);
 }
 
-void test_fork() {
+void
+test_fork()
+{
     int n = 10;
-    for (int i = 0; i < n; i++) fork1();
-    for (int i = 0; i < n; i++) wait(NULL);
+    for (int i = 0; i < n; i++)
+        fork1();
+    for (int i = 0; i < n; i++)
+        wait(NULL);
 }
-

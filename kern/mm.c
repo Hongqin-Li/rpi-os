@@ -67,7 +67,7 @@ free_range(void *start, void *end)
 void
 mm_init()
 {
-    int phystop = mbox_get_arm_memory();
+    size_t phystop = mbox_get_arm_memory();
     free_range(ROUNDUP((void *)end, PGSIZE), P2V(phystop));
 #ifdef DEBUG
     for (int i = 0; i < MAX_PAGES; i++) {

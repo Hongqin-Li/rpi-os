@@ -2,6 +2,7 @@
 #define INC_CONSOLE_H
 
 #include <stdarg.h>
+#include "spinlock.h"
 
 extern struct spinlock conslock;
 
@@ -9,6 +10,7 @@ void console_init();
 void console_intr(int (*getc)());
 void cgetchar(int c);
 void cprintf(const char *fmt, ...);
+void cprintf1(const char *fmt, ...);
 void panic(const char *fmt, ...);
 
 #define assert(x)                                                   \

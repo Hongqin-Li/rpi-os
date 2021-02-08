@@ -1,6 +1,7 @@
 #include "proc.h"
 #include "trap.h"
 #include "console.h"
+#include "vm.h"
 
 #include <sys/mman.h>
 
@@ -80,11 +81,11 @@ sys_clone()
     uint64_t flag;
     if (argu64(0, &flag) < 0 || argu64(1, &childstk) < 0)
         return -1;
+    trace("flags 0x%llx, child stack 0x%p", flag, childstk);
     if (flag != 17) {
         warn("flags other than SIGCHLD are not supported");
         return -1;
     }
-    trace("flags 0x%llx, child stack 0x%p", flag, childstk);
     return fork();
 }
 
