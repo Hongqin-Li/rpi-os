@@ -74,7 +74,7 @@ bget(uint32_t dev, uint32_t blockno)
         }
     }
 
-    debug("not cached: bno %d", blockno);
+    trace("not cached: bno %d", blockno);
 
     // Not cached; recycle an unused buffer.
     // Even if refcnt==0, B_DIRTY indicates a buffer is in use
