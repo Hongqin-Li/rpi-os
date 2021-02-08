@@ -10,20 +10,43 @@
 
 #define NPROC           100
 #define NCPU            4
+#define NOFILE          16      // Open files per process
 
 /* Stack must always be 16 bytes aligned. */
-
 struct context {
     uint64_t lr0, lr, fp;
     uint64_t x[10];             /* X28 ... X19 */
     uint64_t padding;
+    // uint64_t q0[2];             /* V0 */
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 /* Per-process state */
 struct proc {
-    uint64_t  *pgdir;           /* User space page table. */
+    /* 
+     * Memory layout
+     *
+     * +----------+
+     * |  Kernel  | 
+     * +----------+  KERNBASE
+     * |  Stack   |  
+     * +----------+  KERNBASE - stksz
+     * |   ....   |
+     * |   ....   |
+     * +----------+  base + sz
+     * |   Heap   |
+     * +----------+
+     * |   Code   |
+     * +----------+  base
+     * | Reserved | 
+     * +----------+  0
+     *
+     */
+    size_t base, sz;
+    size_t stksz;
+
+    char *pgdir;                /* User space page table. */
     char *kstack;               /* Bottom of kernel stack for this process. */
     enum procstate state;       /* Process state. */
     int pid;                    /* Process ID. */
@@ -32,12 +55,14 @@ struct proc {
     struct list_head link;      /* linked list of running process. */
     void *chan;                 /* If non-zero, sleeping on chan */
 
-    // struct proc *parent;         /* Parent process */
+    struct proc *parent;        /* Parent process */
+    struct list_head child;     /* Child list of this process. */
+    struct list_head clink;     /* Child list of this process. */
 
-    // int killed;                  // If non-zero, have been killed
-    // struct file *ofile[NOFILE];  // Open files
-    // struct inode *cwd;           // Current directory
-    // char name[16];               // Process name (debugging)
+    int killed;                  // If non-zero, have been killed
+    struct file *ofile[NOFILE];  // Open files
+    struct inode *cwd;           // Current directory
+    char name[16];               // Process name (debugging)
 };
 
 /* Per-CPU state */
@@ -64,8 +89,11 @@ thisproc()
 }
 
 void proc_init();
+void user_init();
 void scheduler();
 void sleep(void *chan, struct spinlock *lk);
 void wakeup(void *chan);
+void exit(int);
+void procdump();
 
 #endif

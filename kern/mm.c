@@ -8,6 +8,13 @@
 #include "console.h"
 #include "peripherals/mbox.h"
 
+#ifdef DEBUG
+
+#define MAX_PAGES 1000
+static void *alloc_ptr[MAX_PAGES];
+
+#endif
+
 extern char end[];
 
 struct freelist {
@@ -39,7 +46,6 @@ freelist_alloc(struct freelist *f)
 static void
 freelist_free(struct freelist *f, void *v)
 {
-    // cprintf("free\n");
     *(void **)v = f->next;
     f->next = v;
 }
@@ -61,8 +67,19 @@ free_range(void *start, void *end)
 void
 mm_init()
 {
-    int phystop = mbox_get_arm_memory();
+    size_t phystop = mbox_get_arm_memory();
     free_range(ROUNDUP((void *)end, PGSIZE), P2V(phystop));
+#ifdef DEBUG
+    for (int i = 0; i < MAX_PAGES; i++) {
+        void *p = freelist_alloc(&freelist);
+        memset(p, 0xAC, PGSIZE);
+        alloc_ptr[i] = p;
+    }
+    for (int i = 0; i < MAX_PAGES; i++) {
+        freelist_free(&freelist, alloc_ptr[i]);
+        alloc_ptr[i] = 0;
+    }
+#endif
 }
 
 /*
@@ -75,29 +92,69 @@ kalloc()
 {
     acquire(&memlock);
     void *p = freelist_alloc(&freelist);
-    memset(p, 0xAC, PGSIZE);
+#ifdef DEBUG
+    if (p) {
+        for (int i = 8; i < PGSIZE; i++) {
+            assert(*(char *)(p + i) == 0xAC);
+        }
+
+        int i;
+        for (i = 0; i < MAX_PAGES; i++) {
+            if (!alloc_ptr[i]) {
+                alloc_ptr[i] = p;
+                break;
+            }
+        }
+        if (i == MAX_PAGES) {
+            panic("mm: no more space for debug. ");
+        }
+    }
+    else warn("null");
+#endif
     release(&memlock);
     return p;
 }
 
-/*
- * Free the physical memory pointed at by v.
- */
+/* Free the physical memory pointed at by v. */
 void
 kfree(void *va)
 {
     acquire(&memlock);
+#ifdef DEBUG
+    memset(va, 0xAC, PGSIZE); // For debug.
+    int i;
+    for (i = 0; i < MAX_PAGES; i++) {
+        if (alloc_ptr[i] == va) {
+            alloc_ptr[i] = 0;
+            break;
+        }
+    }
+    if (i == MAX_PAGES) {
+        panic("kfree: not allocated. ");
+    }
+#endif
     freelist_free(&freelist, va);
     release(&memlock);
 }
 
 
 void
+mm_dump()
+{
+#ifdef DEBUG
+    int cnt = 0;
+    for (int i = 0; i < MAX_PAGES; i++) {
+        if (alloc_ptr[i]) cnt++;
+    }
+    cprintf("allocated: %d pages\n", cnt);
+#endif
+}
+
+void
 mm_test()
 {
-    /*
-    cprintf("- mm test begin\n");
-    static void *p[PHYSTOP/PGSIZE];
+#ifdef DEBUG
+    static void *p[0x100000000/PGSIZE];
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
         memset(p[i], 0xFF, PGSIZE);
@@ -105,6 +162,5 @@ mm_test()
     }
     while (i--)
         kfree(p[i]);
-    cprintf("- mm test end\n");
-    */
+#endif
 }

@@ -51,23 +51,29 @@ get32(uint64_t p)
 static inline void
 disb()
 {
-    asm volatile("dsb sy; isb");
+    asm volatile("dsb sy; isb" ::: "memory");
 }
 
 /* Data cache clean and invalidate by virtual address to point of coherency. */
 static inline void
 dccivac(void *p, int n)
 {
-    while (n--)
+    disb();
+    while (n--) {
         asm volatile("dc civac, %[x]" : : [x]"r"(p + n));
+        asm volatile("dc cvau, %[x]" : : [x]"r"(p + n));
+    }
+    disb();
 }
 
 /* Read Exception Syndrome Register (EL1) */
 static inline uint64_t
 resr()
 {
+    disb();
     uint64_t r;
     asm volatile("mrs %[x], esr_el1" : [x]"=r"(r));
+    disb();
     return r;
 }
 
@@ -75,8 +81,10 @@ resr()
 static inline uint64_t
 relr()
 {
+    disb();
     uint64_t r;
     asm volatile("mrs %[x], elr_el1" : [x]"=r"(r));
+    disb();
     return r;
 }
 
@@ -84,7 +92,9 @@ relr()
 static inline void
 lesr()
 {
+    disb();
     asm volatile("msr esr_el1, %[x]" : : [x]"r"(0));
+    disb();
 }
 
 /* Load vector base (virtual) address register (EL1) */
@@ -96,24 +106,30 @@ lvbar(void *p)
     disb();
 }
 
+static inline void
+tlbi1()
+{
+    disb();
+    asm volatile("tlbi vmalle1is");
+    disb();
+}
+
 /* Load Translation Table Base Register 0 (EL1) */
 static inline void
 lttbr0(uint64_t p)
 {
+    disb();
     asm volatile("msr ttbr0_el1, %[x]" : : [x]"r"(p));
-    disb();
-    asm volatile("tlbi vmalle1");
-    disb();
+    tlbi1();
 }
 
 /* Load Translation Table Base Register 1 (EL1) */
 static inline void
 lttbr1(uint64_t p)
 {
+    disb();
     asm volatile("msr ttbr1_el1, %[x]" : : [x]"r"(p));
-    disb();
-    asm volatile("tlbi vmalle1");
-    disb();
+    tlbi1();
 }
 
 static inline int

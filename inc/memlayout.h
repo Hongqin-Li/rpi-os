@@ -10,6 +10,7 @@
 
 #define KERNBASE 0xFFFF000000000000   /* First kernel virtual address */
 #define KERNLINK (KERNBASE+0x80000)   /* Address where kernel is linked */
+#define USERTOP  0x0001000000000000   /* Top address of user space. */
 
 #define V2P_WO(x) ((x) - KERNBASE)    /* Same as V2P, but without casts */
 #define P2V_WO(x) ((x) + KERNBASE)    /* Same as P2V, but without casts */

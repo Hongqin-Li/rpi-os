@@ -23,7 +23,4 @@ void sd_init();
 void sd_intr();
 void sdrw(struct buf *);
 
-int sdTransferBlocks( long long address, int num, unsigned char* buffer, int write );
-int sdClearBlocks( long long address, int num );
-
 #endif

@@ -9,10 +9,13 @@ Several parts of it are still in progress.
 - [x] Multi-core
 - [x] Memory management
 - [x] Virtual memory
-- [ ] Process management
-- [ ] Disk Driver (EMMC)
-- [ ] File system
+- [x] Process management
+- [x] Disk Driver (EMMC)
+- [x] File system: port xv6
 - [x] C library: port [musl](https://musl.libc.org/)
+- [x] Shell: port xv6
+  - [x] Support argc, envp
+  - [ ] Support pipe
 - [ ] Compiler
 - [ ] Documentation...
 
@@ -26,5 +29,4 @@ Linux is required for building and Ubuntu is preferred.
 - Burn to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 
 ## Project structure
-
 
