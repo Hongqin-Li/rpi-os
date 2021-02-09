@@ -185,11 +185,9 @@ iinit(int dev)
         initsleeplock(&icache.inode[i].lock, "inode");
     }
 
-    cprintf("init - sleeplock inited\n");
-
     readsb(dev, &sb);
-    cprintf("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
- inodestart %d bmapstart %d\n", sb.size, sb.nblocks,
+    info("sb: size %d nblocks %d ninodes %d nlog %d logstart %d\
+ inodestart %d bmapstart %d", sb.size, sb.nblocks,
             sb.ninodes, sb.nlog, sb.logstart, sb.inodestart,
             sb.bmapstart);
 }
@@ -487,8 +485,6 @@ stati(struct inode *ip, struct stat *st)
 ssize_t
 readi(struct inode *ip, char *dst, size_t off, size_t n)
 {
-    // cprintf("readi: inum %d, dst 0x%p, off %d, n %d\n", ip->inum, dst, off, n);
-
     size_t tot, m;
     struct buf *bp;
 
@@ -510,7 +506,6 @@ readi(struct inode *ip, char *dst, size_t off, size_t n)
         brelse(bp);
     }
     
-    // cprintf("readi result(%d): '%s'\n", n, dst - n + 2);
     return n;
 }
 
@@ -565,7 +560,6 @@ namecmp(const char *s, const char *t)
 struct inode*
 dirlookup(struct inode *dp, char *name, size_t *poff)
 {
-    // cprintf("dirlookup: name '%s'\n", name);
     size_t off, inum;
     struct dirent de;
 
@@ -585,7 +579,6 @@ dirlookup(struct inode *dp, char *name, size_t *poff)
             return iget(dp->dev, inum);
         }
     }
-    // cprintf("- dirlookup not found\n");
     return 0;
 }
 

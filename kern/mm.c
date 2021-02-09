@@ -53,15 +53,10 @@ freelist_free(struct freelist *f, void *v)
 void
 free_range(void *start, void *end)
 {
-    acquire(&memlock);
     int cnt = 0;
     for (void *p = start; p + PGSIZE <= end; p += PGSIZE, cnt ++) 
         freelist_free(&freelist, p);
-    cprintf("- free_range: 0x%p ~ 0x%p, %d pages\n", start, end, cnt);
-    release(&memlock);
-
-    // mm_test();
-    // mm_test();
+    info("0x%p ~ 0x%p, %d pages", start, end, cnt);
 }
 
 void

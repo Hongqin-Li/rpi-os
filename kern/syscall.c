@@ -6,35 +6,12 @@
 #include "proc.h"
 #include "debug.h"
 
-void
-debug_tf(struct trapframe *tf)
-{
-    debug("elr: 0x%llx", tf->elr);
-    debug("sp0: 0x%llx", tf->sp);
-    for (int i = 0; i < 32; i++) {
-        debug("x[%d] = 0x%llx(%lld)", i, tf->x[i], tf->x[i]);
-    }
-}
-
-// For debug
-void
-sys_ptrace()
-{
-    struct trapframe *tf = thisproc()->tf;
-    // debug("ptrace '%s': '%s'", thisproc()->name, tf->x[0]);
-    // debug_tf(tf);
-}
-
 int
 syscall1(struct trapframe *tf)
 {
     thisproc()->tf = tf;
     int sysno = tf->x[8];
     switch (sysno) {
-    // FIXME: fake ptrace for debug.
-    case SYS_ptrace:
-        sys_ptrace();
-        return 0;
 
     // FIXME: use pid instead of tid since we don't have threads :)
     case SYS_set_tid_address:

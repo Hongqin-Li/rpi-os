@@ -42,8 +42,8 @@
 /* 1GB/2MB block for kernel, and 4KB page for user. */
 #define PTE_KDATA       (PTE_KERN | PTE_NORMAL | PTE_BLOCK)
 #define PTE_KDEV        (PTE_KERN | PTE_DEVICE | PTE_BLOCK)
-// #define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
-#define PTE_UDATA       (PTE_USER | PTE_NORMAL_NC | PTE_PAGE)
+#define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE)
+// #define PTE_UDATA       (PTE_USER | PTE_NORMAL_NC | PTE_PAGE)
 // #define PTE_UDATA       (PTE_USER | PTE_NORMAL | PTE_PAGE | PTE_NG)
 
 /* Address in table or block entry, only support 32 bit physical address. */

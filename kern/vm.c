@@ -34,7 +34,6 @@ static uint64_t *
 pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
 {
     uint64_t *pgt = pgdir, va = (uint64_t)vap;
-    // cprintf("pgdir_walk: 0x%p\n", pgdir);
     for (int i = 0; i < 3; i++) {
         int idx = (va >> (12+(3-i)*9)) & 0x1FF;
         if (!(pgt[idx] & PTE_VALID)) {
@@ -48,49 +47,10 @@ pgdir_walk(uint64_t *pgdir, void *vap, int alloc)
                 return 0;
             }
         }
-        // cprintf("pgt: 0x%p\n", pgt);
         pgt = P2V(PTE_ADDR(pgt[idx]));
     }
     return &pgt[(va >> 12) & 0x1FF];
 }
-
-/*
- * Iterater over physical pages whose low address lies in range [start, end)
- * and callback function f with arguments va and pa, indicating the page maps
- * from va to pa. If f returns non-zero value, free this page.
- * If alloc != 0, create any required page table pages.
- * The newly created pages won't be freed if the iteration failed.
- */
-// int
-// page_iter(void *pgdir, size_t start, size_t end, int alloc, int (*f)(size_t, size_t))
-// {
-//     void *p;
-//     size_t va, pa;
-//     uint64_t *pte;
-//     assert(start % PGSIZE == 0 && end % PGSIZE == 0);
-//     assert(start < end && end <= USERTOP);
-// 
-//     for (va = start; va < end; va += PGSIZE) {
-//         if (alloc) {
-//             if ((pte = pgdir_walk(pgdir, start, 1)) == 0)
-//                 return -1;
-//             if (!(*pte & PTE_VALID) & !(p = kalloc()))
-//                 return -1;
-//             pa = V2P(p);
-//             *pte = pa | PTE_UDATA;
-//         } else {
-//             if ((pte = pgdir_walk(pgdir, start, 0)) == 0)
-//                 continue;
-//             if (!(*pte & PTE_VALID))
-//                 continue;
-//             pa = PTE_ADDR(*pte); 
-//         }
-//         if (f(va, *pte) != 0) {
-//             kfree(P2V(pa));
-//             *pte = 0;
-//         }
-//     }
-// }
 
 /* Fork a process's page table. */
 uint64_t *
@@ -119,17 +79,17 @@ uvm_copy(uint64_t *pgdir)
                     uint64_t pa = PTE_ADDR(pgt3[i3]);
                     uint64_t va = (uint64_t)i << (12 + 9*3) | (uint64_t)i1 << (12 + 9*2)| (uint64_t)i2 << (12 + 9) | i3 << 12;
 
-
                     void *np = kalloc();
                     if (np == 0) {
                         vm_free(newpgdir);
                         warn("kalloc failed");
                         return 0;
                     }
-                    // FIXME: current page table should be pgdir
-                    // memmove(np, P2V(pa), PGSIZE);
-                    memmove(np, va, PGSIZE);
-
+                    memmove(np, P2V(pa), PGSIZE);
+                    // disb();
+                    // Flush to memory to sync with icache.
+                    // dccivac(P2V(pa), PGSIZE);
+                    // disb();
                     if (uvm_map(newpgdir, (void *)va, PGSIZE, V2P((uint64_t)np)) < 0) {
                         vm_free(newpgdir);
                         kfree(np);
@@ -143,13 +103,10 @@ uvm_copy(uint64_t *pgdir)
     return newpgdir;
 }
 
-// FIXME: Not tested.
 /* Free a user page table and all the physical memory pages. */
 void
 vm_free(uint64_t *pgdir)
 {
-    // cprintf("--- vm free: 0x%p\n", pgdir);
-    // vm_stat(pgdir);
     for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
         assert(pgdir[i] & PTE_TABLE);
         uint64_t *pgt1 = P2V(PTE_ADDR(pgdir[i]));
@@ -170,7 +127,6 @@ vm_free(uint64_t *pgdir)
         kfree(pgt1);
     }
     kfree(pgdir);
-    // cprintf("--- vm free end\n\n");
 }
 
 /*
@@ -208,7 +164,6 @@ int
 uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz)
 {
     assert(stksz % PGSIZE == 0);
-    // cprintf("--- uvm alloc: base 0x%p, stksz 0x%p, oldsz 0x%p, newsz 0x%p\n", base, stksz, oldsz, newsz);
     if (!(stksz < USERTOP &&
           base <= oldsz &&
           oldsz <= newsz &&
@@ -217,9 +172,6 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
         warn("invalid arg");
         return 0;
     }
-
-    // cprintf("before alloc\n");
-    // vm_stat(pgdir);
 
     for (size_t a = ROUNDUP(oldsz, PGSIZE); a < newsz; a += PGSIZE) {
         void *p = kalloc();
@@ -235,9 +187,6 @@ uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz
             return 0;
         }
     }
-    // cprintf("after alloc\n");
-    // vm_stat(pgdir);
-    // cprintf("--- uvm alloc end\n\n");
     
     return newsz;
 }
@@ -273,38 +222,6 @@ uvm_switch(uint64_t *pgdir)
 {
     // FIXME: Use NG and ASID for efficiency.
     lttbr0(V2P(pgdir));
-
-#ifdef DEBUG
-    for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
-        assert(pgdir[i] & PTE_TABLE);
-        uint64_t *pgt1 = P2V(PTE_ADDR(pgdir[i]));
-        for (int i1 = 0; i1 < 512; i1++) if (pgt1[i1] & PTE_VALID) {
-            assert(pgt1[i1] & PTE_TABLE);
-            uint64_t *pgt2 = P2V(PTE_ADDR(pgt1[i1]));
-            for (int i2 = 0; i2 < 512; i2++) if (pgt2[i2] & PTE_VALID) {
-                assert(pgt2[i2] & PTE_TABLE);
-                uint64_t *pgt3 = P2V(PTE_ADDR(pgt2[i2]));
-                for (int i3 = 0; i3 < 512; i3++) if (pgt3[i3] & PTE_VALID) {
-
-                    assert(PTE_FLAGS(pgt3[i3]) == PTE_UDATA);
-                    assert(PTE_ADDR(pgt3[i3]) < USERTOP);
-
-                    char *p = P2V(PTE_ADDR(pgt3[i3]));
-                    char *va = (char *)((uint64_t)i << (12 + 9*3) |
-                                        (uint64_t)i1 << (12 + 9*2) |
-                                        (uint64_t)i2 << (12 + 9) |
-                                        i3 << 12);
-
-                    dccivac(p, PGSIZE);
-                    for (int i = 0; i < PGSIZE; i++) {
-                        assert(va[i] == p[i]);
-                    }
-                }
-            }
-        }
-    }
-#endif
-
 }
 
 /*
@@ -315,9 +232,6 @@ uvm_switch(uint64_t *pgdir)
 int
 copyout(uint64_t *pgdir, void *va, void *p, size_t len)
 {
-    // cprintf("copyout %lld bytes from 0x%p to va 0x%p\n", len, p, va);
-    // vm_stat(pgdir);
-
     void *page;
     size_t n, pgoff;
     uint64_t *pte;
@@ -340,10 +254,12 @@ copyout(uint64_t *pgdir, void *va, void *p, size_t len)
             p += n;
         }
         else memset(page + pgoff, 0, n);
+        // disb();
+        // Flush to memory to sync with icache.
+        // dccivac(page + pgoff, n);
+        // disb();
     }
     return 0;
-    // vm_stat(pgdir);
-    // cprintf("copyout: end\n");
 }
 
 void
@@ -413,6 +329,6 @@ vm_test()
         assert(*i == 0xAC);
     }
     vm_free(pgdir);
-    info("vm test pass");
+    info("pass");
 #endif
 }

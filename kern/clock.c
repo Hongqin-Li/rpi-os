@@ -36,6 +36,4 @@ clock_reset()
 void
 clock()
 {
-    // debug_mem(LOCAL_BASE, 0x100);
-    // trace("cpu %d clock", cpuid());
 }

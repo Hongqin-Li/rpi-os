@@ -1,7 +1,6 @@
 /* vectors.S send all traps here. */
 .global alltraps
 alltraps:
-    dsb     sy; isb
 
     /* Use stp/ldp in favor of str/ldr to maintain stack alignment. */
     str     q0, [sp, #-16]!
@@ -23,35 +22,29 @@ alltraps:
     stp     x2, x3, [sp, #-16]!
     stp     x0, x1, [sp, #-16]!
 
-    dsb     sy; isb
     mrs     x12, tpidr_el0
     mrs     x11, sp_el0
     mrs     x10, elr_el1
     mrs     x9, spsr_el1
-    dsb     sy; isb
 
     stp     x11, x12, [sp, #-16]!
     stp     x9, x10, [sp, #-16]!
 
     mov     x0, sp
 
-    dsb     sy; isb
     bl      trap
 
 /* Return falls through to trapret. */
 .global trapret
 trapret:
 
-    dsb     sy; isb
     ldp     x9, x10, [sp], #16
     ldp     x11, x12, [sp], #16
 
-    dsb     sy; isb
     msr     spsr_el1, x9
     msr     elr_el1, x10
     msr     sp_el0, x11
     msr     tpidr_el0, x12
-    dsb     sy; isb
 
     ldp     x0, x1, [sp], #16
     ldp     x2, x3, [sp], #16
@@ -72,6 +65,6 @@ trapret:
 
     ldr     q0, [sp], #16
 
-    tlbi    vmalle1is
+    ic      iallu
     dsb     sy; isb
     eret

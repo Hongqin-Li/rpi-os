@@ -41,7 +41,6 @@ binit()
     struct buf *b;
 
     // initlock(&bcache.lock, "bcache");
-    info("binit");
 
     // Create linked list of buffers
     list_init(&bcache.head.clink);
@@ -58,14 +57,12 @@ binit()
 static struct buf *
 bget(uint32_t dev, uint32_t blockno)
 {
-    // cprintf("bget - dev %d, bno %d\n", dev, blockno);
     struct buf *b;
 
     acquire(&bcache.lock);
 
     // Is the block already cached?
     LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
-        // cprintf("bget foreach dev %d, blockno %d\n", b->dev, b->blockno);
         if (b->dev == dev && b->blockno == blockno) {
             b->refcnt++;
             release(&bcache.lock);

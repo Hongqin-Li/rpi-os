@@ -209,7 +209,6 @@ forkret()
         release(&ptable.lock);
     }
     trace("proc '%s'(%d)", thisproc()->name, thisproc()->pid);
-    release_kern();
 }
 
 /* Give up CPU. */

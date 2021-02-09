@@ -9,11 +9,9 @@
 static inline void *
 memset(void *str, int c, size_t n)
 {
-    dccivac(str, n);
     char *l = (char *)str, *r = l + n;
     for (; l != r; l ++)
         *l = c & 0xff;
-    dccivac(str, n);
     return str;
 }
 
@@ -21,8 +19,6 @@ static inline void *
 memmove(void *dst, const void *src, size_t n)
 {
     size_t pn = n;
-    dccivac(src, pn);
-    dccivac(dst, pn);
     const char *s = (const char *)src;
     char *d = (char *)dst;
     if (s < d && s + n > d) {
@@ -32,7 +28,6 @@ memmove(void *dst, const void *src, size_t n)
     } else {
         while (n-- > 0) *d++ = *s++;
     }
-    dccivac(dst, pn);
     return dst;
 }
 

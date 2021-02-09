@@ -36,7 +36,6 @@ mbox_read(uint8_t chan)
         disb();
         uint32_t r = *MBOX_READ;
         if ((r & 0xF) == chan) {
-            cprintf("- mbox_read: 0x%x\n", r);
             return r >> 4;
         }
     }
@@ -51,7 +50,6 @@ mbox_write(uint32_t buf, uint8_t chan)
     assert((buf & 0xF) == 0 && (chan & ~0xF) == 0);
     while (*MBOX_STATUS & MBOX_FULL) ;
     disb();
-    cprintf("- mbox write: 0x%x\n", (buf & ~0xF) | chan);
     *MBOX_WRITE = (buf & ~0xF) | chan;
     disb();
 }
@@ -131,6 +129,6 @@ mbox_test()
     assert(x != 0);
     x = mbox_get_clock_rate();
     assert(x != 0);
-    info("mbox test pass");
+    info("pass");
 #endif
 }

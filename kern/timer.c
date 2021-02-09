@@ -4,7 +4,6 @@
 #include "peripherals/irq.h"
 #include "console.h"
 
-// static int dt = 19200000;
 static int dt = 1920000;
 
 void
@@ -28,6 +27,5 @@ timer_reset()
 void
 timer()
 {
-    // cprintf("cpu %d timer.\n", cpuid());
     yield();
 }

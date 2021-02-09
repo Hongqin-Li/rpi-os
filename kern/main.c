@@ -27,7 +27,6 @@ static struct {
 void
 main(uint64_t sp, uint64_t ent)
 {
-    acquire_kern();
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
         memset(edata, 0, end-edata);
