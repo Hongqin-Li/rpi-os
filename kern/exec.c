@@ -178,6 +178,7 @@ execve(const char *path, char *const argv[], char *const envp[])
     for (int i = argc-1; i >= 0; i--) {
         newargv[i] = sp;
         for (; *sp; sp++) ;
+        sp++;
     }
     *(size_t *)(newsp) = argc;
 
