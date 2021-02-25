@@ -4,7 +4,7 @@
 #include <stdarg.h>
 #include "spinlock.h"
 
-extern struct spinlock conslock;
+extern struct spinlock dbglock;
 
 void console_init();
 void console_intr(int (*getc)());
@@ -30,11 +30,11 @@ void panic(const char *fmt, ...);
 
 #define LOG1(level, ...)                    \
 ({                                          \
-    acquire(&conslock);                     \
-    cprintf1("%s: ", __func__);   \
+    acquire(&dbglock);                     \
+    cprintf1("(cpu %d)%s: ", cpuid(), __func__);   \
     cprintf1(__VA_ARGS__);                  \
     cprintf1("\n");                         \
-    release(&conslock);                     \
+    release(&dbglock);                     \
 })
 
 #ifdef LOG_ERROR

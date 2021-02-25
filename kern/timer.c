@@ -4,7 +4,7 @@
 #include "peripherals/irq.h"
 #include "console.h"
 
-static int dt = 1920000;
+static int dt = 19200000;
 
 void
 timer_init()
@@ -14,7 +14,7 @@ timer_init()
     put32(CORE_TIMER_CTRL(cpuid()), CORE_TIMER_ENABLE);
 }
 
-void
+static void
 timer_reset()
 {
     asm volatile("msr cntp_tval_el0, %[x]" : : [x]"r"(dt));
@@ -25,7 +25,8 @@ timer_reset()
  * which is determined by cpu clock (may be tuned for power saving).
  */
 void
-timer()
+timer_intr()
 {
+    timer_reset();
     yield();
 }

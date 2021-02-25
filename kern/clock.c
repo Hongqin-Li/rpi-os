@@ -14,7 +14,7 @@ clock_init()
     put32(TIMER_CLR, TIMER_RELOAD | TIMER_CLR_INT);
 }
 
-void
+static void
 clock_reset()
 {
     put32(TIMER_CLR, TIMER_CLR_INT);
@@ -34,6 +34,7 @@ clock_reset()
  * - alarm clock signals
  */
 void
-clock()
+clock_intr()
 {
+    clock_reset();
 }

@@ -211,7 +211,7 @@ uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz)
             kfree(P2V(pa));
             *pte = 0;
         } else {
-            cprintf("uvm_dealloc: attempt to free unallocated page.\n");
+            warn("attempt to free unallocated page");
         }
     }
     return newsz;
@@ -265,7 +265,7 @@ copyout(uint64_t *pgdir, void *va, void *p, size_t len)
 void
 vm_stat(uint64_t *pgdir)
 {
-    cprintf("stat pgdir: 0x%p\n", pgdir);
+    debug("pgdir: 0x%p", pgdir);
     uint64_t va_start = 0, va_end = 0;
 
     for (int i = 0; i < 512; i++) if (pgdir[i] & PTE_VALID) {
@@ -287,13 +287,14 @@ vm_stat(uint64_t *pgdir)
 
                     uint64_t *p = P2V(PTE_ADDR(pgt3[i3]));
                     uint64_t va = (uint64_t)i << (12 + 9*3) | (uint64_t)i1 << (12 + 9*2)| (uint64_t)i2 << (12 + 9) | i3 << 12;
-                    cprintf("va: 0x%p, pa: 0x%p, pte: 0x%p, PTE_ADDR(pte): 0x%p, P2V(...): 0x%p\n", va, p, pgt3[i3], PTE_ADDR(pgt3[i3]), P2V(PTE_ADDR(pgt3[i3])));
+                    debug("va: 0x%p, pa: 0x%p, pte: 0x%p, PTE_ADDR(pte): 0x%p, P2V(...): 0x%p",
+                          va, p, pgt3[i3], PTE_ADDR(pgt3[i3]), P2V(PTE_ADDR(pgt3[i3])));
 
                     if (va == va_end)
                         va_end = va + PGSIZE;
                     else {
                         if (va_start < va_end)
-                            cprintf("va: [0x%p ~ 0x%p)\n", va_start, va_end);
+                            debug("va: [0x%p ~ 0x%p)", va_start, va_end);
 
                         va_start = va;
                         va_end = va + PGSIZE;
@@ -303,7 +304,7 @@ vm_stat(uint64_t *pgdir)
         }
     }
     if (va_start < va_end) {
-        cprintf("va: [0x%p ~ 0x%p)\n", va_start, va_end);
+        debug("va: [0x%p ~ 0x%p)", va_start, va_end);
     }
 }
 

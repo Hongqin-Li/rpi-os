@@ -32,7 +32,7 @@ struct {
 
     // Linked list of all buffers, through prev/next.
     // head.next is most recently used.
-    struct buf head;
+    struct list_head head;
 } bcache;
 
 void
@@ -43,9 +43,9 @@ binit()
     // initlock(&bcache.lock, "bcache");
 
     // Create linked list of buffers
-    list_init(&bcache.head.clink);
+    list_init(&bcache.head);
     for (b = bcache.buf; b < bcache.buf+NBUF; b++) {
-        list_push_back(&bcache.head.clink, &b->clink);
+        list_push_back(&bcache.head, &b->clink);
     }
 }
 
@@ -62,7 +62,7 @@ bget(uint32_t dev, uint32_t blockno)
     acquire(&bcache.lock);
 
     // Is the block already cached?
-    LIST_FOREACH_ENTRY(b, &bcache.head.clink, clink) {
+    LIST_FOREACH_ENTRY(b, &bcache.head, clink) {
         if (b->dev == dev && b->blockno == blockno) {
             b->refcnt++;
             release(&bcache.lock);
@@ -76,7 +76,7 @@ bget(uint32_t dev, uint32_t blockno)
     // Not cached; recycle an unused buffer.
     // Even if refcnt==0, B_DIRTY indicates a buffer is in use
     // because log.c has modified it but not yet committed it.
-    LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head.clink, clink) {
+    LIST_FOREACH_ENTRY_REVERSE(b, &bcache.head, clink) {
         if (b->refcnt == 0 && (b->flags & B_DIRTY) == 0) {
             b->dev = dev;
             b->blockno = blockno;
@@ -128,7 +128,7 @@ brelse(struct buf *b)
     if (b->refcnt == 0) {
         // no one is waiting for it.
         list_drop(&b->clink);
-        list_push_back(&bcache.head.clink, &b->clink);
+        list_push_back(&bcache.head, &b->clink);
     }
     release(&bcache.lock);
 }

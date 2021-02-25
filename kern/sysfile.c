@@ -526,25 +526,30 @@ sys_chdir()
 // }
 
 int
-sys_pipe(void)
+sys_pipe2()
 {
-  int *fd;
-  struct file *rf, *wf;
-  int fd0, fd1;
+    int *fd, flag;
+    struct file *rf, *wf;
+    int fd0, fd1;
 
-  if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
-    return -1;
-  if(pipealloc(&rf, &wf) < 0)
-    return -1;
-  fd0 = -1;
-  if((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0){
-    if(fd0 >= 0)
-      thisproc()->ofile[fd0] = 0;
-    fileclose(rf);
-    fileclose(wf);
-    return -1;
-  }
-  fd[0] = fd0;
-  fd[1] = fd1;
-  return 0;
+    if (argint(1, &flag) < 0 || argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+        return -1;
+    trace("flag 0x%x", flag);
+    if (flag) {
+        warn("pipe with flag unimplemented");
+        return -1;
+    }
+    if (pipealloc(&rf, &wf) < 0)
+        return -1;
+    fd0 = -1;
+    if ((fd0 = fdalloc(rf)) < 0 || (fd1 = fdalloc(wf)) < 0) {
+        if (fd0 >= 0)
+            thisproc()->ofile[fd0] = 0;
+        fileclose(rf);
+        fileclose(wf);
+        return -1;
+    }
+    fd[0] = fd0;
+    fd[1] = fd1;
+    return 0;
 }

@@ -541,6 +541,7 @@ sd_delayus(uint32_t c)
 static void
 sd_start(struct buf *b)
 {
+    trace("bno %d", b->blockno);
     // Address is different depending on the card type.
     // HC pass address as block #.
     // SC pass address straight through.
@@ -633,7 +634,7 @@ void
 sdrw(struct buf *b)
 {
     acquire(&sdlock);
-
+    
     /* Append to request queue. */
     list_push_back(&sdque, &b->dlink);
 

@@ -12,8 +12,8 @@
 struct pipe {
     struct spinlock lock;
     char data[PIPESIZE];
-    size_t nread;     // number of bytes read
-    size_t nwrite;    // number of bytes written
+    size_t nread;   // number of bytes read
+    size_t nwrite;  // number of bytes written
     int readopen;   // read fd is still open
     int writeopen;  // write fd is still open
 };

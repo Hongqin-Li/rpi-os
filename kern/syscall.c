@@ -58,6 +58,9 @@ syscall1(struct trapframe *tf)
     case SYS_dup:
         return sys_dup();
 
+    case SYS_pipe2:
+        return sys_pipe2();
+
     case SYS_chdir:
         return sys_chdir();
 

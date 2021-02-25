@@ -15,7 +15,7 @@ Several parts of it are still in progress.
 - [x] C library: port [musl](https://musl.libc.org/)
 - [x] Shell: port xv6
   - [x] Support argc, envp
-  - [ ] Support pipe
+  - [x] Support pipe
 - [ ] Compiler
 - [ ] Documentation...
 

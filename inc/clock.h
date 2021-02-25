@@ -2,7 +2,6 @@
 #define INC_CLOCK_H
 
 void clock_init();
-void clock_reset();
-void clock();
+void clock_intr();
 
 #endif

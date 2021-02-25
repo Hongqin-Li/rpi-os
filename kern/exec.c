@@ -56,7 +56,7 @@ execve(const char *path, char *const argv[], char *const envp[])
         debug("64 bit program not supported");
         goto bad;
     }
-    // cprintf("exec: check elf header finish\n");
+    trace("check elf header finish");
 
     int i;
     uint64_t off;

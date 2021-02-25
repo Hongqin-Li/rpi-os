@@ -2,7 +2,6 @@
 #define INC_TIMER_H
 
 void timer_init();
-void timer_reset();
-void timer();
+void timer_intr();
 
 #endif

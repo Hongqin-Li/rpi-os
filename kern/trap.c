@@ -63,7 +63,7 @@ argint(int n, int *ip)
 {
     struct proc *proc = thisproc();
     if (n > 5) {
-        cprintf("too many system call parameters\n");
+        warn("too many system call parameters");
         return -1;
     }
     *ip = proc->tf->x[n];
@@ -81,7 +81,7 @@ argu64(int n, size_t *ip)
 {
     struct proc *proc = thisproc();
     if (n > 5) {
-        cprintf("too many system call parameters\n");
+        warn("too many system call parameters");
         return -1;
     }
     *ip = proc->tf->x[n];
@@ -130,16 +130,16 @@ interrupt(struct trapframe *tf)
 {
     int src = get32(IRQ_SRC_CORE(cpuid()));
     if (src & IRQ_CNTPNSIRQ) {
-        timer_reset();
-        timer();
+        timer_intr();
     } else if (src & IRQ_TIMER) {
-        clock_reset();
-        clock();
+        clock_intr();
     } else if (src & IRQ_GPU) {
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
         if (p1 & AUX_INT) {
             uart_intr();
         } else if (p2 & VC_ARASANSDIO_INT) {
+            if (thisproc() == thiscpu()->idle)
+                trace("on idle");
             sd_intr();
         } else {
             warn("unexpected gpu intr p1 %x, p2 %x, sd %d, omitted", p1, p2, p2 & VC_ARASANSDIO_INT);
@@ -158,7 +158,7 @@ trap(struct trapframe *tf)
     case EC_UNKNOWN:
         interrupt(tf);
         break;
-        
+
     case EC_SVC64:
         if (iss == 0) {
             tf->x[0] = syscall1(tf);

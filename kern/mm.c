@@ -141,7 +141,7 @@ mm_dump()
     for (int i = 0; i < MAX_PAGES; i++) {
         if (alloc_ptr[i]) cnt++;
     }
-    cprintf("allocated: %d pages\n", cnt);
+    debug("allocated: %d pages", cnt);
 #endif
 }
 
@@ -153,7 +153,7 @@ mm_test()
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
         memset(p[i], 0xFF, PGSIZE);
-        if (i % 10000 == 0) cprintf("0x%p\n", p[i]);
+        if (i % 10000 == 0) debug("0x%p", p[i]);
     }
     while (i--)
         kfree(p[i]);
