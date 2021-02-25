@@ -235,6 +235,7 @@ sleep(void *chan, struct spinlock *lk)
     struct proc *p = thisproc();
     int i = HASH(chan);
     assert(i < SQSIZE);
+    assert(p != thiscpu()->idle);
 
     if (lk != &ptable.lock) {
         acquire(&ptable.lock);
@@ -245,14 +246,14 @@ sleep(void *chan, struct spinlock *lk)
     list_push_back(&ptable.slpque[i], &p->link);
 
     p->state = SLEEPING;
-    // cprintf("- cpu %d: sleep pid %d on chan 0x%p\n", cpuid(), p->pid, chan);
+    trace("'%s'(%d) sleep lk=0x%p", p->name, p->pid, lk);
     swtch(&thisproc()->context, thiscpu()->scheduler);
-    // cprintf("- cpu %d: wake on chan 0x%p\n", cpuid(), chan);
+    trace("'%s'(%d) wakeup lk=0x%p", p->name, p->pid, lk);
     p->state = RUNNING;
 
     if (lk != &ptable.lock) {
-        acquire(lk);
         release(&ptable.lock);
+        acquire(lk);
     }
 }
 
@@ -267,15 +268,13 @@ wakeup1(void *chan)
     struct proc *p, *np;
 
     LIST_FOREACH_ENTRY_SAFE(p, np, q, link) {
-        // cprintf("- wakeup1: try pid %d\n", p->pid);
         if (p->chan == chan) {
-            // cprintf("- wakeup1: pid %d\n", p->pid);
+            trace("wake '%s'(%d)", p->name, p->pid);
             list_drop(&p->link);
             list_push_back(&ptable.sched_que, &p->link);
             p->state = RUNNABLE;
         }
     }
-
 }
 
 /* Wake up all processes sleeping on chan. */
@@ -416,7 +415,7 @@ exit(int err)
         panic("init exit");
 
     if (err) {
-        cprintf("exit: pid %d, err %d\n", cp->pid, err);
+        warn("exit: pid %d, err %d\n", cp->pid, err);
         procdump();
     }
 
@@ -443,7 +442,6 @@ exit(int err)
     struct proc *p, *np;
     LIST_FOREACH_ENTRY_SAFE(p, np, q, clink) {
         assert(p->parent == cp);
-        // cprintf("exit: pass child %d to init\n", p->pid);
         p->parent = initproc;
 
         list_drop(&p->clink);
@@ -479,7 +477,8 @@ procdump()
     struct proc *p;
     char *state;
 
-    acquire(&ptable.lock);
+    // donot acquire ptable.lock to avoid deadlock
+    // acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->state == UNUSED) continue;
         if (p->parent)
@@ -487,5 +486,5 @@ procdump()
         else 
             cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
     }
-    release(&ptable.lock);
+    // release(&ptable.lock);
 }
