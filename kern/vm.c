@@ -17,11 +17,8 @@ uint64_t *
 vm_init()
 {
     uint64_t *pgdir = kalloc();
-    if (pgdir) {
-        memset(pgdir, 0, PGSIZE);
-    } else {
-        warn("failed");
-    }
+    if (pgdir) memset(pgdir, 0, PGSIZE);
+    else warn("failed");
     return pgdir;
 }
 

@@ -18,7 +18,6 @@ memset(void *str, int c, size_t n)
 static inline void *
 memmove(void *dst, const void *src, size_t n)
 {
-    size_t pn = n;
     const char *s = (const char *)src;
     char *d = (char *)dst;
     if (s < d && s + n > d) {

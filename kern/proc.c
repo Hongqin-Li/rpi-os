@@ -94,68 +94,48 @@ proc_alloc()
     return p;
 }
 
+static struct proc *
+proc_initx(char *name, char *code, size_t len)
+{
+    struct proc *p = proc_alloc();
+    void *va = kalloc();
+    assert(p && va);
+
+    p->pgdir = vm_init();
+    assert(p->pgdir);
+
+    int ret = uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
+    assert(ret == 0);
+
+    memmove(va, code, len);
+    assert(len <= PGSIZE);
+
+    p->stksz = 0;
+    p->sz = PGSIZE;
+    p->base = 0;
+
+    p->tf->elr = 0;
+
+    safestrcpy(p->name, name, sizeof(p->name));
+    return p;
+}
+
 /* Initialize per-cpu idle process. */
 static void
 idle_init()
 {
-    struct proc *p;
-    if (!(p = proc_alloc()))
-        panic("idle init: failed\n");
-
-    p->pgdir = vm_init();
-    void *va = kalloc();
-    uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
-
     extern char ispin[], eicode[];
-    memmove(va, ispin, eicode - ispin);
-    assert((size_t)(eicode - ispin) <= PGSIZE);
-
-    p->stksz = 0;
-    p->sz = PGSIZE;
-    p->base = 0;
-
-    p->tf->elr = 0;
-
-    safestrcpy(p->name, "idle", sizeof(p->name));
-    // p->cwd = namei("/");
-    thiscpu()->idle = p;
+    thiscpu()->idle = proc_initx("idle", ispin, (size_t)(eicode - ispin));
 }
 
-/*
- * Set up the first user process. Specifically, we need to:
- * - alloc a new proc.
- * - move the code snippet in initcode.S into its virtual memory.
- * - set up link register in trap frame.
- * - mark as RUNNABLE so that our scheduler can swtch to it.
- */
+/* Set up the first user process. */
 void
 user_init()
 {
-    info("cpu %d", cpuid());
-    struct proc *p = proc_alloc();
-    if (p == 0)
-        panic("user init: failed\n");
-
-    if ((p->pgdir = vm_init()) == 0)
-        panic("user init: failed\n");
-
-    assert(!initproc);
-    initproc = p;
-
-    void *va = kalloc();
-    uvm_map(p->pgdir, 0, PGSIZE, V2P(va));
-
     extern char icode[], eicode[];
-    memmove(va, icode, eicode - icode);
-    assert((size_t)(eicode - icode) <= PGSIZE);
-    p->stksz = 0;
-    p->sz = PGSIZE;
-    p->base = 0;
-
-    p->tf->elr = 0;
-
-    safestrcpy(p->name, "icode", sizeof(p->name));
+    struct proc *p = proc_initx("icode", icode, (size_t)(eicode - icode));
     p->cwd = namei("/");
+    assert(p->cwd);
 
     acquire(&ptable.lock);
     list_push_back(&ptable.sched_que, &p->link);
@@ -415,8 +395,7 @@ exit(int err)
         panic("init exit");
 
     if (err) {
-        warn("exit: pid %d, err %d\n", cp->pid, err);
-        procdump();
+        warn("exit: pid %d, err %d", cp->pid, err);
     }
 
     // Close all open files.
@@ -477,7 +456,7 @@ procdump()
     struct proc *p;
     char *state;
 
-    // donot acquire ptable.lock to avoid deadlock
+    // Donot acquire ptable.lock to avoid deadlock
     // acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
         if (p->state == UNUSED) continue;

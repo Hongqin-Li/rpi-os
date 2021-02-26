@@ -82,6 +82,7 @@ execve(const char *path, char *const argv[], char *const envp[])
             debug("memsz smaller than filesz");
             goto bad;
         }
+
         if (ph.p_vaddr + ph.p_memsz < ph.p_vaddr) {
             debug("vaddr + memsz overflow");
             goto bad;
@@ -96,22 +97,12 @@ execve(const char *path, char *const argv[], char *const envp[])
             }
         }
 
-        // cprintf("phdr: vaddr 0x%p, memsz 0x%p, filesz 0x%p\n", ph.p_vaddr, ph.p_memsz, ph.p_filesz);
-
         if ((sz = uvm_alloc(pgdir, base, stksz, sz, ph.p_vaddr + ph.p_memsz)) == 0) {
             debug("uvm_alloc bad");
             goto bad;
         }
 
         uvm_switch(pgdir);
-
-        // Check accessibility.
-        // for (char *p = ph.p_vaddr; p < ph.p_vaddr + ph.p_memsz; p++) {
-        //     char x = *p;
-        //     cprintf("%d\r", x);
-        // }
-        // memset(ph.p_vaddr, 0, ph.p_memsz);
-        // cprintf("checked [0x%p, 0x%p)\n", ph.p_vaddr, ph.p_vaddr + ph.p_memsz);
 
         if (readi(ip, ph.p_vaddr, ph.p_offset, ph.p_filesz) != ph.p_filesz) {
             debug("read section bad");
