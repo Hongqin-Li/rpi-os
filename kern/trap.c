@@ -77,7 +77,7 @@ argint(int n, int *ip)
  * now we support system calls with at most 6 parameters.
  */
 int
-argu64(int n, size_t *ip)
+argu64(int n, uint64_t *ip)
 {
     struct proc *proc = thisproc();
     if (n > 5) {
