@@ -15,6 +15,8 @@ int         uvm_map(uint64_t *pgdir, void *va, size_t sz, uint64_t pa);
 int         uvm_alloc(uint64_t *pgdir, size_t base, size_t stksz, size_t oldsz, size_t newsz);
 int         uvm_dealloc(uint64_t *pgdir, size_t base, size_t oldsz, size_t newsz);
 
+int         copyout(uint64_t *pgdir, void *va, void *p, size_t len);
+
 void        vm_stat(uint64_t *);
 void        vm_test();
 

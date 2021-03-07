@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 char *argv[] = { "sh", 0 };
 char *envp[] = { "TEST_ENV=FROM_INIT", 0 };

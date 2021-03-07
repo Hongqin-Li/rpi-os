@@ -7,6 +7,7 @@
 #include "uart.h"
 #include "spinlock.h"
 #include "file.h"
+#include "mm.h"
 
 #define CONSOLE 1
 

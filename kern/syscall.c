@@ -6,6 +6,27 @@
 #include "proc.h"
 #include "debug.h"
 
+extern int sys_brk();
+extern int sys_mmap();
+extern int sys_wait4();
+extern int sys_yield();
+
+extern int sys_execve();
+
+extern int sys_dup();
+extern int sys_chdir();
+extern int sys_pipe2();
+extern int sys_clone();
+extern int sys_fstat();
+extern int sys_fstatat();
+extern int sys_open();
+extern int sys_openat();
+extern int sys_mkdirat();
+extern int sys_mknodat();
+extern int sys_close();
+extern int sys_writev();
+extern int sys_read();
+
 int
 syscall1(struct trapframe *tf)
 {
@@ -38,7 +59,7 @@ syscall1(struct trapframe *tf)
         return sys_mmap();
 
     case SYS_execve:
-        return execve(tf->x[0], tf->x[1], tf->x[2]);
+        return sys_execve();
 
     case SYS_sched_yield:
         return sys_yield();

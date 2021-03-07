@@ -17,13 +17,7 @@
 #include "fs.h"
 #include "file.h"
 
-// #define O_RDONLY  0x00000
-// #define O_WRONLY  0x00001
-// #define O_RDWR    0x00002
-// #define O_CREATE  0x00100
-// #define O_LARGE   0x20000
-
-// #define AT_FDCWD  (-100)
+extern int execve(const char *, char *const, char *const);
 
 struct iovec {
     void  *iov_base;    /* Starting address. */
@@ -117,7 +111,7 @@ sys_writev()
     struct iovec *iov, *p;
     if (argfd(0, &fd, &f) < 0 ||
         argint(2, &iovcnt) < 0 ||
-        argptr(1, &iov, iovcnt * sizeof(struct iovec)) < 0) {
+        argptr(1, (char **)&iov, iovcnt * sizeof(struct iovec)) < 0) {
         return -1;
     }
     trace("fd %d, iovcnt: %d", fd, iovcnt);
@@ -499,31 +493,15 @@ sys_chdir()
     return 0;
 }
 
-// int
-// sys_exec(void)
-// {
-//   char *path, *argv[MAXARG];
-//   int i;
-//   uint uargv, uarg;
-// 
-//   if(argstr(0, &path) < 0 || argint(1, (int*)&uargv) < 0){
-//     return -1;
-//   }
-//   memset(argv, 0, sizeof(argv));
-//   for(i=0;; i++){
-//     if(i >= NELEM(argv))
-//       return -1;
-//     if(fetchint(uargv+4*i, (int*)&uarg) < 0)
-//       return -1;
-//     if(uarg == 0){
-//       argv[i] = 0;
-//       break;
-//     }
-//     if(fetchstr(uarg, &argv[i]) < 0)
-//       return -1;
-//   }
-//   return execve(path, argv, 0);
-// }
+int
+sys_execve()
+{
+    char *p;
+    void *argv, *envp;
+    if (argstr(0, &p) < 0 || argu64(1, (uint64_t *)&argv) < 0 || argu64(2, (uint64_t *)&envp) < 0)
+        return -1;
+    return execve(p, argv, envp);
+}
 
 int
 sys_pipe2()

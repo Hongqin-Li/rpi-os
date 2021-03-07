@@ -3,6 +3,7 @@
 #include "arm.h"
 #include "peripherals/irq.h"
 #include "console.h"
+#include "proc.h"
 
 static int dt = 19200000;
 

@@ -45,7 +45,7 @@ sys_mmap()
     void *addr;
     size_t len, off;
     int prot, flags, fd;
-    if (argu64(0, &addr) < 0 ||
+    if (argu64(0, (uint64_t *)&addr) < 0 ||
         argu64(1, &len) < 0 ||
         argint(2, &prot) < 0 ||
         argint(3, &flags) < 0 ||
@@ -64,13 +64,14 @@ sys_mmap()
             return -1;
         }
         trace("map none at 0x%p", addr);
-        return addr;
+        return (size_t)addr;
     } else {
         if (prot != (PROT_READ | PROT_WRITE)) {
             warn("non-rw unimplemented");
             return -1;
         }
         panic("unimplemented. ");
+        return -1;
     }
 }
 
@@ -79,7 +80,7 @@ sys_clone()
 {
     void *childstk;
     uint64_t flag;
-    if (argu64(0, &flag) < 0 || argu64(1, &childstk) < 0)
+    if (argu64(0, &flag) < 0 || argu64(1, (uint64_t *)&childstk) < 0)
         return -1;
     trace("flags 0x%llx, child stack 0x%p", flag, childstk);
     if (flag != 17) {
@@ -97,9 +98,9 @@ sys_wait4()
     int *wstatus;
     void *rusage;
     if (argint(0, &pid) < 0 ||
-        argu64(1, &wstatus) < 0 ||
+        argu64(1, (uint64_t *)&wstatus) < 0 ||
         argint(2, &opt) < 0 ||
-        argu64(3, &rusage) < 0)
+        argu64(3, (uint64_t *)&rusage) < 0)
         return -1;
 
     // FIXME:

@@ -109,6 +109,7 @@ fileread(struct file *f, char *addr, ssize_t n)
         return r;
     }
     panic("fileread");
+    return -1;
 }
 
 /* Write to file f. */
@@ -153,5 +154,6 @@ filewrite(struct file *f, char *addr, ssize_t n)
         return i == n ? n : -1;
     }
     panic("filewrite");
+    return -1;
 }
 

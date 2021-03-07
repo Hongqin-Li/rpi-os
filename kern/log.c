@@ -50,6 +50,8 @@ struct log {
 };
 struct log log;
 
+extern void readsb(int dev, struct superblock *sb);
+
 static void recover_from_log();
 static void commit();
 

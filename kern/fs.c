@@ -81,6 +81,7 @@ balloc(uint32_t dev)
         brelse(bp);
     }
     panic("balloc: out of blocks");
+    return 0;
 }
 
 /* Free a disk block. */
@@ -199,7 +200,7 @@ static struct inode* iget(uint32_t dev, uint32_t inum);
  * Mark it as allocated by giving it type type.
  * Returns an unlocked but allocated and referenced inode.
  */
-struct inode*
+struct inode *
 ialloc(uint32_t dev, short type)
 {
     int inum;
@@ -219,6 +220,7 @@ ialloc(uint32_t dev, short type)
         brelse(bp);
     }
     panic("ialloc: no inodes");
+    return 0;
 }
 
 /* Copy a modified in-memory inode to disk.
@@ -250,7 +252,7 @@ iupdate(struct inode *ip)
  * and return the in-memory copy. Does not lock
  * the inode and does not read it from disk.
  */
-static struct inode*
+static struct inode *
 iget(uint32_t dev, uint32_t inum)
 {
     struct inode *ip, *empty;
@@ -415,6 +417,7 @@ bmap(struct inode *ip, uint32_t bn)
     }
 
     panic("bmap: out of range");
+    return 0;
 }
 
 /* Truncate inode (discard contents).
@@ -628,10 +631,10 @@ dirlink(struct inode *dp, char *name, uint32_t inum)
  *   skipelem("a", name) = "", setting name = "a"
  *   skipelem("", name) = skipelem("////", name) = 0
  */
-static char*
-skipelem(char *path, char *name)
+static const char *
+skipelem(const char *path, char *name)
 {
-    char *s;
+    const char *s;
     int len;
 
     while (*path == '/')
@@ -660,7 +663,7 @@ skipelem(char *path, char *name)
  * Must be called inside a transaction since it calls iput().
  */
 static struct inode *
-namex(char *path, int nameiparent, char *name)
+namex(const char *path, int nameiparent, char *name)
 {
     struct inode *ip, *next;
 
@@ -695,14 +698,14 @@ namex(char *path, int nameiparent, char *name)
 }
 
 struct inode *
-namei(char *path)
+namei(const char *path)
 {
     char name[DIRSIZ];
     return namex(path, 0, name);
 }
 
 struct inode *
-nameiparent(char *path, char *name)
+nameiparent(const char *path, char *name)
 {
     return namex(path, 1, name);
 }

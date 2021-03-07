@@ -21,7 +21,7 @@ static void forkret();
 static void idle_init();
 
 #define SQSIZE  0x100    /* Must be power of 2. */
-#define HASH(x) ((((int)(x)) >> 5) & (SQSIZE - 1))
+#define HASH(x) ((((uint64_t)(x)) >> 5) & (SQSIZE - 1))
 
 struct cpu cpu[NCPU];
 
@@ -358,30 +358,6 @@ wait()
     return -1;
 }
 
-// Kill the process with the given pid.
-// Process won't exit until it returns
-// to user space (see trap in trap.c).
-int
-kill(int pid)
-{
-    panic("not implemented");
-//   struct proc *p;
-
-//   acquire(&ptable.lock);
-//   for(p = &proc; p < &proc[NPROC]; p++){
-//     if(p->pid == pid){
-//       p->killed = 1;
-//       // Wake process from sleep if necessary.
-//       if(p->state == SLEEPING)
-//         p->state = RUNNABLE;
-//       release(&ptable.lock);
-//       return 0;
-//     }
-//   }
-//   release(&ptable.lock);
-//   return -1;
-}
-
 /*
  * Exit the current process.  Does not return.
  * An exited process remains in the zombie state
@@ -452,9 +428,7 @@ procdump()
         [RUNNING]   "run   ",
         [ZOMBIE]    "zombie"
     };
-    int i;
     struct proc *p;
-    char *state;
 
     // Donot acquire ptable.lock to avoid deadlock
     // acquire(&ptable.lock);

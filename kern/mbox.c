@@ -55,17 +55,17 @@ mbox_write(uint32_t buf, uint8_t chan)
 }
 
 static int
-mbox_send(uint32_t buf[], int len)
+mbox_send(volatile uint32_t buf[], int len)
 {
     assert(len >= 3);
     disb();
-    dccivac(buf, len);
+    dccivac((void *)buf, len);
     disb();
     mbox_write(V2P(buf), 8);
     disb();
     mbox_read(8);
     disb();
-    dccivac(buf, len);
+    dccivac((void *)buf, len);
     disb();
 
     if (buf[1] == MBOX_RESP_OK) {

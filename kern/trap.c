@@ -26,8 +26,8 @@ int
 in_user(void *s, size_t n)
 {
     struct proc *p = thisproc();
-    if ((p->base <= s && s + n <= p->sz) ||
-        (USERTOP - p->stksz <= s && s + n <= USERTOP))
+    if ((p->base <= (uint64_t)s && (uint64_t)s + n <= p->sz) ||
+        (USERTOP - p->stksz <= (uint64_t)s && (uint64_t)s + n <= USERTOP))
         return 1;
     return 0;
 }
