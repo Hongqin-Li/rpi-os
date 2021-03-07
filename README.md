@@ -1,8 +1,6 @@
 # Raspberry Pi 3 Operating System
 
-This is yet another unix-like toy operating system on raspberry pi 3. I built it for preparing lecture [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) when I was a TA of OS lecture at Fudan University. However, operating systems on raspberry pi seems either too complicate (e.g. [linux](https://github.com/raspberrypi/linux), [circle](https://github.com/rsta2/circle)) or incomplete (e.g. [s-matyukevich's](https://github.com/s-matyukevich/raspberry-pi-os) and [bztsrc's](https://github.com/bztsrc/raspi3-tutorial) both lack multi-core support) for teaching. Inappropriate though they are, it's still highly recommended to have a try with them when working on raspberry pi with its poorly-documented hardware. Eventually, I decided to implement it from scratch, with my limited knowledge about [xv6](https://github.com/mit-pdos/xv6-public/), which is one of the best teaching operating system by MIT. Since xv6 is the first os I have learned, the general framework is adopted from it with a little optimization.
-
-Several parts of it are still in progress.
+Yet another unix-like toy operating system running on Raspberry Pi 3, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University. However, existing operating systems on raspberry pi seems either too complicate (e.g. [linux](https://github.com/raspberrypi/linux), [circle](https://github.com/rsta2/circle)) or incomplete (e.g. [s-matyukevich's](https://github.com/s-matyukevich/raspberry-pi-os) and [bztsrc's](https://github.com/bztsrc/raspi3-tutorial) both lack multi-core support) for teaching. But they are still good projects, and it's highly recommended to have a try with them. Eventually, I decided to implement one from scratch, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
 
 ## Features
 
@@ -10,13 +8,12 @@ Several parts of it are still in progress.
 - [x] Memory management
 - [x] Virtual memory
 - [x] Process management
-- [x] Disk Driver (EMMC)
+- [x] Disk driver(EMMC): port [RPiHaribote](https://github.com/moizumi99/RPiHaribote/blob/master/sdcard.c)
 - [x] File system: port xv6
 - [x] C library: port [musl](https://musl.libc.org/)
 - [x] Shell: port xv6
   - [x] Support argc, envp
   - [x] Support pipe
-- [ ] Compiler
 - [ ] Documentation...
 
 ## Development
@@ -29,4 +26,17 @@ Linux is required for building and Ubuntu is preferred.
 - Burn to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 
 ## Project structure
+
+```
+.
+├── Makefile
+├── mksd.mk: Part of Makefile for generating bootable image.
+|
+├── boot: Official boot loader.
+├── libc: C library musl.
+|
+├── inc: Kernel headers.
+├── kern: Kernel source code.
+└── usr: User programs.
+```
 

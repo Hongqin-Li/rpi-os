@@ -60,10 +60,10 @@ gdb:
 	gdb-multiarch -n -x .gdbinit
 
 init:
-	# sudo apt install -y gcc-aarch64-linux-gnu gdb-multiarch
-	# sudo apt install -y qemu-system-arm qemu-efi-aarch64 qemu-utils
-	# sudo apt install -y mtools
-	# git submodule update --init --recursive
+	sudo apt install -y gcc-aarch64-linux-gnu gdb-multiarch
+	sudo apt install -y qemu-system-arm qemu-efi-aarch64 qemu-utils
+	sudo apt install -y mtools
+	git submodule update --init --recursive
 	(cd libc && export CROSS_COMPILE=$(CROSS) && ./configure --target=$(ARCH))
 
 clean:
