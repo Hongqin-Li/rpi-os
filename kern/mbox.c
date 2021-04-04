@@ -89,7 +89,10 @@ int
 mbox_get_arm_memory()
 {
     __attribute__((aligned(16)))
-    volatile uint32_t buf[] = {32, 0, MBOX_TAG_GET_ARM_MEMORY, 8, MBOX_TAG_REQUEST, 0, 0, MBOX_TAG_END};
+    volatile uint32_t buf[] =
+        { 32, 0, MBOX_TAG_GET_ARM_MEMORY, 8, MBOX_TAG_REQUEST, 0, 0,
+        MBOX_TAG_END
+    };
 
     asserts((V2P(buf) & 0xF) == 0, "Buffer should align to 16 bytes. ");
     assert(sizeof(buf) == buf[0]);
@@ -112,10 +115,13 @@ int
 mbox_get_clock_rate(int clock_id)
 {
     __attribute__((aligned(16)))
-    volatile uint32_t buf[] = {32, 0, MBOX_TAG_GET_CLOCK_RATE, 8, MBOX_TAG_REQUEST, clock_id, 0, MBOX_TAG_END};
+    volatile uint32_t buf[] =
+        { 32, 0, MBOX_TAG_GET_CLOCK_RATE, 8, MBOX_TAG_REQUEST, clock_id, 0,
+        MBOX_TAG_END
+    };
     asserts((V2P(buf) & 0xF) == 0, "Buffer should align to 16 bytes. ");
     assert(sizeof(buf) == buf[0]);
-   
+
     if (mbox_send(buf, sizeof(buf)) < 0)
         return -1;
 
@@ -135,12 +141,15 @@ int
 mbox_set_sdhost_clock(uint32_t msg[3])
 {
     __attribute__((aligned(16)))
-    volatile uint32_t buf[] = {0, 0, MBOX_TAG_SET_SDHOST_CLOCK, 12, MBOX_TAG_REQUEST, msg[0], msg[1], msg[2], MBOX_TAG_END};
+    volatile uint32_t buf[] =
+        { 0, 0, MBOX_TAG_SET_SDHOST_CLOCK, 12, MBOX_TAG_REQUEST, msg[0],
+        msg[1], msg[2], MBOX_TAG_END
+    };
     buf[0] = sizeof(buf);
-   
+
     if (mbox_send(buf, sizeof(buf)) < 0)
         return -1;
-    
+
     memmove(msg, &buf[5], sizeof(msg));
     if ((buf[4] >> 31) == 0 || (buf[4] & 0x3FFFFFFF) != 12) {
         debug("unexpected tag resp %d", buf[4]);

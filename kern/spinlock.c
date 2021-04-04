@@ -8,18 +8,17 @@ initlock(struct spinlock *lk)
     lk->locked = 0;
 }
 
-void 
+void
 acquire(struct spinlock *lk)
 {
-    while (lk->locked || __atomic_test_and_set(&lk->locked, __ATOMIC_ACQUIRE))
-        ;
+    while (lk->locked
+           || __atomic_test_and_set(&lk->locked, __ATOMIC_ACQUIRE)) ;
 }
 
-void 
+void
 release(struct spinlock *lk)
 {
     if (!lk->locked)
         panic("release: not locked\n");
     __atomic_clear(&lk->locked, __ATOMIC_RELEASE);
 }
-

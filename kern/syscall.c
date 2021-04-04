@@ -34,7 +34,7 @@ syscall1(struct trapframe *tf)
     int sysno = tf->x[8];
     switch (sysno) {
 
-    // FIXME: use pid instead of tid since we don't have threads :)
+        // FIXME: use pid instead of tid since we don't have threads :)
     case SYS_set_tid_address:
         trace("set_tid_address: name '%s'", thisproc()->name);
         return thisproc()->pid;
@@ -42,15 +42,18 @@ syscall1(struct trapframe *tf)
         trace("gettid: name '%s'", thisproc()->name);
         return thisproc()->pid;
 
-    // FIXME: Hack TIOCGWINSZ(get window size)
+        // FIXME: Hack TIOCGWINSZ(get window size)
     case SYS_ioctl:
         trace("ioctl: name '%s'", thisproc()->name);
-        if (tf->x[1] == 0x5413) return 0;
-        else panic("ioctl unimplemented. ");
+        if (tf->x[1] == 0x5413)
+            return 0;
+        else
+            panic("ioctl unimplemented. ");
 
-    // FIXME: always return 0 since we don't have signals  :)
+        // FIXME: always return 0 since we don't have signals  :)
     case SYS_rt_sigprocmask:
-        trace("rt_sigprocmask: name '%s' how 0x%x", thisproc()->name, (int)tf->x[0]);
+        trace("rt_sigprocmask: name '%s' how 0x%x", thisproc()->name,
+              (int)tf->x[0]);
         return 0;
 
     case SYS_brk:
@@ -70,10 +73,11 @@ syscall1(struct trapframe *tf)
     case SYS_wait4:
         return sys_wait4();
 
-    // FIXME: exit_group should kill every thread in the current thread group.
+        // FIXME: exit_group should kill every thread in the current thread group.
     case SYS_exit_group:
     case SYS_exit:
-        trace("sys_exit: '%s' exit with code %d", thisproc()->name, tf->x[0]);
+        trace("sys_exit: '%s' exit with code %d", thisproc()->name,
+              tf->x[0]);
         exit(tf->x[0]);
 
     case SYS_dup:
@@ -96,7 +100,7 @@ syscall1(struct trapframe *tf)
 
     case SYS_mknodat:
         return sys_mknodat();
-        
+
     case SYS_openat:
         return sys_openat();
 
@@ -114,8 +118,7 @@ syscall1(struct trapframe *tf)
 
         debug_reg();
         panic("Unexpected syscall #%d\n", sysno);
-        
+
         return 0;
     }
 }
-

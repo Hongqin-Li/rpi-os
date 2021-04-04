@@ -17,19 +17,21 @@ static int panicked = -1;
 
 #define INPUT_BUF 128
 struct {
-  char buf[INPUT_BUF];
-  size_t r;  // Read index
-  size_t w;  // Write index
-  size_t e;  // Edit index
+    char buf[INPUT_BUF];
+    size_t r;                   // Read index
+    size_t w;                   // Write index
+    size_t e;                   // Edit index
 } input;
-#define C(x)  ((x)-'@')  // Control-x
+#define C(x)  ((x)-'@')         // Control-x
 #define BACKSPACE 0x100
 
 static void
 consputc(int c)
 {
     if (c == BACKSPACE) {
-        uart_putchar('\b'); uart_putchar(' '); uart_putchar('\b');
+        uart_putchar('\b');
+        uart_putchar(' ');
+        uart_putchar('\b');
     } else
         uart_putchar(c);
 }
@@ -62,7 +64,7 @@ console_read(struct inode *ip, char *dst, ssize_t n)
             sleep(&input.r, &conslock);
         }
         int c = input.buf[input.r++ % INPUT_BUF];
-        if (c == C('D')) {  // EOF
+        if (c == C('D')) {      // EOF
             if (n < target) {
                 // Save ^D for next time, to make sure
                 // caller gets a 0-byte result.
@@ -107,7 +109,8 @@ printint(int64_t x, int base, int sign)
         buf[i++] = digit[t % base];
     } while (t /= base);
 
-    while (i--) uart_putchar(buf[i]);
+    while (i--)
+        uart_putchar(buf[i]);
 }
 
 void
@@ -122,7 +125,7 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
         }
 
         int l = 0;
-        for (; fmt[i+1] == 'l'; i++)
+        for (; fmt[i + 1] == 'l'; i++)
             l++;
 
         if (!(c = fmt[++i] & 0xff))
@@ -130,25 +133,31 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
 
         switch (c) {
         case 'u':
-            if (l == 2) printint(va_arg(ap, int64_t), 10, 0);
-            else printint(va_arg(ap, uint32_t), 10, 0);
+            if (l == 2)
+                printint(va_arg(ap, int64_t), 10, 0);
+            else
+                printint(va_arg(ap, uint32_t), 10, 0);
             break;
         case 'd':
-            if (l == 2) printint(va_arg(ap, int64_t), 10, 1);
-            else printint(va_arg(ap, int), 10, 1);
+            if (l == 2)
+                printint(va_arg(ap, int64_t), 10, 1);
+            else
+                printint(va_arg(ap, int), 10, 1);
             break;
         case 'x':
-            if (l == 2) printint(va_arg(ap, int64_t), 16, 0);
-            else printint(va_arg(ap, uint32_t), 16, 0);
+            if (l == 2)
+                printint(va_arg(ap, int64_t), 16, 0);
+            else
+                printint(va_arg(ap, uint32_t), 16, 0);
             break;
         case 'p':
-            printint((uint64_t)va_arg(ap, void *), 16, 0);
+            printint((uint64_t) va_arg(ap, void *), 16, 0);
             break;
         case 'c':
             putch(va_arg(ap, int));
             break;
         case 's':
-            if ((s = (char*)va_arg(ap, char *)) == 0)
+            if ((s = (char *)va_arg(ap, char *)) == 0)
                 s = "(null)";
             for (; *s; s++)
                 putch(*s);
@@ -166,7 +175,8 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
 }
 
 void
-cprintf1(const char *fmt, ...) {
+cprintf1(const char *fmt, ...)
+{
     va_list ap;
     va_start(ap, fmt);
     vprintfmt(uart_putchar, fmt, ap);
@@ -203,27 +213,30 @@ console_intr(int (*getc)())
 
     while ((c = getc()) >= 0) {
         switch (c) {
-        case C('P'):  // Process listing.
+        case C('P'):           // Process listing.
             prof = 1;
             break;
-        case C('U'):  // Kill line.
-            while (input.e != input.w && input.buf[(input.e-1) % INPUT_BUF] != '\n') {
+        case C('U'):           // Kill line.
+            while (input.e != input.w
+                   && input.buf[(input.e - 1) % INPUT_BUF] != '\n') {
                 input.e--;
                 consputc(BACKSPACE);
             }
             break;
-        case C('H'): case '\x7f':  // Backspace
-            if (input.e != input.w){
+        case C('H'):
+        case '\x7f':           // Backspace
+            if (input.e != input.w) {
                 input.e--;
                 consputc(BACKSPACE);
             }
             break;
         default:
-            if (c != 0 && input.e-input.r < INPUT_BUF) {
+            if (c != 0 && input.e - input.r < INPUT_BUF) {
                 c = (c == '\r') ? '\n' : c;
                 input.buf[input.e++ % INPUT_BUF] = c;
                 consputc(c);
-                if (c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF) {
+                if (c == '\n' || c == C('D')
+                    || input.e == input.r + INPUT_BUF) {
                     input.w = input.e;
                     wakeup(&input.r);
                 }
@@ -245,7 +258,8 @@ panic(const char *fmt, ...)
     va_list ap;
 
     acquire(&conslock);
-    if (panicked < 0) panicked = cpuid();
+    if (panicked < 0)
+        panicked = cpuid();
     else {
         release(&conslock);
         while (1) ;
@@ -255,6 +269,7 @@ panic(const char *fmt, ...)
     va_end(ap);
     release(&conslock);
 
-    cprintf("%s:%d: kernel panic at cpu %d.\n", __FILE__, __LINE__, cpuid());
+    cprintf("%s:%d: kernel panic at cpu %d.\n", __FILE__, __LINE__,
+            cpuid());
     while (1) ;
 }

@@ -33,7 +33,7 @@ static int sd_send(int index);
 static int sd_senda(int index, int arg);
 static int sd_wait_intr(uint32_t mask);
 static int sd_wait_data();
-int fls_long (uint64_t x);
+int fls_long(uint64_t x);
 
 // EMMC registers
 #define EMMC_ARG2           ((volatile uint32_t*)(MMIO_BASE+0x00300000))
@@ -119,8 +119,8 @@ int fls_long (uint64_t x);
 #define C1_CLK_STABLE    0x00000002
 #define C1_CLK_INTLEN    0x00000001
 
-#define FREQ_SETUP           400000  // 400 Khz
-#define FREQ_NORMAL        25000000  // 25 Mhz
+#define FREQ_SETUP           400000     // 400 Khz
+#define FREQ_NORMAL        25000000     // 25 Mhz
 
 // CONTROL2 values
 #define C2_VDD_18        0x00080000
@@ -146,9 +146,9 @@ int fls_long (uint64_t x);
 #define SR_DAT2              0x00400000
 #define SR_DAT1              0x00200000
 #define SR_DAT0              0x00100000
-#define SR_WRITE_PROT        0x00080000  // From SDHC spec v2, BCM says reserved
-#define SR_READ_AVAILABLE    0x00000800  // ???? undocumented
-#define SR_WRITE_AVAILABLE   0x00000400  // ???? undocumented
+#define SR_WRITE_PROT        0x00080000 // From SDHC spec v2, BCM says reserved
+#define SR_READ_AVAILABLE    0x00000800 // ???? undocumented
+#define SR_WRITE_AVAILABLE   0x00000400 // ???? undocumented
 #define SR_READ_TRANSFER     0x00000200
 #define SR_WRITE_TRANSFER    0x00000100
 #define SR_DAT_ACTIVE        0x00000004
@@ -167,30 +167,30 @@ int fls_long (uint64_t x);
 #define ACMD41_ARG_SC        (ACMD41_VOLTAGE|ACMD41_S18R)
 
 // R1 (Status) values
-#define ST_OUT_OF_RANGE      0x80000000  // 31   E
-#define ST_ADDRESS_ERROR     0x40000000  // 30   E
-#define ST_BLOCK_LEN_ERROR   0x20000000  // 29   E
-#define ST_ERASE_SEQ_ERROR   0x10000000  // 28   E
-#define ST_ERASE_PARAM_ERROR 0x08000000  // 27   E
-#define ST_WP_VIOLATION      0x04000000  // 26   E
-#define ST_CARD_IS_LOCKED    0x02000000  // 25   E
-#define ST_LOCK_UNLOCK_FAIL  0x01000000  // 24   E
-#define ST_COM_CRC_ERROR     0x00800000  // 23   E
-#define ST_ILLEGAL_COMMAND   0x00400000  // 22   E
-#define ST_CARD_ECC_FAILED   0x00200000  // 21   E
-#define ST_CC_ERROR          0x00100000  // 20   E
-#define ST_ERROR             0x00080000  // 19   E
-#define ST_CSD_OVERWRITE     0x00010000  // 16   E
-#define ST_WP_ERASE_SKIP     0x00008000  // 15   E
-#define ST_CARD_ECC_DISABLED 0x00004000  // 14   E
-#define ST_ERASE_RESET       0x00002000  // 13   E
-#define ST_CARD_STATE        0x00001e00  // 12:9
-#define ST_READY_FOR_DATA    0x00000100  // 8
-#define ST_APP_CMD           0x00000020  // 5
-#define ST_AKE_SEQ_ERROR     0x00000004  // 3    E
+#define ST_OUT_OF_RANGE      0x80000000 // 31   E
+#define ST_ADDRESS_ERROR     0x40000000 // 30   E
+#define ST_BLOCK_LEN_ERROR   0x20000000 // 29   E
+#define ST_ERASE_SEQ_ERROR   0x10000000 // 28   E
+#define ST_ERASE_PARAM_ERROR 0x08000000 // 27   E
+#define ST_WP_VIOLATION      0x04000000 // 26   E
+#define ST_CARD_IS_LOCKED    0x02000000 // 25   E
+#define ST_LOCK_UNLOCK_FAIL  0x01000000 // 24   E
+#define ST_COM_CRC_ERROR     0x00800000 // 23   E
+#define ST_ILLEGAL_COMMAND   0x00400000 // 22   E
+#define ST_CARD_ECC_FAILED   0x00200000 // 21   E
+#define ST_CC_ERROR          0x00100000 // 20   E
+#define ST_ERROR             0x00080000 // 19   E
+#define ST_CSD_OVERWRITE     0x00010000 // 16   E
+#define ST_WP_ERASE_SKIP     0x00008000 // 15   E
+#define ST_CARD_ECC_DISABLED 0x00004000 // 14   E
+#define ST_ERASE_RESET       0x00002000 // 13   E
+#define ST_CARD_STATE        0x00001e00 // 12:9
+#define ST_READY_FOR_DATA    0x00000100 // 8
+#define ST_APP_CMD           0x00000020 // 5
+#define ST_AKE_SEQ_ERROR     0x00000004 // 3    E
 
 #define R1_CARD_STATE_SHIFT  9
-#define R1_ERRORS_MASK       0xfff9c004  // All above bits which indicate errors.
+#define R1_ERRORS_MASK       0xfff9c004 // All above bits which indicate errors.
 
 // R3 (ACMD41 APP_SEND_OP_COND)
 #define R3_COMPLETE    0x80000000
@@ -203,32 +203,32 @@ int fls_long (uint64_t x);
 #define R6_STATE_MASK  0x00001e00
 
 // Card state values as they appear in the status register.
-#define CS_IDLE    0 // 0x00000000
-#define CS_READY   1 // 0x00000200
-#define CS_IDENT   2 // 0x00000400
-#define CS_STBY    3 // 0x00000600
-#define CS_TRAN    4 // 0x00000800
-#define CS_DATA    5 // 0x00000a00
-#define CS_RCV     6 // 0x00000c00
-#define CS_PRG     7 // 0x00000e00
-#define CS_DIS     8 // 0x00001000
+#define CS_IDLE    0            // 0x00000000
+#define CS_READY   1            // 0x00000200
+#define CS_IDENT   2            // 0x00000400
+#define CS_STBY    3            // 0x00000600
+#define CS_TRAN    4            // 0x00000800
+#define CS_DATA    5            // 0x00000a00
+#define CS_RCV     6            // 0x00000c00
+#define CS_PRG     7            // 0x00000e00
+#define CS_DIS     8            // 0x00001000
 
 // Response types.
 // Note that on the PI, the index and CRC are dropped, leaving 32 bits in RESP0.
-#define RESP_NO    0     // No response
-#define RESP_R1    1     // 48  RESP0    contains card status
-#define RESP_R1b  11     // 48  RESP0    contains card status, data line indicates busy
-#define RESP_R2I   2     // 136 RESP0..3 contains 128 bit CID shifted down by 8 bits as no CRC
-#define RESP_R2S  12     // 136 RESP0..3 contains 128 bit CSD shifted down by 8 bits as no CRC
-#define RESP_R3    3     // 48  RESP0    contains OCR register
-#define RESP_R6    6     // 48  RESP0    contains RCA and status bits 23,22,19,12:0
-#define RESP_R7    7     // 48  RESP0    contains voltage acceptance and check pattern
+#define RESP_NO    0            // No response
+#define RESP_R1    1            // 48  RESP0    contains card status
+#define RESP_R1b  11            // 48  RESP0    contains card status, data line indicates busy
+#define RESP_R2I   2            // 136 RESP0..3 contains 128 bit CID shifted down by 8 bits as no CRC
+#define RESP_R2S  12            // 136 RESP0..3 contains 128 bit CSD shifted down by 8 bits as no CRC
+#define RESP_R3    3            // 48  RESP0    contains OCR register
+#define RESP_R6    6            // 48  RESP0    contains RCA and status bits 23,22,19,12:0
+#define RESP_R7    7            // 48  RESP0    contains voltage acceptance and check pattern
 
 #define RCA_NO     1
 #define RCA_YES    2
 
 struct emmccmd {
-    const char* name;
+    const char *name;
     uint32_t code;
     uint8_t resp;
     uint8_t rca;
@@ -237,50 +237,58 @@ struct emmccmd {
 
 // Command table.
 // TODO: TM_DAT_DIR_CH required in any of these?
-static struct emmccmd cmdtable[] =
-  {
-    { "GO_IDLE_STATE", 0x00000000|CMD_RSPNS_NO                             , RESP_NO , RCA_NO  ,0},
-    { "ALL_SEND_CID" , 0x02000000|CMD_RSPNS_136                            , RESP_R2I, RCA_NO  ,0},
-    { "SEND_REL_ADDR", 0x03000000|CMD_RSPNS_48                             , RESP_R6 , RCA_NO  ,0},
-    { "SET_DSR"      , 0x04000000|CMD_RSPNS_NO                             , RESP_NO , RCA_NO  ,0},
-    { "SWITCH_FUNC"  , 0x06000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "CARD_SELECT"  , 0x07000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_YES ,0},
-    { "SEND_IF_COND" , 0x08000000|CMD_RSPNS_48                             , RESP_R7 , RCA_NO  ,100},
-    { "SEND_CSD"     , 0x09000000|CMD_RSPNS_136                            , RESP_R2S, RCA_YES ,0},
-    { "SEND_CID"     , 0x0A000000|CMD_RSPNS_136                            , RESP_R2I, RCA_YES ,0},
-    { "VOLT_SWITCH"  , 0x0B000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "STOP_TRANS"   , 0x0C000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_NO  ,0},
-    { "SEND_STATUS"  , 0x0D000000|CMD_RSPNS_48                             , RESP_R1 , RCA_YES ,0},
-    { "GO_INACTIVE"  , 0x0F000000|CMD_RSPNS_NO                             , RESP_NO , RCA_YES ,0},
-    { "SET_BLOCKLEN" , 0x10000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "READ_SINGLE"  , 0x11000000|CMD_RSPNS_48 |CMD_IS_DATA  |TM_DAT_DIR_CH, RESP_R1 , RCA_NO  ,0},
-    { "READ_MULTI"   , 0x12000000|CMD_RSPNS_48 |TM_MULTI_DATA|TM_DAT_DIR_CH, RESP_R1 , RCA_NO  ,0},
-    { "SEND_TUNING"  , 0x13000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SPEED_CLASS"  , 0x14000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_NO  ,0},
-    { "SET_BLOCKCNT" , 0x17000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "WRITE_SINGLE" , 0x18000000|CMD_RSPNS_48 |CMD_IS_DATA  |TM_DAT_DIR_HC, RESP_R1 , RCA_NO  ,0},
-    { "WRITE_MULTI"  , 0x19000000|CMD_RSPNS_48 |TM_MULTI_DATA|TM_DAT_DIR_HC, RESP_R1 , RCA_NO  ,0},
-    { "PROGRAM_CSD"  , 0x1B000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SET_WRITE_PR" , 0x1C000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_NO  ,0},
-    { "CLR_WRITE_PR" , 0x1D000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_NO  ,0},
-    { "SND_WRITE_PR" , 0x1E000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "ERASE_WR_ST"  , 0x20000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "ERASE_WR_END" , 0x21000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "ERASE"        , 0x26000000|CMD_RSPNS_48B                            , RESP_R1b, RCA_NO  ,0},
-    { "LOCK_UNLOCK"  , 0x2A000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "APP_CMD"      , 0x37000000|CMD_RSPNS_NO                             , RESP_NO , RCA_NO  ,100},
-    { "APP_CMD"      , 0x37000000|CMD_RSPNS_48                             , RESP_R1 , RCA_YES ,0},
-    { "GEN_CMD"      , 0x38000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
+static struct emmccmd cmdtable[] = {
+    { "GO_IDLE_STATE", 0x00000000 | CMD_RSPNS_NO, RESP_NO, RCA_NO, 0 },
+    { "ALL_SEND_CID", 0x02000000 | CMD_RSPNS_136, RESP_R2I, RCA_NO, 0 },
+    { "SEND_REL_ADDR", 0x03000000 | CMD_RSPNS_48, RESP_R6, RCA_NO, 0 },
+    { "SET_DSR", 0x04000000 | CMD_RSPNS_NO, RESP_NO, RCA_NO, 0 },
+    { "SWITCH_FUNC", 0x06000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "CARD_SELECT", 0x07000000 | CMD_RSPNS_48B, RESP_R1b, RCA_YES, 0 },
+    { "SEND_IF_COND", 0x08000000 | CMD_RSPNS_48, RESP_R7, RCA_NO, 100 },
+    { "SEND_CSD", 0x09000000 | CMD_RSPNS_136, RESP_R2S, RCA_YES, 0 },
+    { "SEND_CID", 0x0A000000 | CMD_RSPNS_136, RESP_R2I, RCA_YES, 0 },
+    { "VOLT_SWITCH", 0x0B000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "STOP_TRANS", 0x0C000000 | CMD_RSPNS_48B, RESP_R1b, RCA_NO, 0 },
+    { "SEND_STATUS", 0x0D000000 | CMD_RSPNS_48, RESP_R1, RCA_YES, 0 },
+    { "GO_INACTIVE", 0x0F000000 | CMD_RSPNS_NO, RESP_NO, RCA_YES, 0 },
+    { "SET_BLOCKLEN", 0x10000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "READ_SINGLE",
+     0x11000000 | CMD_RSPNS_48 | CMD_IS_DATA | TM_DAT_DIR_CH, RESP_R1,
+     RCA_NO, 0 },
+    { "READ_MULTI",
+     0x12000000 | CMD_RSPNS_48 | TM_MULTI_DATA | TM_DAT_DIR_CH, RESP_R1,
+     RCA_NO, 0 },
+    { "SEND_TUNING", 0x13000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SPEED_CLASS", 0x14000000 | CMD_RSPNS_48B, RESP_R1b, RCA_NO, 0 },
+    { "SET_BLOCKCNT", 0x17000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "WRITE_SINGLE",
+     0x18000000 | CMD_RSPNS_48 | CMD_IS_DATA | TM_DAT_DIR_HC, RESP_R1,
+     RCA_NO, 0 },
+    { "WRITE_MULTI",
+     0x19000000 | CMD_RSPNS_48 | TM_MULTI_DATA | TM_DAT_DIR_HC, RESP_R1,
+     RCA_NO, 0 },
+    { "PROGRAM_CSD", 0x1B000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SET_WRITE_PR", 0x1C000000 | CMD_RSPNS_48B, RESP_R1b, RCA_NO, 0 },
+    { "CLR_WRITE_PR", 0x1D000000 | CMD_RSPNS_48B, RESP_R1b, RCA_NO, 0 },
+    { "SND_WRITE_PR", 0x1E000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "ERASE_WR_ST", 0x20000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "ERASE_WR_END", 0x21000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "ERASE", 0x26000000 | CMD_RSPNS_48B, RESP_R1b, RCA_NO, 0 },
+    { "LOCK_UNLOCK", 0x2A000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "APP_CMD", 0x37000000 | CMD_RSPNS_NO, RESP_NO, RCA_NO, 100 },
+    { "APP_CMD", 0x37000000 | CMD_RSPNS_48, RESP_R1, RCA_YES, 0 },
+    { "GEN_CMD", 0x38000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
 
     // APP commands must be prefixed by an APP_CMD.
-    { "SET_BUS_WIDTH", 0x06000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SD_STATUS"    , 0x0D000000|CMD_RSPNS_48                             , RESP_R1 , RCA_YES ,0}, // RCA???
-    { "SEND_NUM_WRBL", 0x16000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SEND_NUM_ERS" , 0x17000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SD_SENDOPCOND", 0x29000000|CMD_RSPNS_48                             , RESP_R3 , RCA_NO  ,1000},
-    { "SET_CLR_DET"  , 0x2A000000|CMD_RSPNS_48                             , RESP_R1 , RCA_NO  ,0},
-    { "SEND_SCR"     , 0x33000000|CMD_RSPNS_48|CMD_IS_DATA|TM_DAT_DIR_CH   , RESP_R1 , RCA_NO  ,0},
-  };
+    { "SET_BUS_WIDTH", 0x06000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SD_STATUS", 0x0D000000 | CMD_RSPNS_48, RESP_R1, RCA_YES, 0 },    // RCA???
+    { "SEND_NUM_WRBL", 0x16000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SEND_NUM_ERS", 0x17000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SD_SENDOPCOND", 0x29000000 | CMD_RSPNS_48, RESP_R3, RCA_NO, 1000 },
+    { "SET_CLR_DET", 0x2A000000 | CMD_RSPNS_48, RESP_R1, RCA_NO, 0 },
+    { "SEND_SCR", 0x33000000 | CMD_RSPNS_48 | CMD_IS_DATA | TM_DAT_DIR_CH,
+     RESP_R1, RCA_NO, 0 },
+};
 
 // Command indexes in the command table
 #define IX_GO_IDLE_STATE    0
@@ -326,8 +334,10 @@ static struct emmccmd cmdtable[] =
 #define IX_SET_CLR_DET      37
 #define IX_SEND_SCR         38
 
-static const char* STATUS_NAME[] =
-  { "idle", "ready", "identify", "standby", "transmit", "data", "receive", "prog", "dis" };
+static const char *STATUS_NAME[] =
+    { "idle", "ready", "identify", "standby", "transmit", "data",
+    "receive", "prog", "dis"
+};
 
 // CSD flags
 // Note: all flags are shifted down by 8 bits as the CRC is not included.
@@ -403,9 +413,9 @@ static const char* STATUS_NAME[] =
 #define SCR_SD_SECURITY            0x00007000
 #define SCR_SD_SEC_NONE            0x00000000
 #define SCR_SD_SEC_NOT_USED        0x00001000
-#define SCR_SD_SEC_101             0x00002000  // SDSC
-#define SCR_SD_SEC_2               0x00003000  // SDHC
-#define SCR_SD_SEC_3               0x00004000  // SDXC
+#define SCR_SD_SEC_101             0x00002000   // SDSC
+#define SCR_SD_SEC_2               0x00003000   // SDHC
+#define SCR_SD_SEC_3               0x00004000   // SDXC
 
 #define SCR_SD_BUS_WIDTHS          0x00000f00
 #define SCR_SD_BUS_WIDTH_1         0x00000100
@@ -446,7 +456,7 @@ static const char* STATUS_NAME[] =
 #define SD_TYPE_2_SC 3
 #define SD_TYPE_2_HC 4
 
-static const char* SD_TYPE_NAME[] = {
+static const char *SD_TYPE_NAME[] = {
     "Unknown", "MMC", "Type 1", "Type 2 SC", "Type 2 HC"
 };
 
@@ -477,7 +487,7 @@ struct sddesc {
     uint32_t card_state;
     uint32_t status;
 
-    struct emmccmd* lastcmd;
+    struct emmccmd *lastcmd;
     uint32_t lastarg;
 };
 
@@ -518,15 +528,16 @@ sd_init()
     b.blockno = b.flags = 0;
     sd_start(&b);
     sd_wait_intr(INT_READ_RDY);
-    asserts((((int64_t)b.data) & 0x03) == 0, "Only support word-aligned buffers. ");
-    uint32_t *intbuf = (uint32_t *)b.data;
-    for (int done = 0; done < 128; )
+    asserts((((int64_t) b.data) & 0x03) == 0,
+            "Only support word-aligned buffers. ");
+    uint32_t *intbuf = (uint32_t *) b.data;
+    for (int done = 0; done < 128;)
         intbuf[done++] = *EMMC_DATA;
     sd_wait_intr(INT_DATA_DONE);
 
     assert(b.data[510] == 0x55 && b.data[511] == 0xAA);
-    first_bno = *(uint32_t *)(b.data + 0x1CE + 0x8);
-    nblocks = *(uint32_t *)(b.data + 0x1CE + 0xC);
+    first_bno = *(uint32_t *) (b.data + 0x1CE + 0x8);
+    nblocks = *(uint32_t *) (b.data + 0x1CE + 0xC);
     info("LBA of 1st block 0x%x, 0x%x blocks totally", first_bno, nblocks);
 }
 
@@ -534,7 +545,7 @@ static void
 sd_delayus(uint32_t c)
 {
     // FIXME: should delay 3 times longer on my rpi3.
-    delayus(c*3);
+    delayus(c * 3);
 }
 
 /* Start the request for b. Caller must hold sdlock. */
@@ -552,7 +563,9 @@ sd_start(struct buf *b)
 
     disb();
     // Ensure that any data operation has completed before doing the transfer.
-    asserts(!*EMMC_INTERRUPT, "emmc interrupt flag should be empty: 0x%x. ", *EMMC_INTERRUPT);
+    asserts(!*EMMC_INTERRUPT,
+            "emmc interrupt flag should be empty: 0x%x. ",
+            *EMMC_INTERRUPT);
     disb();
 
     // Work out the status, interrupt and command values for the transfer.
@@ -571,8 +584,9 @@ sd_start(struct buf *b)
     }
 
     int done = 0;
-    uint32_t *intbuf = (uint32_t *)b->data;
-    asserts((((int64_t)b->data) & 0x03) == 0, "Only support word-aligned buffers. ");
+    uint32_t *intbuf = (uint32_t *) b->data;
+    asserts((((int64_t) b->data) & 0x03) == 0,
+            "Only support word-aligned buffers. ");
 
     if (write) {
         // Wait for ready interrupt for the next block.
@@ -581,7 +595,8 @@ sd_start(struct buf *b)
             // return sd_debug_resp(resp);
         }
         asserts(!*EMMC_INTERRUPT, "%d ", *EMMC_INTERRUPT);
-        while (done < 128) *EMMC_DATA = intbuf[done++];
+        while (done < 128)
+            *EMMC_DATA = intbuf[done++];
     }
 }
 
@@ -595,20 +610,22 @@ sd_intr()
     } else {
         int i = *EMMC_INTERRUPT;
         // FIXME: when failed
-        asserts((i & INT_DATA_DONE) || (i & INT_READ_RDY), "unexpected sd intr");
+        asserts((i & INT_DATA_DONE)
+                || (i & INT_READ_RDY), "unexpected sd intr");
 
-        *EMMC_INTERRUPT = i; /* Clear interrupt. */
+        *EMMC_INTERRUPT = i;    /* Clear interrupt. */
         disb();
 
-        struct buf *b = container_of(list_front(&sdque), struct buf, dlink);
+        struct buf *b =
+            container_of(list_front(&sdque), struct buf, dlink);
         int write = b->flags & B_DIRTY;
         if (!((write && i == INT_DATA_DONE) || (!write && INT_READ_RDY))) {
             sd_start(b);
             warn("unexpected: 0x%x, restarted", i);
         } else {
             if (!write) {
-                uint32_t *intbuf = (uint32_t *)b->data;
-                for (int done = 0; done < 128; )
+                uint32_t *intbuf = (uint32_t *) b->data;
+                for (int done = 0; done < 128;)
                     intbuf[done++] = *EMMC_DATA;
                 sd_wait_intr(INT_DATA_DONE);
             }
@@ -619,7 +636,8 @@ sd_intr()
 
             list_pop_front(&sdque);
             if (!list_empty(&sdque))
-                sd_start(container_of(list_front(&sdque), struct buf, dlink));
+                sd_start(container_of
+                         (list_front(&sdque), struct buf, dlink));
         }
     }
     release(&sdlock);
@@ -634,12 +652,13 @@ void
 sdrw(struct buf *b)
 {
     acquire(&sdlock);
-    
+
     /* Append to request queue. */
     list_push_back(&sdque, &b->dlink);
 
     /* Start disk if necessary. */
-    if (list_front(&sdque) == &b->dlink) sd_start(b);
+    if (list_front(&sdque) == &b->dlink)
+        sd_start(b);
 
     /* Wait for request to finish. */
     while ((b->flags & (B_VALID | B_DIRTY)) != B_VALID)
@@ -657,12 +676,12 @@ sd_test()
     int mb = (n * BSIZE) >> 20;
     // assert(mb);
     int64_t f, t;
-    asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
+    asm volatile ("mrs %[freq], cntfrq_el0":[freq] "=r"(f));
     info("nblocks %d", n);
 
     info("check rw...");
     // Read/write test
-    for (int i = 1; i < n; i ++) {
+    for (int i = 1; i < n; i++) {
         // Backup.
         b[0].flags = 0;
         b[0].blockno = i;
@@ -672,7 +691,7 @@ sd_test()
         b[i].flags = B_DIRTY;
         b[i].blockno = i;
         for (int j = 0; j < BSIZE; j++)
-            b[i].data[j] = i*j & 0xFF;
+            b[i].data[j] = i * j & 0xFF;
         sdrw(&b[i]);
 
         memset(b[i].data, 0, sizeof(b[i].data));
@@ -680,7 +699,7 @@ sd_test()
         b[i].flags = 0;
         sdrw(&b[i]);
         for (int j = 0; j < BSIZE; j++)
-            assert(b[i].data[j] == (i*j & 0xFF));
+            assert(b[i].data[j] == (i * j & 0xFF));
         // Restore previous value.
         b[0].flags = B_DIRTY;
         sdrw(&b[0]);
@@ -699,7 +718,7 @@ sd_test()
     t = timestamp() - t;
     disb();
     info("read %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s",
-          n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
+         n * BSIZE, mb, t, mb * f / t, (mb * f * 10 / t) % 10);
 
     // Write profile
     disb();
@@ -715,7 +734,7 @@ sd_test()
     disb();
 
     info("write %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
-          n*BSIZE, mb, t, mb * f / t, (mb*f*10/t) % 10);
+         n * BSIZE, mb, t, mb * f / t, (mb * f * 10 / t) % 10);
 }
 
 static int
@@ -743,7 +762,8 @@ sd_wait_intr(uint32_t mask)
     ival = *EMMC_INTERRUPT;
 
     // Check for success.
-    if (count <= 0 || (ival & INT_CMD_TIMEOUT) || (ival & INT_DATA_TIMEOUT)) {
+    if (count <= 0 || (ival & INT_CMD_TIMEOUT)
+        || (ival & INT_DATA_TIMEOUT)) {
         // printf("EMMC: Wait for interrupt %08x timeout: %08x %08x %08x\n",mask,*EMMC_STATUS,ival,*EMMC_RESP0);
         // printf("EMMC_STATUS:%08x\nEMMC_INTERRUPT: %08x\nEMMC_RESP0 : %08x\nn", *EMMC_STATUS, *EMMC_INTERRUPT, *EMMC_RESP0);
 
@@ -752,7 +772,8 @@ sd_wait_intr(uint32_t mask)
 
         return SD_TIMEOUT;
     } else if (ival & INT_ERROR_MASK) {
-        error("error waiting for interrupt: %x %x %x",*EMMC_STATUS,ival,*EMMC_RESP0);
+        error("error waiting for interrupt: %x %x %x", *EMMC_STATUS, ival,
+              *EMMC_RESP0);
 
         // Clear the interrupt register completely.
         *EMMC_INTERRUPT = ival;
@@ -772,10 +793,12 @@ sd_wait_cmd()
 {
     // Check for status indicating a command in progress.
     int count = 1000000;
-    while ((*EMMC_STATUS & SR_CMD_INHIBIT) && !(*EMMC_INTERRUPT & INT_ERROR_MASK) && count--)
+    while ((*EMMC_STATUS & SR_CMD_INHIBIT)
+           && !(*EMMC_INTERRUPT & INT_ERROR_MASK) && count--)
         sd_delayus(1);
     if (count <= 0 || (*EMMC_INTERRUPT & INT_ERROR_MASK)) {
-        error("wait for command aborted: %x %x %x", *EMMC_STATUS, *EMMC_INTERRUPT, *EMMC_RESP0);
+        error("wait for command aborted: %x %x %x", *EMMC_STATUS,
+              *EMMC_INTERRUPT, *EMMC_RESP0);
         return SD_BUSY;
     }
 
@@ -796,7 +819,8 @@ sd_wait_data()
            !(*EMMC_INTERRUPT & INT_ERROR_MASK) && ++count < 500000)
         sd_delayus(1);
     if (count >= 500000 || (*EMMC_INTERRUPT & INT_ERROR_MASK)) {
-        error("wait for data aborted: %x %x %x", *EMMC_STATUS, *EMMC_INTERRUPT, *EMMC_RESP0);
+        error("wait for data aborted: %x %x %x", *EMMC_STATUS,
+              *EMMC_INTERRUPT, *EMMC_RESP0);
         return SD_BUSY;
     }
     // printf("EMMC: Wait for data OK: count = %d: %08x %08x %08x\n",count,*EMMC_STATUS,*EMMC_INTERRUPT,*EMMC_RESP0);
@@ -806,10 +830,11 @@ sd_wait_data()
 
 /* Send command and handle response. */
 static int
-sd_sendp(struct emmccmd* cmd, int arg)
+sd_sendp(struct emmccmd *cmd, int arg)
 {
     // Check for command in progress
-    if (sd_wait_cmd() != 0) return SD_BUSY;
+    if (sd_wait_cmd() != 0)
+        return SD_BUSY;
 
     sdcard.lastcmd = cmd;
     sdcard.lastarg = arg;
@@ -828,10 +853,12 @@ sd_sendp(struct emmccmd* cmd, int arg)
     // cprintf("- arg: 0x%x, code: 0x%x, delay: %d\n", arg, cmd->code, cmd->delay);
     *EMMC_ARG1 = arg;
     *EMMC_CMDTM = cmd->code;
-    if (cmd->delay) sd_delayus(cmd->delay);
+    if (cmd->delay)
+        sd_delayus(cmd->delay);
 
     // Wait until command complete interrupt.
-    if ((result = sd_wait_intr(INT_CMD_DONE))) return result;
+    if ((result = sd_wait_intr(INT_CMD_DONE)))
+        return result;
 
     // Get response from RESP0.
     int resp0 = *EMMC_RESP0;
@@ -839,12 +866,12 @@ sd_sendp(struct emmccmd* cmd, int arg)
 
     // Handle response types.
     switch (cmd->resp) {
-    // No response.
+        // No response.
     case RESP_NO:
         return SD_OK;
 
-    // RESP0 contains card status, no other data from the RESP* registers.
-    // Return value non-zero if any error flag in the status value.
+        // RESP0 contains card status, no other data from the RESP* registers.
+        // Return value non-zero if any error flag in the status value.
     case RESP_R1:
     case RESP_R1b:
         sdcard.status = resp0;
@@ -853,39 +880,39 @@ sd_sendp(struct emmccmd* cmd, int arg)
         sdcard.card_state = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
         return resp0 & R1_ERRORS_MASK;
 
-    // RESP0..3 contains 128 bit CID or CSD shifted down by 8 bits as no CRC
-    // Note: highest bits are in RESP3.
+        // RESP0..3 contains 128 bit CID or CSD shifted down by 8 bits as no CRC
+        // Note: highest bits are in RESP3.
     case RESP_R2I:
     case RESP_R2S:
         sdcard.status = 0;
-        uint32_t* data = cmd->resp == RESP_R2I ? sdcard.cid : sdcard.csd;
+        uint32_t *data = cmd->resp == RESP_R2I ? sdcard.cid : sdcard.csd;
         data[0] = *EMMC_RESP3;
         data[1] = *EMMC_RESP2;
         data[2] = *EMMC_RESP1;
         data[3] = resp0;
         return SD_OK;
 
-    // RESP0 contains OCR register
-    // TODO: What is the correct time to wait for this?
+        // RESP0 contains OCR register
+        // TODO: What is the correct time to wait for this?
     case RESP_R3:
         sdcard.status = 0;
         sdcard.ocr = resp0;
         return SD_OK;
 
-    // RESP0 contains RCA and status bits 23,22,19,12:0
+        // RESP0 contains RCA and status bits 23,22,19,12:0
     case RESP_R6:
         sdcard.rca = resp0 & R6_RCA_MASK;
-        sdcard.status = ((resp0 & 0x00001fff))          // 12:0 map directly to status 12:0
-                      | ((resp0 & 0x00002000) << 6)     // 13 maps to status 19 ERROR
-                      | ((resp0 & 0x00004000) << 8)     // 14 maps to status 22 ILLEGAL_COMMAND
-                      | ((resp0 & 0x00008000) << 8);    // 15 maps to status 23 COM_CRC_ERROR
+        sdcard.status = ((resp0 & 0x00001fff))  // 12:0 map directly to status 12:0
+            | ((resp0 & 0x00002000) << 6)       // 13 maps to status 19 ERROR
+            | ((resp0 & 0x00004000) << 8)       // 14 maps to status 22 ILLEGAL_COMMAND
+            | ((resp0 & 0x00008000) << 8);      // 15 maps to status 23 COM_CRC_ERROR
         // Store the card state.  Note that this is the state the card was in before the
         // command was accepted, not the new state.
         sdcard.card_state = (resp0 & ST_CARD_STATE) >> R1_CARD_STATE_SHIFT;
         return sdcard.status & R1_ERRORS_MASK;
 
-    // RESP0 contains voltage acceptance and check pattern, which should match
-    // the argument.
+        // RESP0 contains voltage acceptance and check pattern, which should match
+        // the argument.
     case RESP_R7:
         sdcard.status = 0;
         return resp0 == arg ? SD_OK : SD_ERROR;
@@ -900,21 +927,21 @@ sd_sendp(struct emmccmd* cmd, int arg)
 static int
 sd_send_appcmd()
 {
-  int resp;
-  // If no RCA, send the APP_CMD and don't look for a response.
-  if (!sdcard.rca)
-    sd_sendp(&cmdtable[IX_APP_CMD],0x00000000);
+    int resp;
+    // If no RCA, send the APP_CMD and don't look for a response.
+    if (!sdcard.rca)
+        sd_sendp(&cmdtable[IX_APP_CMD], 0x00000000);
 
-  // If there is an RCA, include that in APP_CMD and check card accepted it.
-  else
-    {
-      if ((resp = sd_sendp(&cmdtable[IX_APP_CMD_RCA],sdcard.rca))) return sd_debug_resp(resp);
-      // Debug - check that status indicates APP_CMD accepted.
-      if (!(sdcard.status & ST_APP_CMD))
-        return SD_ERROR;
+    // If there is an RCA, include that in APP_CMD and check card accepted it.
+    else {
+        if ((resp = sd_sendp(&cmdtable[IX_APP_CMD_RCA], sdcard.rca)))
+            return sd_debug_resp(resp);
+        // Debug - check that status indicates APP_CMD accepted.
+        if (!(sdcard.status & ST_APP_CMD))
+            return SD_ERROR;
     }
 
-  return SD_OK;
+    return SD_OK;
 }
 
 /*
@@ -925,24 +952,26 @@ sd_send_appcmd()
 static int
 sd_send(int index)
 {
-  // Issue APP_CMD if needed.
-  int resp;
-  if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
-    return sd_debug_resp(resp);
+    // Issue APP_CMD if needed.
+    int resp;
+    if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
+        return sd_debug_resp(resp);
 
-  // Get the command and set RCA if required.
-  struct emmccmd* cmd = &cmdtable[index];
-  int arg = 0;
-  if (cmd->rca == RCA_YES)
-    arg = sdcard.rca;
+    // Get the command and set RCA if required.
+    struct emmccmd *cmd = &cmdtable[index];
+    int arg = 0;
+    if (cmd->rca == RCA_YES)
+        arg = sdcard.rca;
 
-  if ((resp = sd_sendp(cmd,arg))) return resp;
+    if ((resp = sd_sendp(cmd, arg)))
+        return resp;
 
-  // Check that APP_CMD was correctly interpreted.
-  if (index >= IX_APP_CMD_START && sdcard.rca && !(sdcard.status & ST_APP_CMD))
-    return SD_ERROR_APP_CMD;
+    // Check that APP_CMD was correctly interpreted.
+    if (index >= IX_APP_CMD_START && sdcard.rca
+        && !(sdcard.status & ST_APP_CMD))
+        return SD_ERROR_APP_CMD;
 
-  return resp;
+    return resp;
 }
 
 /*
@@ -952,19 +981,21 @@ sd_send(int index)
 static int
 sd_senda(int index, int arg)
 {
-  // Issue APP_CMD if needed.
-  int resp;
-  if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
-    return sd_debug_resp(resp);
+    // Issue APP_CMD if needed.
+    int resp;
+    if (index >= IX_APP_CMD_START && (resp = sd_send_appcmd()))
+        return sd_debug_resp(resp);
 
-  // Get the command and pass the argument through.
-  if ((resp = sd_sendp(&cmdtable[index],arg))) return resp;
+    // Get the command and pass the argument through.
+    if ((resp = sd_sendp(&cmdtable[index], arg)))
+        return resp;
 
-  // Check that APP_CMD was correctly interpreted.
-  if (index >= IX_APP_CMD_START && sdcard.rca && !(sdcard.status & ST_APP_CMD))
-    return SD_ERROR_APP_CMD;
+    // Check that APP_CMD was correctly interpreted.
+    if (index >= IX_APP_CMD_START && sdcard.rca
+        && !(sdcard.status & ST_APP_CMD))
+        return SD_ERROR_APP_CMD;
 
-  return resp;
+    return resp;
 }
 
 /* Read card's SCR. */
@@ -973,12 +1004,14 @@ sd_read_scr()
 {
     // SEND_SCR command is like a READ_SINGLE but for a block of 8 bytes.
     // Ensure that any data operation has completed before reading the block.
-    if (sd_wait_data()) return SD_TIMEOUT;
+    if (sd_wait_data())
+        return SD_TIMEOUT;
 
     // Set BLKSIZECNT to 1 block of 8 bytes, send SEND_SCR command
     *EMMC_BLKSIZECNT = (1 << 16) | 8;
     int resp;
-    if ((resp = sd_send(IX_SEND_SCR))) return sd_debug_resp(resp);
+    if ((resp = sd_send(IX_SEND_SCR)))
+        return sd_debug_resp(resp);
 
     // Wait for READ_RDY interrupt.
     if ((resp = sd_wait_intr(INT_READ_RDY))) {
@@ -993,7 +1026,8 @@ sd_read_scr()
             sdcard.scr[numRead++] = *EMMC_DATA;
         else {
             sd_delayus(1);
-            if (--count == 0) break;
+            if (--count == 0)
+                break;
         }
     }
 
@@ -1006,10 +1040,14 @@ sd_read_scr()
     }
 
     // Parse out the SCR.  Only interested in values in scr[0], scr[1] is mfr specific.
-    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_4) sdcard.support |= SD_SUPP_BUS_WIDTH_4;
-    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_1) sdcard.support |= SD_SUPP_BUS_WIDTH_1;
-    if (sdcard.scr[0] & SCR_CMD_SUPP_SET_BLKCNT) sdcard.support |= SD_SUPP_SET_BLOCK_COUNT;
-    if (sdcard.scr[0] & SCR_CMD_SUPP_SPEED_CLASS) sdcard.support |= SD_SUPP_SPEED_CLASS;
+    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_4)
+        sdcard.support |= SD_SUPP_BUS_WIDTH_4;
+    if (sdcard.scr[0] & SCR_SD_BUS_WIDTH_1)
+        sdcard.support |= SD_SUPP_BUS_WIDTH_1;
+    if (sdcard.scr[0] & SCR_CMD_SUPP_SET_BLKCNT)
+        sdcard.support |= SD_SUPP_SET_BLOCK_COUNT;
+    if (sdcard.scr[0] & SCR_CMD_SUPP_SPEED_CLASS)
+        sdcard.support |= SD_SUPP_SPEED_CLASS;
 
     return SD_OK;
 }
@@ -1018,7 +1056,8 @@ int
 fls_long(uint64_t x)
 {
     int r = 32;
-    if (!x) return 0;
+    if (!x)
+        return 0;
     if (!(x & 0xffff0000u)) {
         x <<= 16;
         r -= 16;
@@ -1063,27 +1102,32 @@ sd_get_clock_divider(uint32_t freq)
     uint32_t shiftcount = fls_long(closest - 1);
 
     // Note the offset of shift by 1 (look at the spec)
-    if (shiftcount > 0) shiftcount--;
+    if (shiftcount > 0)
+        shiftcount--;
 
     // It's only 8 bits maximum on HOST_SPEC_V2
-    if (shiftcount > 7) shiftcount = 7;
+    if (shiftcount > 7)
+        shiftcount = 7;
     // Version 3 take closest
-    if (sd_host_ver > HOST_SPEC_V2) divisor = closest;
+    if (sd_host_ver > HOST_SPEC_V2)
+        divisor = closest;
     // Version 2 take power 2
-    else divisor = (1 << shiftcount);
-   
-    if (divisor <= 2) {     // Too dangerous to go for divisor 1 unless you test
-        divisor = 2;        // You can't take divisor below 2 on slow cards
-        shiftcount = 0;     // Match shift to above just for debug notification
+    else
+        divisor = (1 << shiftcount);
+
+    if (divisor <= 2) {         // Too dangerous to go for divisor 1 unless you test
+        divisor = 2;            // You can't take divisor below 2 on slow cards
+        shiftcount = 0;         // Match shift to above just for debug notification
     }
 
-    trace("divisor selected = %u, pow 2 shift count = %u", divisor, shiftcount);
+    trace("divisor selected = %u, pow 2 shift count = %u", divisor,
+          shiftcount);
     uint32_t hi = 0;
     if (sd_host_ver > HOST_SPEC_V2)
         hi = (divisor & 0x300) >> 2;    // Only 10 bits on Hosts specs above 2
     uint32_t lo = (divisor & 0x0ff);    // Low part always valid
     uint32_t cdiv = (lo << 8) + hi;     // Join and roll to position
-    return cdiv;                        // Return cdiv
+    return cdiv;                // Return cdiv
 }
 
 /* Set the SD clock to the given frequency. */
@@ -1092,10 +1136,11 @@ sd_set_clock(int freq)
 {
     // Wait for any pending inhibit bits
     int count = 100000;
-    while ((*EMMC_STATUS & (SR_CMD_INHIBIT|SR_DAT_INHIBIT)) && --count)
+    while ((*EMMC_STATUS & (SR_CMD_INHIBIT | SR_DAT_INHIBIT)) && --count)
         sd_delayus(1);
     if (count <= 0) {
-        error("set clock: timeout waiting for inhibit flags, status %x", *EMMC_STATUS);
+        error("set clock: timeout waiting for inhibit flags, status %x",
+              *EMMC_STATUS);
         return SD_ERROR_CLOCK;
     }
 
@@ -1132,7 +1177,7 @@ sd_reset_card(int resetType)
     int resp, count;
 
     // Send reset host controller and wait for complete.
-    *EMMC_CONTROL0 = 0; // C0_SPI_MODE_EN;
+    *EMMC_CONTROL0 = 0;         // C0_SPI_MODE_EN;
     //  *EMMC_CONTROL2 = 0;
     *EMMC_CONTROL1 |= resetType;
     //*EMMC_CONTROL1 &= ~(C1_CLK_EN|C1_CLK_INTLEN);
@@ -1151,7 +1196,8 @@ sd_reset_card(int resetType)
     sd_delayus(10);
 
     // Set clock to setup frequency.
-    if ((resp = sd_set_clock(FREQ_SETUP))) return resp;
+    if ((resp = sd_set_clock(FREQ_SETUP)))
+        return resp;
 
     // Enable interrupts for command completion values.
     // *EMMC_IRPT_EN   = INT_ALL_MASK;
@@ -1196,10 +1242,11 @@ sd_app_send_op_cond(int arg)
     }
     count = 6;
     while (!(sdcard.ocr & R3_COMPLETE) && count--) {
-        trace("retrying ACMD SEND_OP_COND status %x",*EMMC_STATUS);
+        trace("retrying ACMD SEND_OP_COND status %x", *EMMC_STATUS);
         // delay(400);
         delay(50000);
-        if ((resp = sd_senda(IX_APP_SEND_OP_COND,arg)) && resp != SD_TIMEOUT) {
+        if ((resp = sd_senda(IX_APP_SEND_OP_COND, arg))
+            && resp != SD_TIMEOUT) {
             error("ACMD41 returned non-timeout error %d", resp);
             return resp;
         }
@@ -1230,23 +1277,40 @@ sd_init_gpio()
 {
     uint32_t r;
     // GPIO_CD
-    r = get32(GPFSEL4); r &= ~(7<<(7*3)); put32(GPFSEL4, r);
-    put32(GPPUD, 2); delay(150);
-    put32(GPPUDCLK1, 1<<15); delay(150);
-    put32(GPPUD, 0); put32(GPPUDCLK1, 0);
-    r = get32(GPHEN1); r|=1<<15; put32(GPHEN1, r);
+    r = get32(GPFSEL4);
+    r &= ~(7 << (7 * 3));
+    put32(GPFSEL4, r);
+    put32(GPPUD, 2);
+    delay(150);
+    put32(GPPUDCLK1, 1 << 15);
+    delay(150);
+    put32(GPPUD, 0);
+    put32(GPPUDCLK1, 0);
+    r = get32(GPHEN1);
+    r |= 1 << 15;
+    put32(GPHEN1, r);
 
     // GPIO_CLK, GPIO_CMD
-    r = get32(GPFSEL4); r |= (7<<(8*3))|(7<<(9*3)); put32(GPFSEL4, r);
-    put32(GPPUD, 2); delay(150);
-    put32(GPPUDCLK1, (1<<16)|(1<<17)); delay(150);
-    put32(GPPUD, 0); put32(GPPUDCLK1, 0);
+    r = get32(GPFSEL4);
+    r |= (7 << (8 * 3)) | (7 << (9 * 3));
+    put32(GPFSEL4, r);
+    put32(GPPUD, 2);
+    delay(150);
+    put32(GPPUDCLK1, (1 << 16) | (1 << 17));
+    delay(150);
+    put32(GPPUD, 0);
+    put32(GPPUDCLK1, 0);
 
     // GPIO_DAT0, GPIO_DAT1, GPIO_DAT2, GPIO_DAT3
-    r = get32(GPFSEL5); r |= (7<<(0*3)) | (7<<(1*3)) | (7<<(2*3)) | (7<<(3*3)); put32(GPFSEL5, r);
-    put32(GPPUD, 2); delay(150);
-    put32(GPPUDCLK1, (1<<18) | (1<<19) | (1<<20) | (1<<21));
-    delay(150); put32(GPPUD, 0); put32(GPPUDCLK1, 0);
+    r = get32(GPFSEL5);
+    r |= (7 << (0 * 3)) | (7 << (1 * 3)) | (7 << (2 * 3)) | (7 << (3 * 3));
+    put32(GPFSEL5, r);
+    put32(GPPUD, 2);
+    delay(150);
+    put32(GPPUDCLK1, (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21));
+    delay(150);
+    put32(GPPUD, 0);
+    put32(GPPUDCLK1, 0);
 }
 
 /* Get the base clock speed. */
@@ -1269,7 +1333,8 @@ int
 sd_init1()
 {
     // Ensure we've initialized GPIO.
-    if (!sdcard.init) sd_init_gpio();
+    if (!sdcard.init)
+        sd_init_gpio();
     //  wait(50);
 
     // Check GPIO 47 status
@@ -1277,8 +1342,8 @@ sd_init1()
     //  int cardAbsent = get32(GPLEV1) & (1 << (47-32)); // TEST
     int cardAbsent = 0;
     //  int cardEjected = gpioGetEventDetected(GPIO_CD);
-  
-    int cardEjected = get32(GPEDS1) & (1 << (47-32));
+
+    int cardEjected = get32(GPEDS1) & (1 << (47 - 32));
     int oldCID[4];
     //  printf("In SD init card, status %08x interrupt %08x card absent %d ejected %d\n",*EMMC_STATUS,*EMMC_INTERRUPT,cardAbsent,cardEjected);
 
@@ -1288,7 +1353,8 @@ sd_init1()
         sdcard.init = 0;
         int wasAbsent = sdcard.absent;
         sdcard.absent = 1;
-        if (!wasAbsent) warn("no sd card detected");
+        if (!wasAbsent)
+            warn("no sd card detected");
         return SD_CARD_ABSENT;
     }
 
@@ -1300,22 +1366,25 @@ sd_init1()
     sdcard.absent = 0;
     if (cardEjected && sdcard.init) {
         sdcard.init = 0;
-        memmove(oldCID, sdcard.cid, sizeof(int)*4);
-    }
-    else if (!sdcard.init)
-        memset(oldCID, 0, sizeof(int)*4);
+        memmove(oldCID, sdcard.cid, sizeof(int) * 4);
+    } else if (!sdcard.init)
+        memset(oldCID, 0, sizeof(int) * 4);
 
     // If already initialized and card not replaced, nothing to do.
-    if (sdcard.init) return SD_OK;
+    if (sdcard.init)
+        return SD_OK;
 
     // TODO: check version >= 1 and <= 3?
-    sd_host_ver = (*EMMC_SLOTISR_VER & HOST_SPEC_NUM) >> HOST_SPEC_NUM_SHIFT;
+    sd_host_ver =
+        (*EMMC_SLOTISR_VER & HOST_SPEC_NUM) >> HOST_SPEC_NUM_SHIFT;
 
     // Get base clock speed.
     int resp;
-    if ((resp = sd_get_base_clock())) return resp;
+    if ((resp = sd_get_base_clock()))
+        return resp;
 
-    if ((resp = sd_reset_card(C1_SRST_HC))) return resp;
+    if ((resp = sd_reset_card(C1_SRST_HC)))
+        return resp;
 
     disb();
     // Send SEND_IF_COND,0x000001AA (CMD8) voltage range 0x1 check pattern 0xAA
@@ -1327,7 +1396,8 @@ sd_init1()
         // Resolve voltage and check for high capacity card.
         // FIXME:
         delay(50);
-        if ((resp = sd_app_send_op_cond(ACMD41_ARG_HC))) return sd_debug_resp(resp);
+        if ((resp = sd_app_send_op_cond(ACMD41_ARG_HC)))
+            return sd_debug_resp(resp);
 
         // Check for high or standard capacity.
         if (sdcard.ocr & R3_CCS)
@@ -1336,7 +1406,8 @@ sd_init1()
             sdcard.type = SD_TYPE_2_SC;
     }
 
-    else if (resp == SD_BUSY) return resp;
+    else if (resp == SD_BUSY)
+        return resp;
 
     else {
         debug("no response to SEND_IF_COND, treat as an old card");
@@ -1347,7 +1418,8 @@ sd_init1()
 
         // delay(50);
         // Resolve voltage.
-        if ((resp = sd_app_send_op_cond(ACMD41_ARG_SC))) return sd_debug_resp(resp);
+        if ((resp = sd_app_send_op_cond(ACMD41_ARG_SC)))
+            return sd_debug_resp(resp);
 
         sdcard.type = SD_TYPE_1;
     }
@@ -1356,14 +1428,17 @@ sd_init1()
     // CMD11: Completion of voltage switch sequence is checked by high level of DAT[3:0].
     // Any bit of DAT[3:0] can be checked depends on ability of the host.
     // Appears for PI its any/all bits.
-    if ((sdcard.ocr & R3_S18A) && (resp = sd_switch_voltage())) return resp;
+    if ((sdcard.ocr & R3_S18A) && (resp = sd_switch_voltage()))
+        return resp;
 
     // Send ALL_SEND_CID (CMD2)
-    if ((resp = sd_send(IX_ALL_SEND_CID))) return sd_debug_resp(resp);
+    if ((resp = sd_send(IX_ALL_SEND_CID)))
+        return sd_debug_resp(resp);
 
     // Send SEND_REL_ADDR (CMD3)
     // TODO: In theory, loop back to SEND_IF_COND to find additional cards.
-    if ((resp = sd_send(IX_SEND_REL_ADDR))) return sd_debug_resp(resp);
+    if ((resp = sd_send(IX_SEND_REL_ADDR)))
+        return sd_debug_resp(resp);
 
     // From now on the card should be in standby state.
     // Actually cards seem to respond in identify state at this point.
@@ -1372,7 +1447,8 @@ sd_init1()
     //  printf("Card current state: %08x %s\n",sdcard.status,STATUS_NAME[sdcard.card_state]);
 
     // Send SEND_CSD (CMD9) and parse the result.
-    if ((resp = sd_send(IX_SEND_CSD))) return sd_debug_resp(resp);
+    if ((resp = sd_send(IX_SEND_CSD)))
+        return sd_debug_resp(resp);
     sd_parse_csd();
     if (sdcard.filefmt != CSD3VN_FILE_FORMAT_DOSFAT &&
         sdcard.filefmt != CSD3VN_FILE_FORMAT_HDD) {
@@ -1381,17 +1457,20 @@ sd_init1()
     }
 
     // At this point, set the clock to full speed.
-    if ((resp = sd_set_clock(FREQ_NORMAL))) return sd_debug_resp(resp);
+    if ((resp = sd_set_clock(FREQ_NORMAL)))
+        return sd_debug_resp(resp);
 
     // Send CARD_SELECT  (CMD7)
     // TODO: Check card_is_locked status in the R1 response from CMD7 [bit 25], if so, use CMD42 to unlock
     // CMD42 structure [4.3.7] same as a single block write; data block includes
     // PWD setting mode, PWD len, PWD data.
-    if ((resp = sd_send(IX_CARD_SELECT))) return sd_debug_resp(resp);
+    if ((resp = sd_send(IX_CARD_SELECT)))
+        return sd_debug_resp(resp);
 
     // Get the SCR as well.
     // Need to do this before sending ACMD6 so that allowed bus widths are known.
-    if ((resp = sd_read_scr())) return sd_debug_resp(resp);
+    if ((resp = sd_read_scr()))
+        return sd_debug_resp(resp);
 
     // Send APP_SET_BUS_WIDTH (ACMD6)
     // If supported, set 4 bit bus width and update the CONTROL0 register.
@@ -1404,7 +1483,8 @@ sd_init1()
     // Send SET_BLOCKLEN (CMD16)
     // TODO: only needs to be sent for SDSC cards.  For SDHC and SDXC cards block length is fixed
     // at 512 anyway.
-    if ((resp = sd_senda(IX_SET_BLOCKLEN, 512))) return sd_debug_resp(resp);
+    if ((resp = sd_senda(IX_SET_BLOCKLEN, 512)))
+        return sd_debug_resp(resp);
 
     // Print out the CID having got this far.
     sd_parse_cid();
@@ -1413,7 +1493,7 @@ sd_init1()
     sdcard.init = 1;
 
     // Return value indicates whether the card was reinserted or replaced.
-    if (memcmp(oldCID, sdcard.cid, sizeof(int)*4) == 0)
+    if (memcmp(oldCID, sdcard.cid, sizeof(int) * 4) == 0)
         return SD_CARD_REINSERTED;
 
     return SD_CARD_CHANGED;
@@ -1425,31 +1505,33 @@ sd_parse_cid()
 {
     // For some reason cards I have looked at seem to have everything
     // shifted 8 bits down.
-    int manId = (sdcard.cid[0]&0x00ff0000) >> 16;
+    int manId = (sdcard.cid[0] & 0x00ff0000) >> 16;
     char appId[3];
-    appId[0] = (sdcard.cid[0]&0x0000ff00) >> 8;
-    appId[1] = (sdcard.cid[0]&0x000000ff);
+    appId[0] = (sdcard.cid[0] & 0x0000ff00) >> 8;
+    appId[1] = (sdcard.cid[0] & 0x000000ff);
     appId[2] = 0;
     char name[6];
-    name[0] = (sdcard.cid[1]&0xff000000) >> 24;
-    name[1] = (sdcard.cid[1]&0x00ff0000) >> 16;
-    name[2] = (sdcard.cid[1]&0x0000ff00) >> 8;
-    name[3] = (sdcard.cid[1]&0x000000ff);
-    name[4] = (sdcard.cid[2]&0xff000000) >> 24;
+    name[0] = (sdcard.cid[1] & 0xff000000) >> 24;
+    name[1] = (sdcard.cid[1] & 0x00ff0000) >> 16;
+    name[2] = (sdcard.cid[1] & 0x0000ff00) >> 8;
+    name[3] = (sdcard.cid[1] & 0x000000ff);
+    name[4] = (sdcard.cid[2] & 0xff000000) >> 24;
     name[5] = 0;
-    int revH = (sdcard.cid[2]&0x00f00000) >> 20;
-    int revL = (sdcard.cid[2]&0x000f0000) >> 16;
-    int serial = ((sdcard.cid[2]&0x0000ffff) << 16) +
-                 ((sdcard.cid[3]&0xffff0000) >> 16);
+    int revH = (sdcard.cid[2] & 0x00f00000) >> 20;
+    int revL = (sdcard.cid[2] & 0x000f0000) >> 16;
+    int serial = ((sdcard.cid[2] & 0x0000ffff) << 16) +
+        ((sdcard.cid[3] & 0xffff0000) >> 16);
 
     // For some reason cards I have looked at seem to have the Y/M in
     // bits 11:0 whereas the spec says they should be in bits 19:8
-    int dateY = ((sdcard.cid[3]&0x00000ff0) >> 4) + 2000;
-    int dateM = (sdcard.cid[3]&0x0000000f);
+    int dateY = ((sdcard.cid[3] & 0x00000ff0) >> 4) + 2000;
+    int dateM = (sdcard.cid[3] & 0x0000000f);
 
-    trace("SD Card %s %dMb UHS-I %d mfr %d '%s:%s' r%d.%d %d/%d, #%x RCA %x\n",
-          SD_TYPE_NAME[sdcard.type], (int)(sdcard.capacity>>20),sdcard.uhsi,
-          manId, appId, name, revH, revL, dateM, dateY, serial, sdcard.rca>>16);
+    trace
+        ("SD Card %s %dMb UHS-I %d mfr %d '%s:%s' r%d.%d %d/%d, #%x RCA %x\n",
+         SD_TYPE_NAME[sdcard.type], (int)(sdcard.capacity >> 20),
+         sdcard.uhsi, manId, appId, name, revH, revL, dateM, dateY, serial,
+         sdcard.rca >> 16);
 }
 
 /* Parse CSD. */
@@ -1460,19 +1542,26 @@ sd_parse_csd()
 
     // For now just work out the size.
     if (csdVersion == CSD0_V1) {
-        int csize = ((sdcard.csd[1] & CSD1V1_C_SIZEH) << CSD1V1_C_SIZEH_SHIFT) +
-                    ((sdcard.csd[2] & CSD2V1_C_SIZEL) >> CSD2V1_C_SIZEL_SHIFT);
-        int mult = 1 << (((sdcard.csd[2] & CSD2V1_C_SIZE_MULT) >> CSD2V1_C_SIZE_MULT_SHIFT) + 2);
-        long long blockSize = 1 << ((sdcard.csd[1] & CSD1VN_READ_BL_LEN) >> CSD1VN_READ_BL_LEN_SHIFT);
-        long long numBlocks = (csize+1LL)*mult;
-          
+        int csize =
+            ((sdcard.csd[1] & CSD1V1_C_SIZEH) << CSD1V1_C_SIZEH_SHIFT) +
+            ((sdcard.csd[2] & CSD2V1_C_SIZEL) >> CSD2V1_C_SIZEL_SHIFT);
+        int mult =
+            1 <<
+            (((sdcard.csd[2] & CSD2V1_C_SIZE_MULT) >>
+              CSD2V1_C_SIZE_MULT_SHIFT) + 2);
+        long long blockSize =
+            1 << ((sdcard.csd[1] & CSD1VN_READ_BL_LEN) >>
+                  CSD1VN_READ_BL_LEN_SHIFT);
+        long long numBlocks = (csize + 1LL) * mult;
+
         sdcard.capacity = numBlocks * blockSize;
     } else {
         // if (csdVersion == CSD0_V2)
-        long long csize = (sdcard.csd[2] & CSD2V2_C_SIZE) >> CSD2V2_C_SIZE_SHIFT;
-        sdcard.capacity = (csize+1LL)*512LL*1024LL;
+        long long csize =
+            (sdcard.csd[2] & CSD2V2_C_SIZE) >> CSD2V2_C_SIZE_SHIFT;
+        sdcard.capacity = (csize + 1LL) * 512LL * 1024LL;
     }
-  
+
     // Get other attributes of the card.
     sdcard.filefmt = sdcard.csd[3] & CSD3VN_FILE_FORMAT;
 }

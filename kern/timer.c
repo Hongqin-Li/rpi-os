@@ -10,15 +10,15 @@ static int dt = 19200000;
 void
 timer_init()
 {
-    asm volatile("msr cntp_ctl_el0, %[x]" : : [x]"r"(1));
-    asm volatile("msr cntp_tval_el0, %[x]" : : [x]"r"(dt));
+    asm volatile ("msr cntp_ctl_el0, %[x]"::[x] "r"(1));
+    asm volatile ("msr cntp_tval_el0, %[x]"::[x] "r"(dt));
     put32(CORE_TIMER_CTRL(cpuid()), CORE_TIMER_ENABLE);
 }
 
 static void
 timer_reset()
 {
-    asm volatile("msr cntp_tval_el0, %[x]" : : [x]"r"(dt));
+    asm volatile ("msr cntp_tval_el0, %[x]"::[x] "r"(dt));
 }
 
 /*

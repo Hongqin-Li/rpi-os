@@ -26,8 +26,9 @@ int
 in_user(void *s, size_t n)
 {
     struct proc *p = thisproc();
-    if ((p->base <= (uint64_t)s && (uint64_t)s + n <= p->sz) ||
-        (USERTOP - p->stksz <= (uint64_t)s && (uint64_t)s + n <= USERTOP))
+    if ((p->base <= (uint64_t) s && (uint64_t) s + n <= p->sz) ||
+        (USERTOP - p->stksz <= (uint64_t) s
+         && (uint64_t) s + n <= USERTOP))
         return 1;
     return 0;
 }
@@ -44,11 +45,13 @@ fetchstr(uint64_t addr, char **pp)
     char *s;
     *pp = s = (char *)addr;
     if (p->base <= addr && addr < p->sz) {
-        for (; (uint64_t)s < p->sz; s++)
-            if (*s == 0) return s - *pp;
+        for (; (uint64_t) s < p->sz; s++)
+            if (*s == 0)
+                return s - *pp;
     } else if (USERTOP - p->stksz <= addr && addr < USERTOP) {
-        for (; (uint64_t)s < USERTOP; s++)
-            if (*s == 0) return s - *pp;
+        for (; (uint64_t) s < USERTOP; s++)
+            if (*s == 0)
+                return s - *pp;
     }
     return -1;
 }
@@ -77,7 +80,7 @@ argint(int n, int *ip)
  * now we support system calls with at most 6 parameters.
  */
 int
-argu64(int n, uint64_t *ip)
+argu64(int n, uint64_t * ip)
 {
     struct proc *proc = thisproc();
     if (n > 5) {
@@ -102,7 +105,7 @@ argptr(int n, char **pp, size_t size)
         return -1;
     }
     if (in_user((void *)i, size)) {
-        *pp = (char*)i;
+        *pp = (char *)i;
         return 0;
     } else {
         return -1;
@@ -142,7 +145,8 @@ interrupt(struct trapframe *tf)
                 trace("on idle");
             sd_intr();
         } else {
-            warn("unexpected gpu intr p1 %x, p2 %x, sd %d, omitted", p1, p2, p2 & VC_ARASANSDIO_INT);
+            warn("unexpected gpu intr p1 %x, p2 %x, sd %d, omitted", p1,
+                 p2, p2 & VC_ARASANSDIO_INT);
         }
     } else {
         warn("unexpected interrupt at cpu %d", cpuid());
@@ -153,7 +157,7 @@ void
 trap(struct trapframe *tf)
 {
     int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
-    lesr(0);  /* Clear esr. */
+    lesr(0);                    /* Clear esr. */
     switch (ec) {
     case EC_UNKNOWN:
         interrupt(tf);

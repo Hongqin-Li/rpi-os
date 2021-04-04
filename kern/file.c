@@ -131,7 +131,7 @@ filewrite(struct file *f, char *addr, ssize_t n)
          * This really belongs lower down, since writei()
          * might be writing a device like the console.
          */
-        ssize_t max = ((MAXOPBLOCKS-1-1-2) / 2) * 512;
+        ssize_t max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * 512;
         ssize_t i = 0;
         while (i < n) {
             ssize_t n1 = n - i;
@@ -156,4 +156,3 @@ filewrite(struct file *f, char *addr, ssize_t n)
     panic("filewrite");
     return -1;
 }
-

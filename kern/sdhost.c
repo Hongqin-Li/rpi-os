@@ -43,21 +43,21 @@
 #define SDDATA_FIFO_PIO_BURST   8
 #define CMD_DALLY_US            1
 
-#define SDCMD  0x00 /* Command to SD card              - 16 R/W */
-#define SDARG  0x04 /* Argument to SD card             - 32 R/W */
-#define SDTOUT 0x08 /* Start value for timeout counter - 32 R/W */
-#define SDCDIV 0x0c /* Start value for clock divider   - 11 R/W */
-#define SDRSP0 0x10 /* SD card response (31:0)         - 32 R   */
-#define SDRSP1 0x14 /* SD card response (63:32)        - 32 R   */
-#define SDRSP2 0x18 /* SD card response (95:64)        - 32 R   */
-#define SDRSP3 0x1c /* SD card response (127:96)       - 32 R   */
-#define SDHSTS 0x20 /* SD host status                  - 11 R   */
-#define SDVDD  0x30 /* SD card power control           -  1 R/W */
-#define SDEDM  0x34 /* Emergency Debug Mode            - 13 R/W */
-#define SDHCFG 0x38 /* Host configuration              -  2 R/W */
-#define SDHBCT 0x3c /* Host byte count (debug)         - 32 R/W */
-#define SDDATA 0x40 /* Data to/from SD card            - 32 R/W */
-#define SDHBLC 0x50 /* Host block count (SDIO/SDHC)    -  9 R/W */
+#define SDCMD  0x00             /* Command to SD card              - 16 R/W */
+#define SDARG  0x04             /* Argument to SD card             - 32 R/W */
+#define SDTOUT 0x08             /* Start value for timeout counter - 32 R/W */
+#define SDCDIV 0x0c             /* Start value for clock divider   - 11 R/W */
+#define SDRSP0 0x10             /* SD card response (31:0)         - 32 R   */
+#define SDRSP1 0x14             /* SD card response (63:32)        - 32 R   */
+#define SDRSP2 0x18             /* SD card response (95:64)        - 32 R   */
+#define SDRSP3 0x1c             /* SD card response (127:96)       - 32 R   */
+#define SDHSTS 0x20             /* SD host status                  - 11 R   */
+#define SDVDD  0x30             /* SD card power control           -  1 R/W */
+#define SDEDM  0x34             /* Emergency Debug Mode            - 13 R/W */
+#define SDHCFG 0x38             /* Host configuration              -  2 R/W */
+#define SDHBCT 0x3c             /* Host byte count (debug)         - 32 R/W */
+#define SDDATA 0x40             /* Data to/from SD card            - 32 R/W */
+#define SDHBLC 0x50             /* Host block count (SDIO/SDHC)    -  9 R/W */
 
 #define SDCMD_NEW_FLAG                  0x8000
 #define SDCMD_FAIL_FLAG                 0x4000
@@ -130,10 +130,13 @@
 #define CLOCKHZ    1000000
 
 static void sdhost_init_gpio();
-static int mmc_prepare_request(struct mmc_host *mmc, struct mmc_request *req);
-static void mmc_request_done(struct mmc_host *mmc, struct mmc_request *req);
+static int mmc_prepare_request(struct mmc_host *mmc,
+                               struct mmc_request *req);
+static void mmc_request_done(struct mmc_host *mmc,
+                             struct mmc_request *req);
 
-void sdhost_request_sync(struct bcm2835_host *host, struct mmc_request *req);
+void sdhost_request_sync(struct bcm2835_host *host,
+                         struct mmc_request *req);
 
 static int sdhost_add_host(struct bcm2835_host *host);
 
@@ -143,14 +146,18 @@ static void sdhost_read_block_pio(struct bcm2835_host *host);
 static void sdhost_write_block_pio(struct bcm2835_host *host);
 static void sdhost_transfer_pio(struct bcm2835_host *host);
 
-static void sdhost_prepare_data(struct bcm2835_host *host, struct mmc_command *cmd);
-static int sdhost_send_command(struct bcm2835_host *host, struct mmc_command *cmd);
+static void sdhost_prepare_data(struct bcm2835_host *host,
+                                struct mmc_command *cmd);
+static int sdhost_send_command(struct bcm2835_host *host,
+                               struct mmc_command *cmd);
 static void sdhost_finish_data(struct bcm2835_host *host);
 static void sdhost_finish_command(struct bcm2835_host *host);
 static void sdhost_transfer_complete(struct bcm2835_host *host);
 
-static void sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock);
-static void sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc, struct mmc_request *mrq);
+static void sdhost_set_clock_inner(struct bcm2835_host *host,
+                                   uint32_t clock);
+static void sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc,
+                           struct mmc_request *mrq);
 static void sdhost_set_ios(struct bcm2835_host *host, struct mmc_ios *ios);
 static void sdhost_tasklet_finish(struct bcm2835_host *host);
 static int sdhost_probe(struct bcm2835_host *host);
@@ -160,7 +167,8 @@ sdhost_initialize(struct bcm2835_host *host)
 {
     sdhost_init_gpio();
     int ret = sdhost_probe(host);
-    if (ret != 0) return 0;
+    if (ret != 0)
+        return 0;
     return 1;
 }
 
@@ -174,57 +182,59 @@ sdhost_set_clock(struct bcm2835_host *host, uint32_t clock)
 void
 sdhost_set_bus_width(struct bcm2835_host *host, uint32_t nbits)
 {
-    assert (nbits == 1 || nbits == 4);
+    assert(nbits == 1 || nbits == 4);
     host->mmc.ios.bus_width = nbits == 4 ? MMC_BUS_WIDTH_4 : 0;
 
     sdhost_set_ios(host, &(host->mmc.ios));
 }
 
 int
-sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd, uint32_t nretries)
+sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd,
+               uint32_t nretries)
 {
-	assert(cmd != 0);
-	cmd->retries = nretries;
-	memset(cmd->resp, 0, sizeof(cmd->resp));
+    assert(cmd != 0);
+    cmd->retries = nretries;
+    memset(cmd->resp, 0, sizeof(cmd->resp));
 
-	struct mmc_request req;
-	memset(&req, 0, sizeof(req));
-	req.cmd = cmd;
-	req.data = cmd->data;
+    struct mmc_request req;
+    memset(&req, 0, sizeof(req));
+    req.cmd = cmd;
+    req.data = cmd->data;
 
-	struct mmc_command stop_cmd;
-	if (cmd->opcode == MMC_READ_MULTIPLE_BLOCK || cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK) {
-		assert(cmd->data != 0);
+    struct mmc_command stop_cmd;
+    if (cmd->opcode == MMC_READ_MULTIPLE_BLOCK
+        || cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK) {
+        assert(cmd->data != 0);
 
-		memset(&stop_cmd, 0, sizeof(stop_cmd));
-		stop_cmd.opcode = MMC_STOP_TRANSMISSION;
-		stop_cmd.flags = MMC_RSP_PRESENT | MMC_RSP_CRC | MMC_RSP_BUSY;
+        memset(&stop_cmd, 0, sizeof(stop_cmd));
+        stop_cmd.opcode = MMC_STOP_TRANSMISSION;
+        stop_cmd.flags = MMC_RSP_PRESENT | MMC_RSP_CRC | MMC_RSP_BUSY;
 
-		req.stop = &stop_cmd;
-	}
+        req.stop = &stop_cmd;
+    }
 
-	int nerror = mmc_prepare_request(&host->mmc, &req);
-	if (nerror != 0) {
-		return nerror;
-	}
+    int nerror = mmc_prepare_request(&host->mmc, &req);
+    if (nerror != 0) {
+        return nerror;
+    }
 
     trace("sync start");
-	sdhost_request_sync(host, &req);
+    sdhost_request_sync(host, &req);
     trace("sync finish");
 
-	if (cmd->error != 0) {
-		return cmd->error;
-	}
+    if (cmd->error != 0) {
+        return cmd->error;
+    }
 
-	if (cmd->data != 0 && cmd->data->error != 0) {
-		return cmd->data->error;
-	}
+    if (cmd->data != 0 && cmd->data->error != 0) {
+        return cmd->data->error;
+    }
 
-	if (req.stop != 0 && req.stop->error != 0) {
-		return req.stop->error;
-	}
+    if (req.stop != 0 && req.stop->error != 0) {
+        return req.stop->error;
+    }
 
-	return 0;
+    return 0;
 }
 
 
@@ -260,9 +270,7 @@ mmc_prepare_request(struct mmc_host *mmc, struct mmc_request *req)
 
         if (req->data->blksz > mmc->max_blk_size
             || req->data->blocks > mmc->max_blk_count
-            || nreqsz > mmc->max_req_size
-            || nreqsz != req->data->sg_len)
-        {
+            || nreqsz > mmc->max_req_size || nreqsz != req->data->sg_len) {
             return -EINVAL;
         }
 
@@ -286,7 +294,8 @@ mmc_request_done(struct mmc_host *mmc, struct mmc_request *req)
 }
 
 static void
-sg_miter_start(struct sg_mapping_iter *sg_miter, void *sg, uint32_t sg_len, uint32_t flags)
+sg_miter_start(struct sg_mapping_iter *sg_miter, void *sg, uint32_t sg_len,
+               uint32_t flags)
 {
     assert(sg_miter != 0);
     assert(sg != 0);
@@ -308,7 +317,7 @@ sg_miter_next(struct sg_mapping_iter *sg_miter)
         return 0;
     }
 
-    sg_miter->addr = (uint8_t *)sg_miter->addr + sg_miter->consumed;
+    sg_miter->addr = (uint8_t *) sg_miter->addr + sg_miter->consumed;
     sg_miter->consumed = 0;
     return 1;
 }
@@ -351,13 +360,13 @@ sdhost_init_gpio()
         sel = GPIO_BASE + off;
         val = get32(sel);
         val &= ~(7 << shift);
-        val |= 4 << shift;              // Set alt0
+        val |= 4 << shift;      // Set alt0
         put32(sel, val);
 
         // See: http://www.raspberrypi.org/forums/viewtopic.php?t=163352&p=1059178#p1059178
         sel = GPPUDCLK0 + off;
         put32(GPPUD, i == 0 ? 0 : 2);   // Pull mode off/up
-        delayus(5);                     // Delay 1 us.
+        delayus(5);             // Delay 1 us.
         put32(sel, 1 << (npin % 32));
         delayus(5);
         put32(GPPUD, 0);
@@ -383,15 +392,15 @@ sdhost_reset_internal(struct bcm2835_host *host)
     write(0, SDARG);
     write(0xf00000, SDTOUT);
     write(0, SDCDIV);
-    write(0x7f8, SDHSTS); /* Write 1s to clear */
+    write(0x7f8, SDHSTS);       /* Write 1s to clear */
     write(0, SDHCFG);
     write(0, SDHBCT);
     write(0, SDHBLC);
 
     /* Limit fifo usage due to silicon bug */
     uint32_t temp = read(SDEDM);
-    temp &= ~((SDEDM_THRESHOLD_MASK<<SDEDM_READ_THRESHOLD_SHIFT) |
-          (SDEDM_THRESHOLD_MASK<<SDEDM_WRITE_THRESHOLD_SHIFT));
+    temp &= ~((SDEDM_THRESHOLD_MASK << SDEDM_READ_THRESHOLD_SHIFT) |
+              (SDEDM_THRESHOLD_MASK << SDEDM_WRITE_THRESHOLD_SHIFT));
     temp |= (FIFO_READ_THRESHOLD << SDEDM_READ_THRESHOLD_SHIFT) |
         (FIFO_WRITE_THRESHOLD << SDEDM_WRITE_THRESHOLD_SHIFT);
     write(temp, SDEDM);
@@ -444,8 +453,7 @@ sdhost_wait_transfer_complete(struct bcm2835_host *host)
 
     while (1) {
         uint32_t fsm = edm & SDEDM_FSM_MASK;
-        if ((fsm == SDEDM_FSM_IDENTMODE) ||
-            (fsm == SDEDM_FSM_DATAMODE))
+        if ((fsm == SDEDM_FSM_IDENTMODE) || (fsm == SDEDM_FSM_DATAMODE))
             break;
         if (fsm == alternate_idle) {
             write(edm | SDEDM_FORCE_DATA_MODE, SDEDM);
@@ -490,9 +498,9 @@ sdhost_read_block_pio(struct bcm2835_host *host)
         blksize -= len;
         host->sg_miter.consumed = len;
 
-        uint32_t *buf = (uint32_t *)host->sg_miter.addr;
+        uint32_t *buf = (uint32_t *) host->sg_miter.addr;
 
-        copy_words = len/4;
+        copy_words = len / 4;
 
         while (copy_words) {
             int burst_words, words;
@@ -517,11 +525,11 @@ sdhost_read_block_pio(struct bcm2835_host *host)
 
                 if (timestamp() - start > host->pio_timeout) {
                     error("PIO read timeout - EDM 0x%x", edm);
-                     hsts = SDHSTS_REW_TIME_OUT;
-                     break;
+                    hsts = SDHSTS_REW_TIME_OUT;
+                    break;
                 }
                 delayus(((burst_words - words) *
-                       host->ns_per_fifo_word) / 1000);
+                         host->ns_per_fifo_word) / 1000);
                 continue;
             } else if (words > copy_words) {
                 words = copy_words;
@@ -566,9 +574,9 @@ sdhost_write_block_pio(struct bcm2835_host *host)
         blksize -= len;
         host->sg_miter.consumed = len;
 
-        uint32_t *buf = (uint32_t *)host->sg_miter.addr;
+        uint32_t *buf = (uint32_t *) host->sg_miter.addr;
 
-        copy_words = len/4;
+        copy_words = len / 4;
 
         while (copy_words) {
             int burst_words, words;
@@ -632,13 +640,13 @@ sdhost_transfer_pio(struct bcm2835_host *host)
 
     uint32_t sdhsts = read(SDHSTS);
     if (sdhsts & (SDHSTS_CRC16_ERROR |
-              SDHSTS_CRC7_ERROR |
-              SDHSTS_FIFO_ERROR)) {
-        error("%s transfer error - HSTS 0x%x", is_read ? "read" : "write", sdhsts);
+                  SDHSTS_CRC7_ERROR | SDHSTS_FIFO_ERROR)) {
+        error("%s transfer error - HSTS 0x%x", is_read ? "read" : "write",
+              sdhsts);
         host->data->error = -EILSEQ;
-    } else if ((sdhsts & (SDHSTS_CMD_TIME_OUT |
-                  SDHSTS_REW_TIME_OUT))) {
-        error("%s timeout error - HSTS 0x%x", is_read ? "read" : "write", sdhsts);
+    } else if ((sdhsts & (SDHSTS_CMD_TIME_OUT | SDHSTS_REW_TIME_OUT))) {
+        error("%s timeout error - HSTS 0x%x", is_read ? "read" : "write",
+              sdhsts);
         host->data->error = -ETIMEDOUT;
     }
 }
@@ -646,9 +654,12 @@ sdhost_transfer_pio(struct bcm2835_host *host)
 static void
 sdhost_set_transfer_irqs(struct bcm2835_host *host)
 {
-    uint32_t all_irqs = SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN | SDHCFG_BUSY_IRPT_EN;
+    uint32_t all_irqs =
+        SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN | SDHCFG_BUSY_IRPT_EN;
 
-    host->hcfg = (host->hcfg & ~all_irqs) | SDHCFG_DATA_IRPT_EN | SDHCFG_BUSY_IRPT_EN;
+    host->hcfg =
+        (host->hcfg & ~all_irqs) | SDHCFG_DATA_IRPT_EN |
+        SDHCFG_BUSY_IRPT_EN;
 
     write(host->hcfg, SDHCFG);
 }
@@ -715,14 +726,13 @@ sdhost_send_command(struct bcm2835_host *host, struct mmc_command *cmd)
 
     if (cmd->data) {
         debug("send_command %d 0x%x "
-             "(flags 0x%x) - %s %d*%d",
-             cmd->opcode, cmd->arg, cmd->flags,
-             (cmd->data->flags & MMC_DATA_READ) ?
-             "read" : "write", cmd->data->blocks,
-             cmd->data->blksz);
+              "(flags 0x%x) - %s %d*%d",
+              cmd->opcode, cmd->arg, cmd->flags,
+              (cmd->data->flags & MMC_DATA_READ) ?
+              "read" : "write", cmd->data->blocks, cmd->data->blksz);
     } else {
         debug("send_command %d 0x%x (flags 0x%x)",
-             cmd->opcode, cmd->arg, cmd->flags);
+              cmd->opcode, cmd->arg, cmd->flags);
     }
 
     /* Wait max 100 ms */
@@ -739,13 +749,13 @@ sdhost_send_command(struct bcm2835_host *host, struct mmc_command *cmd)
         delayus(10);
     }
 
-    int delay = (10000 - timeout)/100;
+    int delay = (10000 - timeout) / 100;
     if (delay > host->max_delay) {
         host->max_delay = delay;
         warn("controller hung for %d ms", host->max_delay);
     }
 
-//     timeout = jiffies;
+    //     timeout = jiffies;
 //     if (!cmd->data && cmd->busy_timeout > 9000)
 //         timeout += DIV_ROUND_UP(cmd->busy_timeout, 1000) * HZ + HZ;
 //     else
@@ -832,8 +842,7 @@ sdhost_finish_data(struct bcm2835_host *host)
     assert(data);
 
     debug("finish_data(error %d, stop %d, sbc %d)",
-           data->error, data->stop ? 1 : 0,
-           host->mrq->sbc ? 1 : 0);
+          data->error, data->stop ? 1 : 0, host->mrq->sbc ? 1 : 0);
 
     host->hcfg &= ~(SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN);
     write(host->hcfg, SDHCFG);
@@ -866,7 +875,7 @@ sdhost_transfer_complete(struct bcm2835_host *host)
     host->data = 0;
 
     debug("transfer_complete(error %d, stop %d)",
-           data->error, data->stop ? 1 : 0);
+          data->error, data->stop ? 1 : 0);
 
     /*
      * Need to send CMD12 if -
@@ -925,13 +934,13 @@ sdhost_finish_command(struct bcm2835_host *host)
             us_diff = (now - start) * (1000000 / CLOCKHZ);
         } while (us_diff < 10);
 
-        host->cmd_quick_poll_retries = ((retries * us_diff + 9)*CMD_DALLY_US)/10 + 1;
-        retries = 1; // We've already waited long enough this time
+        host->cmd_quick_poll_retries =
+            ((retries * us_diff + 9) * CMD_DALLY_US) / 10 + 1;
+        retries = 1;            // We've already waited long enough this time
     }
 
     for (sdcmd = read(SDCMD);
-         (sdcmd & SDCMD_NEW_FLAG) && retries;
-         retries--) {
+         (sdcmd & SDCMD_NEW_FLAG) && retries; retries--) {
         dsb();
         sdcmd = read(SDCMD);
     }
@@ -945,7 +954,7 @@ sdhost_finish_command(struct bcm2835_host *host)
 
         /* Wait max 100 ms */
         uint64_t start = timestamp();
-        while (timestamp() - start < CLOCKHZ/10) {
+        while (timestamp() - start < CLOCKHZ / 10) {
             delayus(10);
             sdcmd = read(SDCMD);
             if (!(sdcmd & SDCMD_NEW_FLAG))
@@ -968,10 +977,9 @@ sdhost_finish_command(struct bcm2835_host *host)
         write(SDHSTS_ERROR_MASK, SDHSTS);
 
         info("error detected: CMD 0x%x, HSTS 0x%x, EDM 0x%x",
-              sdcmd, sdhsts, read(SDEDM));
+             sdcmd, sdhsts, read(SDEDM));
 
-        if ((sdhsts & SDHSTS_CRC7_ERROR) &&
-            (host->cmd->opcode == 1)) {
+        if ((sdhsts & SDHSTS_CRC7_ERROR) && (host->cmd->opcode == 1)) {
             info("ignoring CRC7 error for CMD1");
         } else {
             uint32_t edm, fsm;
@@ -986,8 +994,7 @@ sdhost_finish_command(struct bcm2835_host *host)
 
             edm = read(SDEDM);
             fsm = edm & SDEDM_FSM_MASK;
-            if (fsm == SDEDM_FSM_READWAIT ||
-                fsm == SDEDM_FSM_WRITESTART1)
+            if (fsm == SDEDM_FSM_READWAIT || fsm == SDEDM_FSM_WRITESTART1)
                 write(edm | SDEDM_FORCE_DATA_MODE, SDEDM);
             // tasklet_schedule(&host->finish_tasklet);
             sdhost_tasklet_finish(host);
@@ -999,12 +1006,11 @@ sdhost_finish_command(struct bcm2835_host *host)
         if (host->cmd->flags & MMC_RSP_136) {
             int i;
             for (i = 0; i < 4; i++)
-                host->cmd->resp[3 - i] = read(SDRSP0 + i*4);
+                host->cmd->resp[3 - i] = read(SDRSP0 + i * 4);
             debug("finish_command 0x%x 0x%x 0x%x 0x%x",
-                 host->cmd->resp[0],
-                 host->cmd->resp[1],
-                 host->cmd->resp[2],
-                 host->cmd->resp[3]);
+                  host->cmd->resp[0],
+                  host->cmd->resp[1],
+                  host->cmd->resp[2], host->cmd->resp[3]);
         } else {
             host->cmd->resp[0] = read(SDRSP0);
             debug("finish_command 0x%x", host->cmd->resp[0]);
@@ -1043,7 +1049,7 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
 
     debug("clock %d", clock);
 
-    if (host->overclock_50 && (clock == 50*MHZ))
+    if (host->overclock_50 && (clock == 50 * MHZ))
         clock = host->overclock_50 * MHZ + (MHZ - 1);
 
     /*
@@ -1071,7 +1077,7 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
     host->mmc.actual_clock = 0;
 
     if (host->firmware_sets_cdiv) {
-        uint32_t msg[3] = {clock, 0, 0};
+        uint32_t msg[3] = { clock, 0, 0 };
         mbox_set_sdhost_clock(msg);
         clock = MAX(msg[1], msg[2]);
     } else {
@@ -1102,19 +1108,19 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
         write(host->cdiv, SDCDIV);
 
         debug("clock=%d -> max_clk=%d, cdiv=0x%x (actual clock %d)",
-            input_clock, host->max_clk, host->cdiv, clock);
+              input_clock, host->max_clk, host->cdiv, clock);
     }
 
     /* Calibrate some delays */
 
-    host->ns_per_fifo_word = (1000000000/clock) *
+    host->ns_per_fifo_word = (1000000000 / clock) *
         ((host->mmc.caps & MMC_CAP_4_BIT_DATA) ? 8 : 32);
 
     if (input_clock == 50 * MHZ) {
         if (clock > input_clock) {
             /* Save the closest value, to make it easier
                to reduce in the event of error */
-            host->overclock_50 = (clock/MHZ);
+            host->overclock_50 = (clock / MHZ);
 
             if (clock != host->overclock) {
                 info("overclocking to %dHz", clock);
@@ -1133,7 +1139,7 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
     }
 
     /* Set the timeout to 500ms */
-    write(clock/2, SDTOUT);
+    write(clock / 2, SDTOUT);
 
     host->mmc.actual_clock = clock;
     host->clock = input_clock;
@@ -1143,7 +1149,8 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
 }
 
 static void
-sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc, struct mmc_request *mrq)
+sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc,
+               struct mmc_request *mrq)
 {
     /* Reset the error statuses in case this is a retry */
     if (mrq->sbc)
@@ -1172,8 +1179,7 @@ sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc, struct mmc_reque
     uint32_t edm = read(SDEDM);
     uint32_t fsm = edm & SDEDM_FSM_MASK;
 
-    if ((fsm != SDEDM_FSM_IDENTMODE) &&
-        (fsm != SDEDM_FSM_DATAMODE)) {
+    if ((fsm != SDEDM_FSM_IDENTMODE) && (fsm != SDEDM_FSM_DATAMODE)) {
         warn("previous command (%d) not complete (EDM 0x%x)",
              read(SDCMD) & SDCMD_CMD_MASK, edm);
         // dumpregs();
@@ -1204,9 +1210,10 @@ sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc, struct mmc_reque
 static void
 sdhost_set_ios(struct bcm2835_host *host, struct mmc_ios *ios)
 {
-    debug("ios clock %d, pwr %d, bus_width %d, timing %d, vdd %d, drv_type %d",
-        ios->clock, ios->power_mode, ios->bus_width,
-        ios->timing, ios->signal_voltage, ios->drv_type);
+    debug
+        ("ios clock %d, pwr %d, bus_width %d, timing %d, vdd %d, drv_type %d",
+         ios->clock, ios->power_mode, ios->bus_width, ios->timing,
+         ios->signal_voltage, ios->drv_type);
 
     /* set bus width */
     host->hcfg &= ~SDHCFG_WIDE_EXT_BUS;
@@ -1237,7 +1244,7 @@ sdhost_tasklet_finish(struct bcm2835_host *host)
         return;
     }
 
-//     del_timer(&host->timer);
+    //     del_timer(&host->timer);
 
     struct mmc_request *mrq = host->mrq;
 
@@ -1271,8 +1278,7 @@ sdhost_tasklet_finish(struct bcm2835_host *host)
     if (((mrq->cmd->opcode == MMC_SEND_OP_COND) ||
          (mrq->cmd->opcode == SD_IO_SEND_OP_COND) ||
          (mrq->cmd->opcode == SD_APP_OP_COND)) &&
-        (mrq->cmd->error == 0) &&
-        (mrq->cmd->resp[0] == 0)) {
+        (mrq->cmd->error == 0) && (mrq->cmd->resp[0] == 0)) {
         mrq->cmd->error = -ETIMEDOUT;
         debug("faking timeout due to zero OCR");
     }
@@ -1288,7 +1294,7 @@ sdhost_add_host(struct bcm2835_host *host)
         mmc->f_max = host->max_clk;
     mmc->f_min = host->max_clk / SDCDIV_MAX_CDIV;
 
-    mmc->max_busy_timeout = (~(unsigned int)0)/(mmc->f_max/1000);
+    mmc->max_busy_timeout = (~(unsigned int)0) / (mmc->f_max / 1000);
 
     debug("f_max %d, f_min %d, max_busy_timeout %d",
           mmc->f_max, mmc->f_min, mmc->max_busy_timeout);
@@ -1297,13 +1303,13 @@ sdhost_add_host(struct bcm2835_host *host)
     mmc->caps |=
         MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED |
         MMC_CAP_NEEDS_POLL | MMC_CAP_HW_RESET | MMC_CAP_ERASE |
-        ((ALLOW_CMD23_READ|ALLOW_CMD23_WRITE) * MMC_CAP_CMD23);
+        ((ALLOW_CMD23_READ | ALLOW_CMD23_WRITE) * MMC_CAP_CMD23);
 
     mmc->max_segs = 128;
     mmc->max_req_size = 524288;
     mmc->max_seg_size = mmc->max_req_size;
     mmc->max_blk_size = 512;
-    mmc->max_blk_count =  65535;
+    mmc->max_blk_count = 65535;
 
     /* report supported voltage ranges */
     mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
@@ -1333,8 +1339,8 @@ sdhost_probe(struct bcm2835_host *host)
     // host->debug = SDHOST_DEBUG;
     // pr_debug("probe");
 
-    host->pio_timeout = 500*CLOCKHZ/1000;
-    host->max_delay = 1; /* Warn if over 1ms */
+    host->pio_timeout = 500 * CLOCKHZ / 1000;
+    host->max_delay = 1;        /* Warn if over 1ms */
 
     /* Read any custom properties */
     host->delay_after_stop = 0;
@@ -1376,9 +1382,7 @@ sdhost_probe(struct bcm2835_host *host)
 
     return 0;
 
-err:
+  err:
     debug("err %d", ret);
     return ret;
 }
-
-

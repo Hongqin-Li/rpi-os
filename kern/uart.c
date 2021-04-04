@@ -12,7 +12,8 @@ uart_putchar(int c)
     while (!(get32(AUX_MU_LSR_REG) & 0x20)) ;
     put32(AUX_MU_IO_REG, c & 0xFF);
     /* Fix Windows's '\r'. */
-    if (c == '\n') uart_putchar('\r');
+    if (c == '\n')
+        uart_putchar('\r');
 }
 
 int
@@ -38,7 +39,7 @@ uart_init()
 
     put32(GPPUD, 0);
     delay(150);
-    put32(GPPUDCLK0, (1<<14)|(1<<15));
+    put32(GPPUDCLK0, (1 << 14) | (1 << 15));
     delay(150);
     put32(GPPUDCLK0, 0);
 

@@ -81,10 +81,10 @@
 #define SD_CMD_ISDATA            (1 << 21)
 #define SD_CMD_IXCHK_EN            (1 << 20)
 #define SD_CMD_CRCCHK_EN        (1 << 19)
-#define SD_CMD_RSPNS_TYPE_NONE        0        // For no response
-#define SD_CMD_RSPNS_TYPE_136        (1 << 16)    // For response R2 (with CRC), R3,4 (no CRC)
-#define SD_CMD_RSPNS_TYPE_48        (2 << 16)    // For responses R1, R5, R6, R7 (with CRC)
-#define SD_CMD_RSPNS_TYPE_48B        (3 << 16)    // For responses R1b, R5b (with CRC)
+#define SD_CMD_RSPNS_TYPE_NONE        0 // For no response
+#define SD_CMD_RSPNS_TYPE_136        (1 << 16)  // For response R2 (with CRC), R3,4 (no CRC)
+#define SD_CMD_RSPNS_TYPE_48        (2 << 16)   // For responses R1, R5, R6, R7 (with CRC)
+#define SD_CMD_RSPNS_TYPE_48B        (3 << 16)  // For responses R1b, R5b (with CRC)
 #define SD_CMD_RSPNS_TYPE_MASK      (3 << 16)
 #define SD_CMD_MULTI_BLOCK        (1 << 5)
 #define SD_CMD_DAT_DIR_HC        0
@@ -123,8 +123,7 @@
 #define SD_VER_3            4
 #define SD_VER_4            5
 
-const char *sd_versions[] =
-{
+const char *sd_versions[] = {
     "unknown",
     "1.0 or 1.01",
     "1.10",
@@ -133,8 +132,7 @@ const char *sd_versions[] =
     "4.xx"
 };
 
-const uint32_t sd_commands[] =
-{
+const uint32_t sd_commands[] = {
     SD_CMD_INDEX(0),
     SD_CMD_RESERVED(1),
     SD_CMD_INDEX(2) | SD_RESP_R2,
@@ -153,14 +151,14 @@ const uint32_t sd_commands[] =
     SD_CMD_INDEX(15),
     SD_CMD_INDEX(16) | SD_RESP_R1,
     SD_CMD_INDEX(17) | SD_RESP_R1 | SD_DATA_READ,
-    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,        // SD_CMD_AUTO_CMD_EN_CMD12 not in original driver
+    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,    // SD_CMD_AUTO_CMD_EN_CMD12 not in original driver
     SD_CMD_INDEX(19) | SD_RESP_R1 | SD_DATA_READ,
     SD_CMD_INDEX(20) | SD_RESP_R1b,
     SD_CMD_RESERVED(21),
     SD_CMD_RESERVED(22),
     SD_CMD_INDEX(23) | SD_RESP_R1,
     SD_CMD_INDEX(24) | SD_RESP_R1 | SD_DATA_WRITE,
-    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,        // SD_CMD_AUTO_CMD_EN_CMD12 not in original driver
+    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,   // SD_CMD_AUTO_CMD_EN_CMD12 not in original driver
     SD_CMD_RESERVED(26),
     SD_CMD_INDEX(27) | SD_RESP_R1 | SD_DATA_WRITE,
     SD_CMD_INDEX(28) | SD_RESP_R1b,
@@ -201,8 +199,7 @@ const uint32_t sd_commands[] =
     SD_CMD_RESERVED(63)
 };
 
-const uint32_t sd_acommands[] =
-{
+const uint32_t sd_acommands[] = {
     SD_CMD_RESERVED(0),
     SD_CMD_RESERVED(1),
     SD_CMD_RESERVED(2),
@@ -321,11 +318,13 @@ const uint32_t sd_acommands[] =
 static int emmc_card_init(struct emmc *self);
 static int emmc_card_reset(struct emmc *self);
 
-static int emmc_issue_command(struct emmc *self, uint32_t cmd, uint32_t arg, int timeout);
-static void emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeout);
+static int emmc_issue_command(struct emmc *self, uint32_t cmd,
+                              uint32_t arg, int timeout);
+static void emmc_issue_command_int(struct emmc *self, uint32_t reg,
+                                   uint32_t arg, int timeout);
 
 static inline uint32_t
-be2le32 (uint32_t x)
+be2le32(uint32_t x)
 {
     return ((x & 0x000000FF) << 24)
         | ((x & 0x0000FF00) << 8)
@@ -356,7 +355,7 @@ emmc_write(struct emmc *self, void *buf, size_t cnt)
 {
 
 }
- 
+
 uint64_t
 emmc_seek(struct emmc *self, uint64_t off)
 {
@@ -468,11 +467,10 @@ emmc_card_reset(struct emmc *self)
         if (v2_later) {
             // Set SDHC support
             v2_flags |= (1 << 30);
-        
+
             // Set 1.8v support
 #ifdef SD_1_8V_SUPPORT
-            if (!self->failed_voltage_switch)
-            {
+            if (!self->failed_voltage_switch) {
                 v2_flags |= (1 << 24);
             }
 #endif
@@ -481,8 +479,9 @@ emmc_card_reset(struct emmc *self)
             v2_flags |= (1 << 28);
 #endif
         }
-        
-        if (!emmc_issue_command(self, ACMD(41), 0x00ff8000 | v2_flags, 500000)) {
+
+        if (!emmc_issue_command
+            (self, ACMD(41), 0x00ff8000 | v2_flags, 500000)) {
             error("error issuing ACMD41");
             return -1;
         }
@@ -504,7 +503,8 @@ emmc_card_reset(struct emmc *self)
 
     }
 
-    debug("OCR: 0x%x, 1.8v support: %d, SDHC support: %d", self->card_ocr, self->card_supports_18v, self->card_supports_sdhc);
+    debug("OCR: 0x%x, 1.8v support: %d, SDHC support: %d", self->card_ocr,
+          self->card_supports_18v, self->card_supports_sdhc);
 
     // At this point, we know the card is definitely an SD card, so will definitely
     // support SDR12 mode which runs at 25 MHz
@@ -522,7 +522,8 @@ emmc_card_reset(struct emmc *self)
     self->device_id[1] = self->last_r1;
     self->device_id[2] = self->last_r2;
     self->device_id[3] = self->last_r3;
-    debug("card CID: 0x%x, 0x%x, 0x%x, 0x%x", self->device_id[3], self->device_id[2], self->device_id[1], self->device_id[0]);
+    debug("card CID: 0x%x, 0x%x, 0x%x, 0x%x", self->device_id[3],
+          self->device_id[2], self->device_id[1], self->device_id[0]);
 
 
     // Send CMD3 to enter the data state
@@ -550,7 +551,8 @@ emmc_card_reset(struct emmc *self)
 
 
     // Now select the card (toggles it to transfer state)
-    if (!emmc_issue_command(self, SELECT_CARD, self->card_rca << 16, 500000)) {
+    if (!emmc_issue_command
+        (self, SELECT_CARD, self->card_rca << 16, 500000)) {
         error("error sending CMD7");
         return -1;
     }
@@ -585,7 +587,7 @@ emmc_card_reset(struct emmc *self)
 
     // Determine card version
     // Note that the SCR is big-endian
-    uint32_t scr0 = be2le32 (self->scr->scr[0]);
+    uint32_t scr0 = be2le32(self->scr->scr[0]);
     self->scr->sd_version = SD_VER_UNKNOWN;
     uint32_t sd_spec = (scr0 >> (56 - 32)) & 0xf;
     uint32_t sd_spec3 = (scr0 >> (47 - 32)) & 0x1;
@@ -606,13 +608,13 @@ emmc_card_reset(struct emmc *self)
             }
         }
     }
-    debug("SCR: version %s, bus_widths 0x%x", sd_versions[self->scr->sd_version], self->scr->sd_bus_widths);
+    debug("SCR: version %s, bus_widths 0x%x",
+          sd_versions[self->scr->sd_version], self->scr->sd_bus_widths);
 
 
 #ifdef SD_HIGH_SPEED
     // If card supports CMD6, read switch information from card
-    if (self->scr->sd_version >= SD_VER_1_1)
-    {
+    if (self->scr->sd_version >= SD_VER_1_1) {
         // 512 bit response
         uint8_t cmd6_resp[64];
         self->buf = &cmd6_resp[0];
@@ -627,11 +629,15 @@ emmc_card_reset(struct emmc *self)
 
             // Attempt switch if supported
             if (self->card_supports_hs) {
-                trace("switching to %s mode", self->card_supports_18v ? "SDR25" : "High Speed");
+                trace("switching to %s mode",
+                      self->card_supports_18v ? "SDR25" : "High Speed");
 
                 // CMD6 Mode 1: Set Function (Group 1, Access Mode = High Speed/SDR25)
-                if (!emmc_issue_command(self, SWITCH_FUNC, 0x80fffff1, 100000)) {
-                    error("failed to switch to %s mode", self->card_supports_18v ? "SDR25" : "High Speed");
+                if (!emmc_issue_command
+                    (self, SWITCH_FUNC, 0x80fffff1, 100000)) {
+                    error("failed to switch to %s mode",
+                          self->card_supports_18v ? "SDR25" :
+                          "High Speed");
                 } else {
                     // Success; switch clock to 50MHz
                     sdhost_set_clock(&self->host, SD_CLOCK_HIGH);
@@ -662,22 +668,24 @@ emmc_card_reset(struct emmc *self)
 #endif
     }
 
-    info("found valid version %s SD card", sd_versions[self->scr->sd_version]);
+    info("found valid version %s SD card",
+         sd_versions[self->scr->sd_version]);
 
     return 0;
 }
 
 static void
-emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeout)
+emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg,
+                       int timeout)
 {
     self->last_cmd_reg = reg;
     self->last_cmd_success = 0;
 
     // Set block size and block count
     // For now, block size = 512 bytes, block count = 1,
-    if (self->blocks_to_transfer > 0xffff)
-    {
-        debug("blocks_to_transfer too great: %d", self->blocks_to_transfer);
+    if (self->blocks_to_transfer > 0xffff) {
+        debug("blocks_to_transfer too great: %d",
+              self->blocks_to_transfer);
         return;
     }
 
@@ -686,8 +694,7 @@ emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeou
     cmd.opcode = reg >> 24;
     cmd.arg = arg;
 
-    switch (reg & SD_CMD_RSPNS_TYPE_MASK)
-    {
+    switch (reg & SD_CMD_RSPNS_TYPE_MASK) {
     case SD_CMD_RSPNS_TYPE_48:
         cmd.flags |= MMC_RSP_PRESENT;
         break;
@@ -708,7 +715,8 @@ emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeou
     struct mmc_data data;
     if (reg & SD_CMD_ISDATA) {
         memset(&data, 0, sizeof(data));
-        data.flags |= reg & SD_CMD_DAT_DIR_CH ? MMC_DATA_READ : MMC_DATA_WRITE;
+        data.flags |=
+            reg & SD_CMD_DAT_DIR_CH ? MMC_DATA_READ : MMC_DATA_WRITE;
         data.blksz = self->block_size;
         data.blocks = self->blocks_to_transfer;
         data.sg = self->buf;
@@ -725,8 +733,7 @@ emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeou
     }
 
     // Get response data
-    switch (reg & SD_CMD_RSPNS_TYPE_MASK)
-    {
+    switch (reg & SD_CMD_RSPNS_TYPE_MASK) {
     case SD_CMD_RSPNS_TYPE_48:
     case SD_CMD_RSPNS_TYPE_48B:
         self->last_r0 = cmd.resp[0];
@@ -745,7 +752,8 @@ emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg, int timeou
 }
 
 static int
-emmc_issue_command(struct emmc *self, uint32_t cmd, uint32_t arg, int timeout)
+emmc_issue_command(struct emmc *self, uint32_t cmd, uint32_t arg,
+                   int timeout)
 {
     // Now run the appropriate commands by calling IssueCommandInt()
     if (cmd & IS_APP_CMD) {
@@ -780,6 +788,3 @@ emmc_issue_command(struct emmc *self, uint32_t cmd, uint32_t arg, int timeout)
     }
     return self->last_cmd_success;
 }
-
-
-

@@ -20,16 +20,16 @@ extern void swtch(struct context **old, struct context *new);
 static void forkret();
 static void idle_init();
 
-#define SQSIZE  0x100    /* Must be power of 2. */
+#define SQSIZE  0x100           /* Must be power of 2. */
 #define HASH(x) ((((uint64_t)(x)) >> 5) & (SQSIZE - 1))
 
 struct cpu cpu[NCPU];
 
 struct {
-  struct proc proc[NPROC];
-  struct list_head slpque[SQSIZE];
-  struct list_head sched_que;
-  struct spinlock lock;
+    struct proc proc[NPROC];
+    struct list_head slpque[SQSIZE];
+    struct list_head sched_que;
+    struct spinlock lock;
 } ptable;
 
 struct proc *initproc;
@@ -77,7 +77,7 @@ proc_alloc()
     p->name[0] = 0;
 
     void *sp = p->kstack + PGSIZE;
-    assert(sizeof(*p->tf) == 19*16 && sizeof(*p->context) == 7*16);
+    assert(sizeof(*p->tf) == 19 * 16 && sizeof(*p->context) == 7 * 16);
 
     sp -= sizeof(*p->tf);
     p->tf = sp;
@@ -86,11 +86,11 @@ proc_alloc()
 
     sp -= sizeof(*p->context);
     p->context = sp;
-    p->context->lr0 = (uint64_t)forkret;
-    p->context->lr = (uint64_t)trapret;
+    p->context->lr0 = (uint64_t) forkret;
+    p->context->lr = (uint64_t) trapret;
 
     list_init(&p->child);
-   
+
     return p;
 }
 
@@ -155,7 +155,7 @@ void
 scheduler()
 {
     idle_init();
-    for (struct proc *p; ; ) {
+    for (struct proc * p;;) {
         acquire(&ptable.lock);
         struct list_head *head = &ptable.sched_que;
         if (list_empty(head)) {
@@ -329,7 +329,7 @@ fork()
  */
 int
 wait()
-{   
+{
     struct proc *cp = thisproc();
 
     struct list_head *q = &cp->child;
@@ -405,7 +405,7 @@ exit(int err)
             wakeup1(initproc);
     }
     assert(list_empty(q));
- 
+
     // Jump into the scheduler, never to return.
     cp->state = ZOMBIE;
 
@@ -421,22 +421,24 @@ void
 procdump()
 {
     static char *states[] = {
-        [UNUSED]    "unused",
-        [EMBRYO]    "embryo",
-        [SLEEPING]  "sleep ",
-        [RUNNABLE]  "runble",
-        [RUNNING]   "run   ",
-        [ZOMBIE]    "zombie"
+        [UNUSED] "unused",
+        [EMBRYO] "embryo",
+        [SLEEPING] "sleep ",
+        [RUNNABLE] "runble",
+        [RUNNING] "run   ",
+        [ZOMBIE] "zombie"
     };
     struct proc *p;
 
     // Donot acquire ptable.lock to avoid deadlock
     // acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-        if (p->state == UNUSED) continue;
+        if (p->state == UNUSED)
+            continue;
         if (p->parent)
-            cprintf("%d %s %s fa: %d\n", p->pid, states[p->state], p->name, p->parent->pid);
-        else 
+            cprintf("%d %s %s fa: %d\n", p->pid, states[p->state], p->name,
+                    p->parent->pid);
+        else
             cprintf("%d %s %s\n", p->pid, states[p->state], p->name);
     }
     // release(&ptable.lock);

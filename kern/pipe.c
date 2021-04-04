@@ -12,10 +12,10 @@
 struct pipe {
     struct spinlock lock;
     char data[PIPESIZE];
-    size_t nread;   // number of bytes read
-    size_t nwrite;  // number of bytes written
-    int readopen;   // read fd is still open
-    int writeopen;  // write fd is still open
+    size_t nread;               // number of bytes read
+    size_t nwrite;              // number of bytes written
+    int readopen;               // read fd is still open
+    int writeopen;              // write fd is still open
 };
 
 int
@@ -27,7 +27,7 @@ pipealloc(struct file **f0, struct file **f1)
     *f0 = *f1 = 0;
     if ((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
         goto bad;
-    if ((p = (struct pipe*)kalloc()) == 0)
+    if ((p = (struct pipe *)kalloc()) == 0)
         goto bad;
     p->readopen = 1;
     p->writeopen = 1;
@@ -44,9 +44,9 @@ pipealloc(struct file **f0, struct file **f1)
     (*f1)->pipe = p;
     return 0;
 
-bad:
+  bad:
     if (p)
-        kfree((char*)p);
+        kfree((char *)p);
     if (*f0)
         fileclose(*f0);
     if (*f1)
@@ -67,7 +67,7 @@ pipeclose(struct pipe *p, int writable)
     }
     if (p->readopen == 0 && p->writeopen == 0) {
         release(&p->lock);
-        kfree((char*)p);
+        kfree((char *)p);
     } else
         release(&p->lock);
 }
@@ -108,7 +108,7 @@ piperead(struct pipe *p, char *addr, ssize_t n)
         sleep(&p->nread, &p->lock);
     }
     for (i = 0; i < n; i++) {
-        if(p->nread == p->nwrite)
+        if (p->nread == p->nwrite)
             break;
         addr[i] = p->data[p->nread++ % PIPESIZE];
     }
@@ -116,4 +116,3 @@ piperead(struct pipe *p, char *addr, ssize_t n)
     release(&p->lock);
     return i;
 }
-

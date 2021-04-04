@@ -23,14 +23,14 @@ extern void mbox_test();
 static struct {
     int cnt;
     struct spinlock lock;
-} mp = {0};
+} mp = { 0 };
 
 void
 main(uint64_t sp, uint64_t ent)
 {
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
-        memset(edata, 0, end-edata);
+        memset(edata, 0, end - edata);
 
         console_init();
         clock_init();

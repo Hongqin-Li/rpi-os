@@ -43,8 +43,8 @@ struct log {
     struct spinlock lock;
     int start;
     int size;
-    int outstanding;    // How many FS sys calls are executing.
-    int committing;     // In commit(), please wait.
+    int outstanding;            // How many FS sys calls are executing.
+    int committing;             // In commit(), please wait.
     int dev;
     struct logheader lh;
 };
@@ -75,10 +75,10 @@ static void
 install_trans()
 {
     for (int tail = 0; tail < log.lh.n; tail++) {
-        struct buf *lbuf = bread(log.dev, log.start+tail+1); // read log block
-        struct buf *dbuf = bread(log.dev, log.lh.block[tail]); // read dst
-        memmove(dbuf->data, lbuf->data, BSIZE);  // copy block to dst
-        bwrite(dbuf);  // write dst to disk
+        struct buf *lbuf = bread(log.dev, log.start + tail + 1);        // read log block
+        struct buf *dbuf = bread(log.dev, log.lh.block[tail]);  // read dst
+        memmove(dbuf->data, lbuf->data, BSIZE); // copy block to dst
+        bwrite(dbuf);           // write dst to disk
         brelse(lbuf);
         brelse(dbuf);
     }
@@ -89,7 +89,7 @@ static void
 read_head()
 {
     struct buf *buf = bread(log.dev, log.start);
-    struct logheader *lh = (struct logheader *) (buf->data);
+    struct logheader *lh = (struct logheader *)(buf->data);
     int i;
     log.lh.n = lh->n;
     for (i = 0; i < log.lh.n; i++) {
@@ -107,7 +107,7 @@ static void
 write_head()
 {
     struct buf *buf = bread(log.dev, log.start);
-    struct logheader *hb = (struct logheader *) (buf->data);
+    struct logheader *hb = (struct logheader *)(buf->data);
     int i;
     hb->n = log.lh.n;
     for (i = 0; i < log.lh.n; i++) {
@@ -121,9 +121,9 @@ static void
 recover_from_log()
 {
     read_head();
-    install_trans(); // if committed, copy from log to disk
+    install_trans();            // if committed, copy from log to disk
     log.lh.n = 0;
-    write_head(); // clear the log
+    write_head();               // clear the log
 }
 
 /* Called at the start of each FS system call. */
@@ -134,7 +134,8 @@ begin_op()
     while (1) {
         if (log.committing) {
             sleep(&log, &log.lock);
-        } else if(log.lh.n + (log.outstanding+1)*MAXOPBLOCKS > LOGSIZE) {
+        } else if (log.lh.n + (log.outstanding + 1) * MAXOPBLOCKS >
+                   LOGSIZE) {
             // This op might exhaust log space; wait for commit.
             sleep(&log, &log.lock);
         } else {
@@ -185,10 +186,10 @@ static void
 write_log()
 {
     for (int tail = 0; tail < log.lh.n; tail++) {
-        struct buf *to = bread(log.dev, log.start+tail+1); // log block
-        struct buf *from = bread(log.dev, log.lh.block[tail]); // cache block
+        struct buf *to = bread(log.dev, log.start + tail + 1);  // log block
+        struct buf *from = bread(log.dev, log.lh.block[tail]);  // cache block
         memmove(to->data, from->data, BSIZE);
-        bwrite(to);  // write the log
+        bwrite(to);             // write the log
         brelse(from);
         brelse(to);
     }
@@ -198,13 +199,13 @@ static void
 commit()
 {
     if (log.lh.n > 0) {
-        write_log();     // Write modified blocks from cache to log
-        write_head();    // Write header to disk -- the real commit
-        install_trans(); // Now install writes to home locations
+        write_log();            // Write modified blocks from cache to log
+        write_head();           // Write header to disk -- the real commit
+        install_trans();        // Now install writes to home locations
         disb();
         log.lh.n = 0;
         disb();
-        write_head();    // Erase the transaction from the log
+        write_head();           // Erase the transaction from the log
     }
 }
 
@@ -230,13 +231,12 @@ log_write(struct buf *b)
 
     acquire(&log.lock);
     for (i = 0; i < log.lh.n; i++) {
-        if (log.lh.block[i] == b->blockno)   // log absorbtion
+        if (log.lh.block[i] == b->blockno)      // log absorbtion
             break;
     }
     log.lh.block[i] = b->blockno;
     if (i == log.lh.n)
         log.lh.n++;
-    b->flags |= B_DIRTY; // prevent eviction
+    b->flags |= B_DIRTY;        // prevent eviction
     release(&log.lock);
 }
-

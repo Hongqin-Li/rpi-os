@@ -30,7 +30,7 @@ void mm_test();
  * Allocate one 4096-byte page of physical memory.
  * Returns a pointer that the kernel can use.
  * Returns 0 if the memory cannot be allocated.
- */ 
+ */
 static void *
 freelist_alloc(struct freelist *f)
 {
@@ -54,7 +54,7 @@ void
 free_range(void *start, void *end)
 {
     int cnt = 0;
-    for (void *p = start; p + PGSIZE <= end; p += PGSIZE, cnt ++) 
+    for (void *p = start; p + PGSIZE <= end; p += PGSIZE, cnt++)
         freelist_free(&freelist, p);
     info("0x%p ~ 0x%p, %d pages", start, end, cnt);
 }
@@ -103,8 +103,8 @@ kalloc()
         if (i == MAX_PAGES) {
             panic("mm: no more space for debug. ");
         }
-    }
-    else warn("null");
+    } else
+        warn("null");
 #endif
     release(&memlock);
     return p;
@@ -116,7 +116,7 @@ kfree(void *va)
 {
     acquire(&memlock);
 #ifdef DEBUG
-    memset(va, 0xAC, PGSIZE); // For debug.
+    memset(va, 0xAC, PGSIZE);   // For debug.
     int i;
     for (i = 0; i < MAX_PAGES; i++) {
         if (alloc_ptr[i] == va) {
@@ -139,7 +139,8 @@ mm_dump()
 #ifdef DEBUG
     int cnt = 0;
     for (int i = 0; i < MAX_PAGES; i++) {
-        if (alloc_ptr[i]) cnt++;
+        if (alloc_ptr[i])
+            cnt++;
     }
     debug("allocated: %d pages", cnt);
 #endif
@@ -149,11 +150,12 @@ void
 mm_test()
 {
 #ifdef DEBUG
-    static void *p[0x100000000/PGSIZE];
+    static void *p[0x100000000 / PGSIZE];
     int i;
     for (i = 0; (p[i] = kalloc()); i++) {
         memset(p[i], 0xFF, PGSIZE);
-        if (i % 10000 == 0) debug("0x%p", p[i]);
+        if (i % 10000 == 0)
+            debug("0x%p", p[i]);
     }
     while (i--)
         kfree(p[i]);

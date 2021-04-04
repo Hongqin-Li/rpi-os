@@ -44,7 +44,7 @@ binit()
 
     // Create linked list of buffers
     list_init(&bcache.head);
-    for (b = bcache.buf; b < bcache.buf+NBUF; b++) {
+    for (b = bcache.buf; b < bcache.buf + NBUF; b++) {
         list_push_back(&bcache.head, &b->clink);
     }
 }
@@ -119,7 +119,7 @@ bwrite(struct buf *b)
 void
 brelse(struct buf *b)
 {
-    if(!holdingsleep(&b->lock))
+    if (!holdingsleep(&b->lock))
         panic("brelse");
 
     releasesleep(&b->lock);
@@ -133,4 +133,3 @@ brelse(struct buf *b)
     }
     release(&bcache.lock);
 }
-
