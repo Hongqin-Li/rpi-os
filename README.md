@@ -1,6 +1,19 @@
 # Raspberry Pi 3 Operating System
 
-Yet another unix-like toy operating system running on Raspberry Pi 3, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University. However, existing operating systems on raspberry pi seems either too complicate (e.g. [linux](https://github.com/raspberrypi/linux), [circle](https://github.com/rsta2/circle)) or incomplete (e.g. [s-matyukevich's](https://github.com/s-matyukevich/raspberry-pi-os) and [bztsrc's](https://github.com/bztsrc/raspi3-tutorial) both lack multi-core support) for teaching. But they are still good projects, and it's highly recommended to have a try with them. Eventually, I decided to implement one from scratch, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
+Yet another unix-like toy operating system running on Raspberry Pi 3, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
+
+## Related works
+
+- [linux](https://github.com/raspberrypi/linux): real world operating system
+- [circle](https://github.com/rsta2/circle): contains lots of portable drivers
+- [s-matyukevich's](https://github.com/s-matyukevich/raspberry-pi-os)
+- [bztsrc's](https://github.com/bztsrc/raspi3-tutorial)
+
+## What's different?
+
+- We use [musl](https://musl.libc.org/) as user programs libc instead of reinventing one.
+- The set of syscalls supported by our kernel is a subset of linux's.
+- Compared to xv6, we use a queue-based scheduler and hash pid for process sleeping and waking.
 
 ## Features
 
@@ -14,7 +27,6 @@ Yet another unix-like toy operating system running on Raspberry Pi 3, which is b
 - [x] Shell: port xv6
   - [x] Support argc, envp
   - [x] Support pipe
-- [ ] Documentation...
 
 ## Development
 
