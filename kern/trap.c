@@ -136,7 +136,7 @@ interrupt(struct trapframe *tf)
     } else if (src & IRQ_GPU) {
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
         if (p1 & AUX_INT) {
-            uart_intr();
+            console_intr(uart_getchar);
         } else if (p2 & VC_ARASANSDIO_INT) {
             if (thisproc() == thiscpu()->idle)
                 trace("on idle");

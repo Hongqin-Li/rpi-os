@@ -1253,7 +1253,7 @@ sd_init_gpio()
 int
 sd_get_base_clock()
 {
-    sd_base_clk = mbox_get_clock_rate(MBX_PROP_CLOCK_EMMC);
+    sd_base_clk = mbox_get_clock_rate(MBOX_CLOCK_EMMC);
     if (sd_base_clk == -1) {
         error("failed to get base clock from mailbox");
         return SD_ERROR;
@@ -1465,7 +1465,7 @@ sd_parse_csd()
         int mult = 1 << (((sdcard.csd[2] & CSD2V1_C_SIZE_MULT) >> CSD2V1_C_SIZE_MULT_SHIFT) + 2);
         long long blockSize = 1 << ((sdcard.csd[1] & CSD1VN_READ_BL_LEN) >> CSD1VN_READ_BL_LEN_SHIFT);
         long long numBlocks = (csize+1LL)*mult;
-		  
+          
         sdcard.capacity = numBlocks * blockSize;
     } else {
         // if (csdVersion == CSD0_V2)

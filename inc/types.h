@@ -35,6 +35,8 @@ typedef uint64_t ssize_t;
 
 #define ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
+#define IS_POWER_OF_2(n)    (!((n) & ((n)-1)))
+
 #define container_of(ptr, type, member)                 \
 ({                                                      \
     const typeof(((type *)0)->member) *__mptr = (ptr);  \

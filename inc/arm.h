@@ -47,7 +47,14 @@ get32(uint64_t p)
     return *(volatile uint32_t *)p;
 }
 
-/* Brute-force data and instruction synchronization barrier */
+/* Data synchronization barrier. */
+static inline void
+dsb()
+{
+    asm volatile("dsb sy" ::: "memory");
+}
+
+/* Brute-force data and instruction synchronization barrier. */
 static inline void
 disb()
 {

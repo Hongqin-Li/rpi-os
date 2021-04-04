@@ -25,22 +25,16 @@ uart_getchar()
 }
 
 void
-uart_intr()
-{
-    console_intr(uart_getchar);
-}
-
-void
 uart_init()
 {
-    uint32_t selector;
+    // uint32_t selector;
 
-    selector = get32(GPFSEL1);
-    selector &= ~(7<<12);                   /* Clean GPIO14. */
-    selector |= 2<<12;                      /* Set alt5 for GPIO14. */
-    selector &= ~(7<<15);                   /* Clean GPIO15. */
-    selector |= 2<<15;                      /* Set alt5 for GPIO15. */
-    put32(GPFSEL1, selector);
+    // selector = get32(GPFSEL1);
+    // selector &= ~(7<<12);                   /* Clean GPIO14. */
+    // selector |= 2<<12;                      /* Set alt5 for GPIO14. */
+    // selector &= ~(7<<15);                   /* Clean GPIO15. */
+    // selector |= 2<<15;                      /* Set alt5 for GPIO15. */
+    // put32(GPFSEL1, selector);
 
     put32(GPPUD, 0);
     delay(150);
