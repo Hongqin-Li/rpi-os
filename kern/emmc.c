@@ -315,6 +315,15 @@ const uint32_t sd_acommands[] = {
 #define SD_BLOCK_SIZE        512
 
 
+static int emmc_ensure_data_mode(struct emmc *self);
+static int emmc_do_data_command(struct emmc *self, int is_write,
+                                uint8_t * buf, size_t buf_size,
+                                uint32_t block_no);
+static size_t emmc_do_read(struct emmc *self, uint8_t * buf,
+                           size_t buf_size, uint32_t block_no);
+static size_t emmc_do_write(struct emmc *self, uint8_t * buf,
+                            size_t buf_size, uint32_t block_no);
+
 static int emmc_card_init(struct emmc *self);
 static int emmc_card_reset(struct emmc *self);
 
@@ -344,16 +353,32 @@ emmc_init(struct emmc *self)
     return 1;
 }
 
-int
+size_t
 emmc_read(struct emmc *self, void *buf, size_t cnt)
 {
+    if (self->ull_offset % SD_BLOCK_SIZE != 0) {
+        return -1;
+    }
+    uint32_t nblock = self->ull_offset / SD_BLOCK_SIZE;
 
+    if (emmc_do_read(self, (uint8_t *) buf, cnt, nblock) != cnt) {
+        return -1;
+    }
+    return cnt;
 }
 
-int
+size_t
 emmc_write(struct emmc *self, void *buf, size_t cnt)
 {
+    if (self->ull_offset % SD_BLOCK_SIZE != 0) {
+        return -1;
+    }
+    uint32_t nblock = self->ull_offset / SD_BLOCK_SIZE;
 
+    if (emmc_do_write(self, (uint8_t *) buf, cnt, nblock) != cnt) {
+        return -1;
+    }
+    return cnt;
 }
 
 uint64_t
@@ -382,6 +407,187 @@ emmc_card_init(struct emmc *self)
     }
     return ret;
 }
+
+static int
+emmc_ensure_data_mode(struct emmc *self)
+{
+    if (self->card_rca == 0) {
+        // Try again to initialise the card
+        int ret = emmc_card_reset(self);
+        if (ret != 0) {
+            return ret;
+        }
+    }
+
+    trace("obtaining status register for card_rca 0x%x: ", self->card_rca);
+
+    if (!emmc_issue_command
+        (self, SEND_STATUS, self->card_rca << 16, 500000)) {
+        warn("error sending CMD13");
+        self->card_rca = 0;
+
+        return -1;
+    }
+
+    uint32_t status = self->last_r0;
+    uint32_t cur_state = (status >> 9) & 0xf;
+    trace("status 0x%x", cur_state);
+    if (cur_state == 3) {
+        // Currently in the stand-by state - select it
+        if (!emmc_issue_command
+            (self, SELECT_CARD, self->card_rca << 16, 500000)) {
+            warn("no response from CMD17");
+            self->card_rca = 0;
+
+            return -1;
+        }
+    } else if (cur_state == 5) {
+        // In the data transfer state - cancel the transmission
+        if (!emmc_issue_command(self, STOP_TRANSMISSION, 0, 500000)) {
+            warn("no response from CMD12");
+            self->card_rca = 0;
+
+            return -1;
+        }
+    } else if (cur_state != 4) {
+        // Not in the transfer state, re-initialise.
+        int ret = emmc_card_reset(self);
+        if (ret != 0) {
+            return ret;
+        }
+    }
+
+    // Check again that we're now in the correct mode
+    if (cur_state != 4) {
+        if (!emmc_issue_command
+            (self, SEND_STATUS, self->card_rca << 16, 500000)) {
+            warn("no response from CMD13");
+            self->card_rca = 0;
+
+            return -1;
+        }
+        status = self->last_r0;
+        cur_state = (status >> 9) & 0xf;
+        trace("recheck status 0x%x", cur_state);
+
+        if (cur_state != 4) {
+            warn("unable to initialise SD card to data mode (state 0x%x)",
+                 cur_state);
+            self->card_rca = 0;
+
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int
+emmc_do_data_command(struct emmc *self, int is_write, uint8_t * buf,
+                     size_t buf_size, uint32_t block_no)
+{
+
+    // PLSS table 4.20 - SDSC cards use byte addresses rather than block addresses
+    if (!self->card_supports_sdhc) {
+        block_no *= SD_BLOCK_SIZE;
+    }
+
+    // This is as per HCSS 3.7.2.1
+    if (buf_size < self->block_size) {
+        warn("buffer size (%d) less than block size (%d)", buf_size,
+             self->block_size);
+
+        return -1;
+    }
+
+    self->blocks_to_transfer = buf_size / self->block_size;
+    if (buf_size % self->block_size) {
+        warn("buffer size (%d) not a multiple of block size (%d)",
+             buf_size, self->block_size);
+
+        return -1;
+    }
+    self->buf = buf;
+
+    // Decide on the command to use
+    int command;
+    if (is_write) {
+        if (self->blocks_to_transfer > 1) {
+            command = WRITE_MULTIPLE_BLOCK;
+        } else {
+            command = WRITE_BLOCK;
+        }
+    } else {
+        if (self->blocks_to_transfer > 1) {
+            command = READ_MULTIPLE_BLOCK;
+        } else {
+            command = READ_SINGLE_BLOCK;
+        }
+    }
+
+    int retry_count = 0;
+    int max_retries = 3;
+    while (retry_count < max_retries) {
+        if (emmc_issue_command(self, command, block_no, 5000000)) {
+            break;
+        } else {
+            warn("error sending CMD%d", command);
+            trace("error = 0x%x", self->last_error);
+
+            if (++retry_count < max_retries) {
+                trace("Retrying");
+            } else {
+                trace("Giving up");
+            }
+        }
+    }
+
+    if (retry_count == max_retries) {
+        self->card_rca = 0;
+        return -1;
+    }
+    return 0;
+}
+
+
+static size_t
+emmc_do_read(struct emmc *self, uint8_t * buf, size_t buf_size,
+             uint32_t block_no)
+{
+    // Check the status of the card
+    if (emmc_ensure_data_mode(self) != 0) {
+        return -1;
+    }
+
+    trace("reading from block %u", block_no);
+
+    if (emmc_do_data_command(self, 0, buf, buf_size, block_no) < 0) {
+        return -1;
+    }
+
+    trace("success");
+    return buf_size;
+}
+
+static size_t
+emmc_do_write(struct emmc *self, uint8_t * buf, size_t buf_size,
+              uint32_t block_no)
+{
+    // Check the status of the card
+    if (emmc_ensure_data_mode(self) != 0) {
+        return -1;
+    }
+    trace("writing to block %u", block_no);
+
+    if (emmc_do_data_command(self, 1, buf, buf_size, block_no) < 0) {
+        return -1;
+    }
+
+    trace("success");
+
+    return buf_size;
+}
+
 
 static int
 emmc_card_reset(struct emmc *self)

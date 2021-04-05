@@ -150,9 +150,9 @@ mbox_set_sdhost_clock(uint32_t msg[3])
     if (mbox_send(buf, sizeof(buf)) < 0)
         return -1;
 
-    memmove(msg, &buf[5], sizeof(msg));
+    memmove(msg, &buf[5], 12);
     if ((buf[4] >> 31) == 0 || (buf[4] & 0x3FFFFFFF) != 12) {
-        debug("unexpected tag resp %d", buf[4]);
+        debug("unexpected tag resp 0x%x, normal for qemu", buf[4]);
         // qemu always failed
         return 0;
     }

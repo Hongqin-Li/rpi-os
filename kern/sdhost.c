@@ -154,6 +154,11 @@ static void sdhost_finish_data(struct bcm2835_host *host);
 static void sdhost_finish_command(struct bcm2835_host *host);
 static void sdhost_transfer_complete(struct bcm2835_host *host);
 
+static void sdhost_busy_irq(struct bcm2835_host *host, uint32_t intmask);
+static void sdhost_data_irq(struct bcm2835_host *host, uint32_t intmask);
+static void sdhost_block_irq(struct bcm2835_host *host, uint32_t intmask);
+static void sdhost_irq_handler(struct bcm2835_host *host);
+
 static void sdhost_set_clock_inner(struct bcm2835_host *host,
                                    uint32_t clock);
 static void sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc,
@@ -218,9 +223,7 @@ sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd,
         return nerror;
     }
 
-    trace("sync start");
     sdhost_request_sync(host, &req);
-    trace("sync finish");
 
     if (cmd->error != 0) {
         return cmd->error;
@@ -1040,6 +1043,147 @@ sdhost_finish_command(struct bcm2835_host *host)
             sdhost_transfer_complete(host);
         }
     }
+}
+
+static void
+sdhost_busy_irq(struct bcm2835_host *host, uint32_t intmask)
+{
+    if (!host->cmd) {
+        error("got command busy interrupt 0x%x even "
+              "though no command operation was in progress", intmask);
+        // dumpregs();
+        return;
+    }
+
+    if (!host->use_busy) {
+        error("got command busy interrupt 0x%x even "
+              "though not expecting one.", intmask);
+        // dumpregs();
+        return;
+    }
+    host->use_busy = 0;
+
+    if (intmask & SDHSTS_ERROR_MASK) {
+        error("sdhost_busy_irq: intmask 0x%x, data %p", intmask,
+              host->mrq->data);
+        if (intmask & SDHSTS_CRC7_ERROR) {
+            host->cmd->error = -EILSEQ;
+        } else if (intmask & (SDHSTS_CRC16_ERROR | SDHSTS_FIFO_ERROR)) {
+            if (host->mrq->data)
+                host->mrq->data->error = -EILSEQ;
+            else
+                host->cmd->error = -EILSEQ;
+        } else if (intmask & SDHSTS_REW_TIME_OUT) {
+            if (host->mrq->data)
+                host->mrq->data->error = -ETIMEDOUT;
+            else
+                host->cmd->error = -ETIMEDOUT;
+        } else if (intmask & SDHSTS_CMD_TIME_OUT) {
+            host->cmd->error = -ETIMEDOUT;
+        }
+
+        // if (host->debug) {
+        //      dumpregs();
+        // }
+    } else
+        sdhost_finish_command(host);
+}
+
+
+static void
+sdhost_data_irq(struct bcm2835_host *host, uint32_t intmask)
+{
+    /*
+     * There are no dedicated data/space available interrupt
+     * status bits, so it is necessary to use the single shared
+     * data/space available FIFO status bits. It is therefore not
+     * an error to get here when there is no data transfer in
+     * progress.
+     */
+    if (!host->data)
+        return;
+
+    if (intmask & (SDHSTS_CRC16_ERROR |
+                   SDHSTS_FIFO_ERROR | SDHSTS_REW_TIME_OUT)) {
+        if (intmask & (SDHSTS_CRC16_ERROR | SDHSTS_FIFO_ERROR))
+            host->data->error = -EILSEQ;
+        else
+            host->data->error = -ETIMEDOUT;
+
+        // if (host->debug) {
+        //      dumpregs();
+        // }
+    }
+
+    if (host->data->error) {
+        sdhost_finish_data(host);
+    } else if (host->data->flags & MMC_DATA_WRITE) {
+        /* Use the block interrupt for writes after the first block. */
+        host->hcfg &= ~(SDHCFG_DATA_IRPT_EN);
+        host->hcfg |= SDHCFG_BLOCK_IRPT_EN;
+        write(host->hcfg, SDHCFG);
+        sdhost_transfer_pio(host);
+    } else {
+        sdhost_transfer_pio(host);
+        host->blocks--;
+        if ((host->blocks == 0) || host->data->error)
+            sdhost_finish_data(host);
+    }
+}
+
+static void
+sdhost_block_irq(struct bcm2835_host *host, uint32_t intmask)
+{
+    if (!host->data) {
+        error("got block interrupt 0x%x even "
+              "though no data operation was in progress.", intmask);
+        // dumpregs();
+        return;
+    }
+
+    if (intmask & (SDHSTS_CRC16_ERROR |
+                   SDHSTS_FIFO_ERROR | SDHSTS_REW_TIME_OUT)) {
+        if (intmask & (SDHSTS_CRC16_ERROR | SDHSTS_FIFO_ERROR))
+            host->data->error = -EILSEQ;
+        else
+            host->data->error = -ETIMEDOUT;
+
+        // if (host->debug) {
+        //      dumpregs();
+        // }
+    }
+
+    assert(host->blocks);
+    if (host->data->error || (--host->blocks == 0)) {
+        sdhost_finish_data(host);
+    } else {
+        sdhost_transfer_pio(host);
+    }
+}
+
+static void
+sdhost_irq_handler(struct bcm2835_host *host)
+{
+    uint32_t intmask = read(SDHSTS);
+
+    write(SDHSTS_BUSY_IRPT | SDHSTS_BLOCK_IRPT
+          | SDHSTS_SDIO_IRPT | SDHSTS_DATA_FLAG, SDHSTS);
+
+    if (intmask & SDHSTS_BLOCK_IRPT) {
+        sdhost_block_irq(host, intmask);
+    }
+
+    if (intmask & SDHSTS_BUSY_IRPT) {
+        sdhost_busy_irq(host, intmask);
+    }
+
+    /* There is no true data interrupt status bit, so it is
+       necessary to qualify the data flag with the interrupt
+       enable bit */
+    if ((intmask & SDHSTS_DATA_FLAG) && (host->hcfg & SDHCFG_DATA_IRPT_EN)) {
+        sdhost_data_irq(host, intmask);
+    }
+    dsb();
 }
 
 static void
