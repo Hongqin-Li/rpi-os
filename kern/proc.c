@@ -9,7 +9,6 @@
 #include "vm.h"
 #include "spinlock.h"
 
-// #include "sd.h"
 #include "dev.h"
 #include "debug.h"
 #include "file.h"

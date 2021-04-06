@@ -9,9 +9,8 @@ LIBC_SPEC_OUT = $(OBJ)/musl-gcc.specs
 
 CC = aarch64-linux-gnu-gcc -specs $(LIBC_SPEC_OUT)
 OBJDUMP = aarch64-linux-gnu-objdump
-# FIXME: o3 
 # -z max-page-size: https://stackoverflow.com/questions/33005638/how-to-change-alignment-of-code-segment-in-elf
-CFLAGS = -std=gnu99 -O0 -MMD -MP -static -z max-page-size=4096 \
+CFLAGS = -std=gnu99 -O3 -MMD -MP -static -z max-page-size=4096 \
   -fno-omit-frame-pointer \
   -I../libc/obj/include/ \
   -I../libc/arch/aarch64/ \

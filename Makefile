@@ -6,13 +6,13 @@ OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
 
 CORTEX_A53_FLAGS := -mno-outline-atomics -mcpu=cortex-a53 -mtune=cortex-a53
-CFLAGS := -Wall -g -O0 \
+CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
-		  -DDEBUG -DLOG_DEBUG \
+		  -DNOT_DEBUG -DLOG_INFO \
 		  $(CORTEX_A53_FLAGS)
 
 CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include -Ilibc/arch/generic

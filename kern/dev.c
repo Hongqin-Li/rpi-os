@@ -45,13 +45,11 @@ dev_init()
 void
 dev_intr()
 {
-    trace("begin");
     acquire(&card.host.lock);
     sdhost_intr(&card.host);
     disb();
     wakeup(&card.host);
     release(&card.host.lock);
-    trace("end");
 }
 
 /*
@@ -108,6 +106,7 @@ devrw(struct buf *b)
 static void
 dev_test()
 {
+#ifdef DEBUG
     static struct buf b[1 << 11];
     int n = ARRAY_SIZE(b);
     int mb = (n * BSIZE) >> 20;
@@ -172,4 +171,5 @@ dev_test()
 
     info("write %lldB (%lldMB), t: %lld cycles, speed: %lld.%lld MB/s\n",
          n * BSIZE, mb, t, mb * f / t, (mb * f * 10 / t) % 10);
+#endif
 }
