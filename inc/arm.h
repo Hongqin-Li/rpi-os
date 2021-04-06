@@ -3,15 +3,15 @@
 
 #include <stdint.h>
 
-/* Wait N CPU cycles. */
+/* Wait n CPU cycles. */
 static inline void
-delay(int32_t count)
+delay(uint32_t n)
 {
-    asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n":
-                 "=r"(count): [count]"0"(count) : "cc");
+    asm volatile("__delay_%=: subs %[n], %[n], #1; bne __delay_%=\n":
+                 "=r"(n): [n]"0"(n) : "cc");
 }
 
-/* Wait N microsec. */
+/* Wait n microsec. */
 static inline void
 delayus(uint32_t n)
 {
@@ -35,16 +35,18 @@ timestamp()
     return t;
 }
 
+/* Prevent compiler from reordering. */
 static inline void
-put32(uint64_t p, uint32_t x)
+barrier()
 {
-    *(volatile uint32_t *)p = x;
+    asm volatile("" ::: "memory");
 }
 
-static inline uint32_t
-get32(uint64_t p)
+/* Instruction synchronization barrier. */
+static inline void
+isb()
 {
-    return *(volatile uint32_t *)p;
+    asm volatile("isb" ::: "memory");
 }
 
 /* Data synchronization barrier. */
@@ -58,8 +60,28 @@ dsb()
 static inline void
 disb()
 {
-    asm volatile("dsb sy; isb" ::: "memory");
+    dsb();
+    isb();
 }
+
+/* Don't need dmb since device region is marked as nGnRnE by kpgdir. */
+static inline void
+put32(uint64_t p, uint32_t x)
+{
+    barrier();
+    *(volatile uint32_t *)p = x;
+    barrier();
+}
+
+static inline uint32_t
+get32(uint64_t p)
+{
+    barrier();
+    uint32_t val = *(volatile uint32_t *)p;
+    barrier();
+    return val;
+}
+
 
 /* Data cache clean and invalidate by virtual address to point of coherency. */
 static inline void

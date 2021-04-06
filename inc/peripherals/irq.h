@@ -16,6 +16,7 @@
 #define DISABLE_BASIC_IRQS      (MMIO_BASE + 0xB224)
 
 #define AUX_INT                 (1 << 29)
+#define SDIO_INT                (1 << 24)
 #define VC_ARASANSDIO_INT       (1 << 30)
 
 /* ARM Local Peripherals */

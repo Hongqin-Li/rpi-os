@@ -34,9 +34,11 @@
 // Broadcom BCM2835 ARM Peripherals Guide
 //
 
+#include "sdhost.h"
 #include "emmc.h"
 #include "string.h"
 #include "console.h"
+
 //
 // Configuration options
 //
@@ -344,12 +346,16 @@ be2le32(uint32_t x)
 int
 emmc_init(struct emmc *self)
 {
-    if (!sdhost_initialize(&self->host)) {
+    if (!sdhost_init(&self->host)) {
         return 0;
     }
+    // Since emmc_card_reset calls sdhost_request_sync.
+    acquire(&self->host.lock);
     if (emmc_card_init(self) != 0) {
+        release(&self->host.lock);
         return 0;
     }
+    release(&self->host.lock);
     return 1;
 }
 
@@ -781,10 +787,12 @@ emmc_card_reset(struct emmc *self)
 
 
     // Get the cards SCR register
-    self->buf = &self->scr->scr[0];
+    self->buf = &(self->scr.scr[0]);
     self->block_size = 8;
     self->blocks_to_transfer = 1;
+
     emmc_issue_command(self, SEND_SCR, 0, 1000000);
+
     self->block_size = SD_BLOCK_SIZE;
     if (FAIL(self)) {
         error("error sending SEND_SCR");
@@ -793,34 +801,34 @@ emmc_card_reset(struct emmc *self)
 
     // Determine card version
     // Note that the SCR is big-endian
-    uint32_t scr0 = be2le32(self->scr->scr[0]);
-    self->scr->sd_version = SD_VER_UNKNOWN;
+    uint32_t scr0 = be2le32(self->scr.scr[0]);
+    self->scr.sd_version = SD_VER_UNKNOWN;
     uint32_t sd_spec = (scr0 >> (56 - 32)) & 0xf;
     uint32_t sd_spec3 = (scr0 >> (47 - 32)) & 0x1;
     uint32_t sd_spec4 = (scr0 >> (42 - 32)) & 0x1;
-    self->scr->sd_bus_widths = (scr0 >> (48 - 32)) & 0xf;
+    self->scr.sd_bus_widths = (scr0 >> (48 - 32)) & 0xf;
     if (sd_spec == 0) {
-        self->scr->sd_version = SD_VER_1;
+        self->scr.sd_version = SD_VER_1;
     } else if (sd_spec == 1) {
-        self->scr->sd_version = SD_VER_1_1;
+        self->scr.sd_version = SD_VER_1_1;
     } else if (sd_spec == 2) {
         if (sd_spec3 == 0) {
-            self->scr->sd_version = SD_VER_2;
+            self->scr.sd_version = SD_VER_2;
         } else if (sd_spec3 == 1) {
             if (sd_spec4 == 0) {
-                self->scr->sd_version = SD_VER_3;
+                self->scr.sd_version = SD_VER_3;
             } else if (sd_spec4 == 1) {
-                self->scr->sd_version = SD_VER_4;
+                self->scr.sd_version = SD_VER_4;
             }
         }
     }
     debug("SCR: version %s, bus_widths 0x%x",
-          sd_versions[self->scr->sd_version], self->scr->sd_bus_widths);
+          sd_versions[self->scr.sd_version], self->scr.sd_bus_widths);
 
 
 #ifdef SD_HIGH_SPEED
     // If card supports CMD6, read switch information from card
-    if (self->scr->sd_version >= SD_VER_1_1) {
+    if (self->scr.sd_version >= SD_VER_1_1) {
         // 512 bit response
         uint8_t cmd6_resp[64];
         self->buf = &cmd6_resp[0];
@@ -859,7 +867,7 @@ emmc_card_reset(struct emmc *self)
 
 
 
-    if (self->scr->sd_bus_widths & 4) {
+    if (self->scr.sd_bus_widths & 4) {
         // Set 4-bit transfer mode (ACMD6)
         // See HCSS 3.4 for the algorithm
 #ifdef SD_4BIT_DATA
@@ -875,7 +883,7 @@ emmc_card_reset(struct emmc *self)
     }
 
     info("found valid version %s SD card",
-         sd_versions[self->scr->sd_version]);
+         sd_versions[self->scr.sd_version]);
 
     return 0;
 }
@@ -927,6 +935,7 @@ emmc_issue_command_int(struct emmc *self, uint32_t reg, uint32_t arg,
         data.blocks = self->blocks_to_transfer;
         data.sg = self->buf;
         data.sg_len = self->block_size * self->blocks_to_transfer;
+        trace("is data, sg %p", data.sg);
 
         cmd.data = &data;
     }

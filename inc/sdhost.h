@@ -2,6 +2,7 @@
 #define INC_SDHOST_H
 
 #include "types.h"
+#include "spinlock.h"
 
 struct sg_mapping_iter
 {
@@ -107,6 +108,7 @@ struct mmc_request
 
 struct bcm2835_host
 {
+    struct spinlock lock;
     struct mmc_host mmc;
     uint32_t        pio_timeout;    /* In CLOCKHZ ticks */
     uint32_t        clock;          /* Current clock speed */
@@ -151,9 +153,10 @@ struct bcm2835_host
 //     uint32_t            sectors;    /* Cached card size in sectors */
 };
 
-int sdhost_initialize(struct bcm2835_host *host);
+int sdhost_init(struct bcm2835_host *host);
 int sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd, uint32_t nretries);
 void sdhost_set_clock(struct bcm2835_host *host, uint32_t clockhz);
 void sdhost_set_bus_width(struct bcm2835_host *host, uint32_t nbits);
+void sdhost_intr(struct bcm2835_host *host);
 
 #endif

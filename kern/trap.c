@@ -9,7 +9,7 @@
 #include "console.h"
 #include "clock.h"
 #include "timer.h"
-#include "sd.h"
+#include "dev.h"
 
 #include "debug.h"
 
@@ -17,7 +17,8 @@ void
 irq_init()
 {
     put32(ENABLE_IRQS_1, AUX_INT);
-    put32(ENABLE_IRQS_2, VC_ARASANSDIO_INT);
+    put32(ENABLE_IRQS_2, SDIO_INT);
+    // put32(ENABLE_IRQS_2, VC_ARASANSDIO_INT);
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
 }
 
@@ -140,10 +141,8 @@ interrupt(struct trapframe *tf)
         int p1 = get32(IRQ_PENDING_1), p2 = get32(IRQ_PENDING_2);
         if (p1 & AUX_INT) {
             console_intr(uart_getchar);
-        } else if (p2 & VC_ARASANSDIO_INT) {
-            if (thisproc() == thiscpu()->idle)
-                trace("on idle");
-            sd_intr();
+        } else if (p2 & SDIO_INT) {
+            dev_intr();
         } else {
             warn("unexpected gpu intr p1 %x, p2 %x, sd %d, omitted", p1,
                  p2, p2 & VC_ARASANSDIO_INT);

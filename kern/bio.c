@@ -23,8 +23,8 @@
 #include "sleeplock.h"
 #include "buf.h"
 #include "console.h"
-#include "sd.h"
 #include "fs.h"
+#include "dev.h"
 
 struct {
     struct spinlock lock;
@@ -97,7 +97,7 @@ bread(uint32_t dev, uint32_t blockno)
 {
     struct buf *b = bget(dev, blockno);
     if ((b->flags & B_VALID) == 0) {
-        sdrw(b);
+        devrw(b);
     }
     return b;
 }
@@ -109,7 +109,7 @@ bwrite(struct buf *b)
     if (!holdingsleep(&b->lock))
         panic("bwrite");
     b->flags |= B_DIRTY;
-    sdrw(b);
+    devrw(b);
 }
 
 /*

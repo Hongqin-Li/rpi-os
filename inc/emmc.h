@@ -1,3 +1,6 @@
+#ifndef INC_EMMC_H
+#define INC_EMMC_H
+
 #include "sdhost.h"
 
 struct tscr // SD configuration register
@@ -21,7 +24,7 @@ struct emmc {
 	uint32_t card_rca;
 	uint32_t last_error;
 
-    struct tscr *scr;
+    struct tscr scr;
 
 	int failed_voltage_switch;
 
@@ -47,3 +50,4 @@ size_t emmc_read(struct emmc *self, void *buf, size_t cnt);
 size_t emmc_write(struct emmc *self, void *buf, size_t cnt);
 uint64_t emmc_seek(struct emmc *self, uint64_t off);
 
+#endif

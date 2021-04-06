@@ -8,10 +8,10 @@
 #include "mm.h"
 #include "clock.h"
 #include "timer.h"
-// #include "sd.h"
 #include "trap.h"
 #include "proc.h"
 #include "emmc.h"
+#include "buf.h"
 
 extern char edata[], end[], vectors[];
 extern void mbox_test();
@@ -35,8 +35,6 @@ main(uint64_t sp, uint64_t ent)
         console_init();
         clock_init();
         // sd_init();
-        struct emmc e;
-        assert(emmc_init(&e));
 
         mm_init();
 

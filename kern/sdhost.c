@@ -28,6 +28,7 @@
 #include "peripherals/mbox.h"
 #include "sdhost.h"
 
+#include "proc.h"
 #include "arm.h"
 #include "string.h"
 #include "console.h"
@@ -140,7 +141,7 @@ void sdhost_request_sync(struct bcm2835_host *host,
 
 static int sdhost_add_host(struct bcm2835_host *host);
 
-static void sdhost_init(struct bcm2835_host *host, int soft);
+static void sdhost_init_inner(struct bcm2835_host *host, int soft);
 static void sdhost_wait_transfer_complete(struct bcm2835_host *host);
 static void sdhost_read_block_pio(struct bcm2835_host *host);
 static void sdhost_write_block_pio(struct bcm2835_host *host);
@@ -168,13 +169,21 @@ static void sdhost_tasklet_finish(struct bcm2835_host *host);
 static int sdhost_probe(struct bcm2835_host *host);
 
 int
-sdhost_initialize(struct bcm2835_host *host)
+sdhost_init(struct bcm2835_host *host)
 {
     sdhost_init_gpio();
     int ret = sdhost_probe(host);
     if (ret != 0)
         return 0;
     return 1;
+}
+
+void
+sdhost_intr(struct bcm2835_host *host)
+{
+    trace("begin");
+    sdhost_irq_handler(host);
+    trace("end");
 }
 
 void
@@ -236,10 +245,8 @@ sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd,
     if (req.stop != 0 && req.stop->error != 0) {
         return req.stop->error;
     }
-
     return 0;
 }
-
 
 void
 sdhost_request_sync(struct bcm2835_host *host, struct mmc_request *req)
@@ -249,9 +256,11 @@ sdhost_request_sync(struct bcm2835_host *host, struct mmc_request *req)
 
     sdhost_request(host, &host->mmc, req);
 
-    do {
+    // Caller must hold host->lock.
+    while (!req->done) {
+        sleep(host, &host->lock);
         disb();
-    } while (!req->done);
+    }
 }
 
 static int
@@ -293,7 +302,7 @@ mmc_request_done(struct mmc_host *mmc, struct mmc_request *req)
 {
     assert(req != 0);
     req->done = 1;
-    dsb();
+    disb();
 }
 
 static void
@@ -346,7 +355,7 @@ static void
 sdhost_init_gpio()
 {
     for (int i = 0; i <= 5; i++) {
-        int64_t npin, off, shift, mask, sel, val;
+        int64_t npin, off, shift, sel, val;
         // Wifi
         npin = 34 + i;
         off = npin / 10 * 4, shift = (npin % 10) * 3;
@@ -387,8 +396,6 @@ sdhost_set_power(int on)
 static void
 sdhost_reset_internal(struct bcm2835_host *host)
 {
-    debug("reset");
-
     sdhost_set_power(0);
 
     write(0, SDCMD);
@@ -424,9 +431,9 @@ sdhost_reset(struct bcm2835_host *host)
 }
 
 static void
-sdhost_init(struct bcm2835_host *host, int soft)
+sdhost_init_inner(struct bcm2835_host *host, int soft)
 {
-    debug("soft %d", soft);
+    trace("soft %d", soft);
 
     /* Set interrupt enables */
     host->hcfg = SDHCFG_BUSY_IRPT_EN;
@@ -607,13 +614,12 @@ sdhost_write_block_pio(struct bcm2835_host *host)
                     hsts = SDHSTS_REW_TIME_OUT;
                     break;
                 }
-                delay(((burst_words - words) *
-                       host->ns_per_fifo_word) / 1000);
+                delayus(((burst_words - words) *
+                         host->ns_per_fifo_word) / 1000);
                 continue;
             } else if (words > copy_words) {
                 words = copy_words;
             }
-
             copy_words -= words;
 
             while (words) {
@@ -621,11 +627,9 @@ sdhost_write_block_pio(struct bcm2835_host *host)
                 words--;
             }
         }
-
         if (hsts & SDHSTS_ERROR_MASK)
             break;
     }
-
     sg_miter_stop(&host->sg_miter);
 }
 
@@ -728,13 +732,13 @@ sdhost_send_command(struct bcm2835_host *host, struct mmc_command *cmd)
 //     WARN_ON(host->cmd);
 
     if (cmd->data) {
-        debug("send_command %d 0x%x "
+        trace("send_command %d 0x%x "
               "(flags 0x%x) - %s %d*%d",
               cmd->opcode, cmd->arg, cmd->flags,
               (cmd->data->flags & MMC_DATA_READ) ?
               "read" : "write", cmd->data->blocks, cmd->data->blksz);
     } else {
-        debug("send_command %d 0x%x (flags 0x%x)",
+        trace("send_command %d 0x%x (flags 0x%x)",
               cmd->opcode, cmd->arg, cmd->flags);
     }
 
@@ -844,7 +848,7 @@ sdhost_finish_data(struct bcm2835_host *host)
     struct mmc_data *data = host->data;
     assert(data);
 
-    debug("finish_data(error %d, stop %d, sbc %d)",
+    trace("finish_data(error %d, stop %d, sbc %d)",
           data->error, data->stop ? 1 : 0, host->mrq->sbc ? 1 : 0);
 
     host->hcfg &= ~(SDHCFG_DATA_IRPT_EN | SDHCFG_BLOCK_IRPT_EN);
@@ -860,7 +864,7 @@ sdhost_finish_data(struct bcm2835_host *host)
          * command completed. Make sure we do
          * things in the proper order.
          */
-        debug("Finished early - HSTS 0x%x", read(SDHSTS));
+        debug("finished early - HSTS 0x%x", read(SDHSTS));
     } else {
         sdhost_transfer_complete(host);
     }
@@ -877,7 +881,7 @@ sdhost_transfer_complete(struct bcm2835_host *host)
     struct mmc_data *data = host->data;
     host->data = 0;
 
-    debug("transfer_complete(error %d, stop %d)",
+    trace("transfer_complete(error %d, stop %d)",
           data->error, data->stop ? 1 : 0);
 
     /*
@@ -911,7 +915,7 @@ sdhost_finish_command(struct bcm2835_host *host)
 {
     uint32_t sdcmd;
 
-    debug("finish_command(0x%x)", read(SDCMD));
+    trace("finish_command(0x%x)", read(SDCMD));
 
     assert(!(!host->cmd || !host->mrq));
 
@@ -1010,13 +1014,13 @@ sdhost_finish_command(struct bcm2835_host *host)
             int i;
             for (i = 0; i < 4; i++)
                 host->cmd->resp[3 - i] = read(SDRSP0 + i * 4);
-            debug("finish_command 0x%x 0x%x 0x%x 0x%x",
+            trace("finish_command 0x%x 0x%x 0x%x 0x%x",
                   host->cmd->resp[0],
                   host->cmd->resp[1],
                   host->cmd->resp[2], host->cmd->resp[3]);
         } else {
             host->cmd->resp[0] = read(SDRSP0);
-            debug("finish_command 0x%x", host->cmd->resp[0]);
+            trace("finish_command 0x%x", host->cmd->resp[0]);
         }
     }
 
@@ -1118,6 +1122,7 @@ sdhost_data_irq(struct bcm2835_host *host, uint32_t intmask)
     if (host->data->error) {
         sdhost_finish_data(host);
     } else if (host->data->flags & MMC_DATA_WRITE) {
+        trace("data write");
         /* Use the block interrupt for writes after the first block. */
         host->hcfg &= ~(SDHCFG_DATA_IRPT_EN);
         host->hcfg |= SDHCFG_BLOCK_IRPT_EN;
@@ -1191,7 +1196,7 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
 {
     uint32_t input_clock = clock;
 
-    debug("clock %d", clock);
+    trace("clock %d", clock);
 
     if (host->overclock_50 && (clock == 50 * MHZ))
         clock = host->overclock_50 * MHZ + (MHZ - 1);
@@ -1251,7 +1256,7 @@ sdhost_set_clock_inner(struct bcm2835_host *host, uint32_t clock)
         host->cdiv = div;
         write(host->cdiv, SDCDIV);
 
-        debug("clock=%d -> max_clk=%d, cdiv=0x%x (actual clock %d)",
+        trace("clock=%d -> max_clk=%d, cdiv=0x%x (actual clock %d)",
               input_clock, host->max_clk, host->cdiv, clock);
     }
 
@@ -1306,7 +1311,6 @@ sdhost_request(struct bcm2835_host *host, struct mmc_host *mmc,
     if (mrq->stop)
         mrq->stop->error = 0;
 
-    // FIXME:
     if (mrq->data && !IS_POWER_OF_2(mrq->data->blksz)) {
         error("unsupported block size (%d bytes)", mrq->data->blksz);
         mrq->cmd->error = -EINVAL;
@@ -1440,7 +1444,7 @@ sdhost_add_host(struct bcm2835_host *host)
 
     mmc->max_busy_timeout = (~(unsigned int)0) / (mmc->f_max / 1000);
 
-    debug("f_max %d, f_min %d, max_busy_timeout %d",
+    trace("f_max %d, f_min %d, max_busy_timeout %d",
           mmc->f_max, mmc->f_min, mmc->max_busy_timeout);
 
     /* host controller capabilities */
@@ -1465,7 +1469,7 @@ sdhost_add_host(struct bcm2835_host *host)
 //
 //     timer_setup(&host->timer, bcm2835_sdhost_timeout, 0);
 
-    sdhost_init(host, 0);
+    sdhost_init_inner(host, 0);
 
     // FIXME: enable irq
     // m_pInterruptSystem->ConnectIRQ (host->irq, irq_stub, this);
@@ -1479,6 +1483,7 @@ sdhost_probe(struct bcm2835_host *host)
 {
     int ret = 0;
     memset(host, 0, sizeof(*host));
+    initlock(&host->lock);
 
     // host->debug = SDHOST_DEBUG;
     // pr_debug("probe");
