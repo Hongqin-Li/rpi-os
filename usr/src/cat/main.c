@@ -13,7 +13,8 @@ main(int argc, char *argv[])
 
     for (i = 1; i < argc; i++) {
         if ((fd = open(argv[i], O_RDONLY)) < 0) {
-            fprintf(stderr, "%s: %s : %s\n", argv[0], argv[i], strerror(errno));
+            fprintf(stderr, "%s: %s : %s\n", argv[0], argv[i],
+                    strerror(errno));
             continue;
         }
         while ((n = read(fd, buf, 512)) > 0) {
