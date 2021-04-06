@@ -24,9 +24,9 @@ Tested on Raspberry Pi 3A+.
 - [x] Virtual memory without swapping
 - [x] Process management
 - [x] Disk driver(EMMC): ported from [circle](https://github.com/rsta2/circle/tree/master/addon/SDCard)
-- [x] File system: port xv6
+- [x] File system: ported from xv6
 - [x] C library: [musl](https://musl.libc.org/)
-- [x] Shell: port xv6
+- [x] Shell: ported from xv6
   - [x] Support argc, envp
   - [x] Support pipe
 
