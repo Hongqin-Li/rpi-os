@@ -1,9 +1,13 @@
 #include "timer.h"
 
 #include "arm.h"
-#include "peripherals/irq.h"
+#include "bsp/base.h"
 #include "console.h"
 #include "proc.h"
+
+/* Core Timer */
+#define CORE_TIMER_CTRL(i)      (LOCAL_BASE + 0x40 + 4*(i))
+#define CORE_TIMER_ENABLE       (1 << 1)        /* CNTPNSIRQ */
 
 static int dt = 19200000;
 
@@ -28,6 +32,7 @@ timer_reset()
 void
 timer_intr()
 {
+    debug("t");
     timer_reset();
     yield();
 }

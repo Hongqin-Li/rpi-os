@@ -4,7 +4,8 @@
 #include <stdint.h>
 
 #include "arm.h"
-#include "uart.h"
+#include "bsp/uart.h"
+#include "bsp/irq.h"
 #include "spinlock.h"
 #include "file.h"
 #include "mm.h"
@@ -83,10 +84,71 @@ console_read(struct inode *ip, char *dst, ssize_t n)
     return target - n;
 }
 
+static void
+console_intr1(int (*getc)())
+{
+    int c, prof = 0;
+
+    acquire(&conslock);
+    if (panicked >= 0) {
+        release(&conslock);
+        while (1) ;
+    }
+
+    while ((c = getc()) >= 0) {
+        switch (c) {
+        case C('P'):           // Process listing.
+            prof = 1;
+            break;
+        case C('U'):           // Kill line.
+            while (input.e != input.w
+                   && input.buf[(input.e - 1) % INPUT_BUF] != '\n') {
+                input.e--;
+                consputc(BACKSPACE);
+            }
+            break;
+        case C('H'):
+        case '\x7f':           // Backspace
+            if (input.e != input.w) {
+                input.e--;
+                consputc(BACKSPACE);
+            }
+            break;
+        default:
+            if (c != 0 && input.e - input.r < INPUT_BUF) {
+                c = (c == '\r') ? '\n' : c;
+                input.buf[input.e++ % INPUT_BUF] = c;
+                consputc(c);
+                if (c == '\n' || c == C('D')
+                    || input.e == input.r + INPUT_BUF) {
+                    input.w = input.e;
+                    wakeup(&input.r);
+                }
+            }
+            break;
+        }
+    }
+    release(&conslock);
+
+    if (prof) {
+        mm_dump();
+        procdump();
+    }
+}
+
+void
+console_intr()
+{
+    console_intr1(uart_getchar);
+}
+
 void
 console_init()
 {
     uart_init();
+
+    irq_enable(IRQ_AUX);
+    irq_register(IRQ_AUX, console_intr);
 
     devsw[CONSOLE].read = console_read;
     devsw[CONSOLE].write = console_write;
@@ -118,6 +180,12 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
 {
     int i, c;
     char *s;
+
+    if (panicked >= 0 && panicked != cpuid()) {
+        release(&conslock);
+        while (1) ;
+    }
+
     for (i = 0; (c = fmt[i] & 0xff) != 0; i++) {
         if (c != '%') {
             putch(c);
@@ -174,6 +242,20 @@ vprintfmt(void (*putch)(int), const char *fmt, va_list ap)
     }
 }
 
+/* Print to the console. */
+void
+cprintf(const char *fmt, ...)
+{
+    va_list ap;
+
+    acquire(&conslock);
+    va_start(ap, fmt);
+    vprintfmt(uart_putchar, fmt, ap);
+    va_end(ap);
+    release(&conslock);
+}
+
+/* Caller should hold conslock. */
 void
 cprintf1(const char *fmt, ...)
 {
@@ -183,74 +265,6 @@ cprintf1(const char *fmt, ...)
     va_end(ap);
 }
 
-/* Print to the console. */
-void
-cprintf(const char *fmt, ...)
-{
-    va_list ap;
-
-    acquire(&conslock);
-    if (panicked >= 0 && panicked != cpuid()) {
-        release(&conslock);
-        while (1) ;
-    }
-    va_start(ap, fmt);
-    vprintfmt(uart_putchar, fmt, ap);
-    va_end(ap);
-    release(&conslock);
-}
-
-void
-console_intr(int (*getc)())
-{
-    int c, prof = 0;
-
-    acquire(&conslock);
-    if (panicked >= 0) {
-        release(&conslock);
-        while (1) ;
-    }
-
-    while ((c = getc()) >= 0) {
-        switch (c) {
-        case C('P'):           // Process listing.
-            prof = 1;
-            break;
-        case C('U'):           // Kill line.
-            while (input.e != input.w
-                   && input.buf[(input.e - 1) % INPUT_BUF] != '\n') {
-                input.e--;
-                consputc(BACKSPACE);
-            }
-            break;
-        case C('H'):
-        case '\x7f':           // Backspace
-            if (input.e != input.w) {
-                input.e--;
-                consputc(BACKSPACE);
-            }
-            break;
-        default:
-            if (c != 0 && input.e - input.r < INPUT_BUF) {
-                c = (c == '\r') ? '\n' : c;
-                input.buf[input.e++ % INPUT_BUF] = c;
-                consputc(c);
-                if (c == '\n' || c == C('D')
-                    || input.e == input.r + INPUT_BUF) {
-                    input.w = input.e;
-                    wakeup(&input.r);
-                }
-            }
-            break;
-        }
-    }
-    release(&conslock);
-
-    if (prof) {
-        mm_dump();
-        procdump();
-    }
-}
 
 void
 panic(const char *fmt, ...)

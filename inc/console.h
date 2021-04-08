@@ -7,10 +7,8 @@
 extern struct spinlock dbglock;
 
 void console_init();
-void console_intr(int (*getc)());
-void cgetchar(int c);
-void cprintf(const char *fmt, ...);
 void cprintf1(const char *fmt, ...);
+void cprintf(const char *fmt, ...);
 void panic(const char *fmt, ...);
 
 #define assert(x)                                                   \
@@ -28,13 +26,13 @@ void panic(const char *fmt, ...);
     }                                                               \
 })
 
-#define LOG1(level, ...)                    \
-({                                          \
-    acquire(&dbglock);                     \
-    cprintf1("(cpu %d)%s: ", cpuid(), __func__);   \
-    cprintf1(__VA_ARGS__);                  \
-    cprintf1("\n");                         \
-    release(&dbglock);                     \
+#define LOG1(level, ...)                        \
+({                                              \
+    acquire(&dbglock);                          \
+    cprintf1("[%d]%s: ", cpuid(), __func__);    \
+    cprintf1(__VA_ARGS__);                      \
+    cprintf1("\n");                             \
+    release(&dbglock);                          \
 })
 
 #ifdef LOG_ERROR
@@ -73,9 +71,9 @@ void panic(const char *fmt, ...);
 #define trace(...)  LOG1("TRACE", __VA_ARGS__);
 
 #else
-/* Default to LOG_WARN */
-#define error(...)  LOG1("ERROR", __VA_ARGS__);
-#define warn(...)   LOG1("WARN ", __VA_ARGS__);
+/* Default to none. */
+#define error(...)
+#define warn(...)
 #define info(...)
 #define debug(...)
 #define trace(...)

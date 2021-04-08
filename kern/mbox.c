@@ -1,19 +1,17 @@
 /* See https://github.com/raspberrypi/firmware/wiki. */
-#include "peripherals/mbox.h"
-#include "peripherals/base.h"
+#include "bsp/mbox.h"
+#include "bsp/base.h"
 
 #include "arm.h"
 #include "console.h"
-#include "memlayout.h"
-#include "string.h"
 
-#define VIDEOCORE_MBOX  (MMIO_BASE + 0x0000B880)
-#define MBOX_READ       ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x00))
-#define MBOX_POLL       ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x10))
-#define MBOX_SENDER     ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x14))
-#define MBOX_STATUS     ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x18))
-#define MBOX_CONFIG     ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x1C))
-#define MBOX_WRITE      ((volatile unsigned int*)(VIDEOCORE_MBOX + 0x20))
+#define MBOX_BASE       (MMIO_BASE + 0x0000B880)
+#define MBOX_READ       (MBOX_BASE + 0x00)
+#define MBOX_POLL       (MBOX_BASE + 0x10)
+#define MBOX_SENDER     (MBOX_BASE + 0x14)
+#define MBOX_STATUS     (MBOX_BASE + 0x18)
+#define MBOX_CONFIG     (MBOX_BASE + 0x1C)
+#define MBOX_WRITE      (MBOX_BASE + 0x20)
 #define MBOX_RESPONSE   0x80000000
 #define MBOX_FULL       0x80000000
 #define MBOX_EMPTY      0x40000000
@@ -38,9 +36,9 @@ mbox_read(uint8_t chan)
 {
     while (1) {
         disb();
-        while (*MBOX_STATUS & MBOX_EMPTY) ;
+        while (get32(MBOX_STATUS) & MBOX_EMPTY) ;
         disb();
-        uint32_t r = *MBOX_READ;
+        uint32_t r = get32(MBOX_READ);
         if ((r & 0xF) == chan) {
             return r >> 4;
         }
@@ -54,9 +52,9 @@ mbox_write(uint32_t buf, uint8_t chan)
 {
     disb();
     assert((buf & 0xF) == 0 && (chan & ~0xF) == 0);
-    while (*MBOX_STATUS & MBOX_FULL) ;
+    while (get32(MBOX_STATUS) & MBOX_FULL) ;
     disb();
-    *MBOX_WRITE = (buf & ~0xF) | chan;
+    put32(MBOX_WRITE, (buf & ~0xF) | chan);
     disb();
 }
 

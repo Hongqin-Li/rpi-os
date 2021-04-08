@@ -1,7 +1,7 @@
-#ifndef INC_PERIPHERALS_GPIO_H
-#define INC_PERIPHERALS_GPIO_H
+#ifndef INC_BSP_GPIO_H
+#define INC_BSP_GPIO_H
 
-#include "peripherals/base.h"
+#include "bsp/base.h"
 
 #define GPIO_BASE       (MMIO_BASE + 0x200000)
 

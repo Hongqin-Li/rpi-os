@@ -1,3 +1,4 @@
+RASPI := 3
 ARCH := aarch64
 CROSS := aarch64-linux-gnu-
 CC := $(CROSS)gcc
@@ -5,17 +6,26 @@ LD := $(CROSS)ld
 OBJDUMP := $(CROSS)objdump
 OBJCOPY := $(CROSS)objcopy
 
-CORTEX_A53_FLAGS := -mno-outline-atomics -mcpu=cortex-a53 -mtune=cortex-a53
 CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
           -fno-zero-initialized-in-bss \
           -static -fno-builtin -nostdlib -nostdinc -ffreestanding -nostartfiles \
           -mgeneral-regs-only \
           -MMD -MP \
-		  -DNOT_DEBUG -DLOG_INFO \
-		  $(CORTEX_A53_FLAGS)
+		  -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include -Ilibc/arch/generic
 
-CFLAGS += -Iinc -Ilibc/obj/include -Ilibc/arch/aarch64 -Ilibc/include -Ilibc/arch/generic
+CFLAGS += -DNOT_DEBUG -DLOG_DEBUG -DRASPI=$(RASPI)
+
+CFLAGS += -mlittle-endian -mcmodel=small -mno-outline-atomics
+
+ifeq ($(strip $(RASPI)), 3)
+CFLAGS += -mcpu=cortex-a53 -mtune=cortex-a53
+else ifeq ($(strip $(RASPI)), 4)
+CFLAGS += -mcpu=cortex-a72
+else
+$(error RASPI must be set to 3 or 4)
+endif
+
 SRC_DIRS := kern
 BUILD_DIR = obj
 
@@ -24,6 +34,7 @@ KERN_IMG := $(BUILD_DIR)/kernel8.img
 SD_IMG := $(BUILD_DIR)/sd.img
 
 all:
+	$(MAKE) -C boot
 	$(MAKE) -C usr
 	$(MAKE) $(SD_IMG)
 
@@ -52,10 +63,10 @@ $(KERN_IMG): $(KERN_ELF)
 
 QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
 
-qemu: $(KERN_IMG) all
-	$(QEMU) -kernel $<
-qemu-gdb: $(KERN_IMG) all
-	$(QEMU) -kernel $< -S -gdb tcp::1234
+qemu: all
+	$(QEMU) -kernel $(KERN_IMG)
+qemu-gdb: all
+	$(QEMU) -kernel $(KERN_IMG) -S -gdb tcp::1234
 gdb: 
 	gdb-multiarch -n -x .gdbinit
 
@@ -76,6 +87,7 @@ lint:
 clean:
 	$(MAKE) -C usr clean
 	# $(MAKE) -C libc clean
+	# $(MAKE) -C boot clean
 	rm -rf $(BUILD_DIR)
 
 .PHONY: init all lint clean qemu qemu-gdb gdb

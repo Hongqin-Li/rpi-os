@@ -39,6 +39,9 @@
 #include "string.h"
 #include "console.h"
 
+/* External Mass Media Controller 2 (SD Card). */
+#define EMMC2_BASE  (MMIO_BASE + 0x340000)
+
 //
 // Configuration options
 //

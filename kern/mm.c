@@ -6,7 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "console.h"
-#include "peripherals/mbox.h"
+#include "bsp/mbox.h"
 
 #ifdef DEBUG
 
@@ -62,7 +62,8 @@ free_range(void *start, void *end)
 void
 mm_init()
 {
-    size_t phystop = mbox_get_arm_memory();
+    // HACK Raspberry pi 4b.
+    size_t phystop = MIN(0x3F000000, mbox_get_arm_memory());
     free_range(ROUNDUP((void *)end, PGSIZE), P2V(phystop));
 #ifdef DEBUG
     for (int i = 0; i < MAX_PAGES; i++) {

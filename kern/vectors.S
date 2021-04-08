@@ -2,7 +2,7 @@
 
 #define ventry .align 7; b alltraps
 
-#define verror(type) .align 7; mov x0, #(type); b irq_error
+#define verror(type) .align 7; mov x0, #(type); b trap_error
 
 .globl vectors
 

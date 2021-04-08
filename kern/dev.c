@@ -2,6 +2,8 @@
 #include "arm.h"
 #include "string.h"
 
+#include "bsp/irq.h"
+
 #include "emmc.h"
 #include "buf.h"
 #include "proc.h"
@@ -28,8 +30,15 @@ void
 dev_init()
 {
     list_init(&devque);
-    emmc_init(&card);
     initlock(&card.host.lock);
+
+#if RASPI == 3
+    irq_enable(IRQ_SDIO);
+    irq_register(IRQ_SDIO, dev_intr);
+#elif RASPI == 4
+#endif
+
+    emmc_init(&card);
 
     struct buf b;
     b.blockno = b.flags = 0;

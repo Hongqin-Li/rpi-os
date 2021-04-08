@@ -1,7 +1,5 @@
-#ifndef INC_PERIPHERALS_MBOX_H
-#define INC_PERIPHERALS_MBOX_H
-
-#include "peripherals/base.h"
+#ifndef INC_BSP_MBOX_H
+#define INC_BSP_MBOX_H
 
 #include "types.h"
 
@@ -14,5 +12,6 @@
 int mbox_get_arm_memory();
 int mbox_get_clock_rate(int);
 int mbox_set_sdhost_clock(uint32_t msg[3]);
+void mbox_test();
 
 #endif

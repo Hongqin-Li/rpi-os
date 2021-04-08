@@ -24,8 +24,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "peripherals/gpio.h"
-#include "peripherals/mbox.h"
+#include "bsp/gpio.h"
+#include "bsp/mbox.h"
 #include "sdhost.h"
 
 #include "proc.h"

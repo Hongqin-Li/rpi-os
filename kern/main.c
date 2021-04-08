@@ -12,9 +12,8 @@
 #include "proc.h"
 #include "emmc.h"
 #include "buf.h"
-
-extern char edata[], end[], vectors[];
-extern void mbox_test();
+#include "bsp/mbox.h"
+#include "bsp/irq.h"
 
 /*
  * Keep it in data segment by explicitly initializing by zero,
@@ -26,35 +25,30 @@ static struct {
 } mp = { 0 };
 
 void
-main(uint64_t sp, uint64_t ent)
+main()
 {
+    extern char edata[], end[];
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
         memset(edata, 0, end - edata);
 
-        console_init();
-        clock_init();
-        // sd_init();
-
-        mm_init();
-
         irq_init();
-
+        console_init();
+        mm_init();
+        clock_init();
         proc_init();
-        user_init();
-
+        // user_init();
         binit();
 
         // Tests
         mbox_test();
-        // mm_test();
+        mm_test();
         vm_test();
     }
     release(&mp.lock);
 
     timer_init();
-    lvbar(vectors);
-    lesr(0);
+    trap_init();
 
     info("cpu %d init finished", cpuid());
 

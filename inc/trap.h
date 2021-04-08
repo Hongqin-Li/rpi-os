@@ -12,16 +12,15 @@ struct trapframe {
 };
 
 void trap(struct trapframe *);
-void irq_init();
-void irq_error();
-extern int syscall1(struct trapframe *);
+void trap_init();
 
-// Validation of syscall arguments.
-int in_user(void *base, size_t size);
-int argint(int n, int *ip);
-int argu64(int n, uint64_t *ip);
-int argptr(int n, char **pp, size_t size);
-int argstr(int n, char **pp);
-int fetchstr(uint64_t addr, char **pp);
+/* In kern/syscall.c */
+extern int in_user(void *base, size_t size);
+extern int argint(int n, int *ip);
+extern int argu64(int n, uint64_t *ip);
+extern int argptr(int n, char **pp, size_t size);
+extern int argstr(int n, char **pp);
+extern int fetchstr(uint64_t addr, char **pp);
+extern int syscall1(struct trapframe *);
 
 #endif
