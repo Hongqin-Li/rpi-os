@@ -2,7 +2,7 @@
 
 Yet another unix-like toy operating system running on Raspberry Pi 3, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
 
-Tested on Raspberry Pi 3A+.
+Tested on Raspberry Pi 3A+, 3B+.
 
 ## Related works
 
@@ -19,7 +19,7 @@ Tested on Raspberry Pi 3A+.
 
 ## Features
 
-- [x] Multi-core
+- [x] Basic multi-core support
 - [x] Memory management
 - [x] Virtual memory without swapping
 - [x] Process management
@@ -32,7 +32,7 @@ Tested on Raspberry Pi 3A+.
 
 ## Development
 
-Requires Ubuntu 18.04 or higher.
+Requires Ubuntu 20.04 or higher.
 
 - `make init`: Install toolchains and download libc.
 - `make qemu`: Emulate the kernel at `obj/kernel8.img`.
