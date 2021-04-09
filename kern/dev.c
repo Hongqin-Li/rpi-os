@@ -2,7 +2,7 @@
 #include "arm.h"
 #include "string.h"
 
-#include "bsp/irq.h"
+#include "irq.h"
 
 #include "emmc.h"
 #include "buf.h"
@@ -14,10 +14,17 @@ static void dev_test();
 
 static struct emmc card;
 static struct list_head devque;
+static struct spinlock cardlock;
 
 // Hack the partition.
 static uint32_t first_bno = 0;
 static uint32_t nblocks = 1;
+
+static void
+dev_sleep(void *chan)
+{
+    sleep(chan, &cardlock);
+}
 
 /*
  * Initialize SD card and parse MBR.
@@ -30,7 +37,7 @@ void
 dev_init()
 {
     list_init(&devque);
-    initlock(&card.host.lock);
+    initlock(&cardlock);
 
 #if RASPI == 3
     irq_enable(IRQ_SDIO);
@@ -38,7 +45,10 @@ dev_init()
 #elif RASPI == 4
 #endif
 
-    emmc_init(&card);
+    acquire(&cardlock);
+    int ret = emmc_init(&card, dev_sleep, (void *)&card);
+    release(&cardlock);
+    assert(ret == 0);
 
     struct buf b;
     b.blockno = b.flags = 0;
@@ -54,11 +64,11 @@ dev_init()
 void
 dev_intr()
 {
-    acquire(&card.host.lock);
-    sdhost_intr(&card.host);
+    acquire(&cardlock);
+    emmc_intr(&card);
     disb();
-    wakeup(&card.host);
-    release(&card.host.lock);
+    wakeup(&card);
+    release(&cardlock);
 }
 
 /*
@@ -94,7 +104,7 @@ dev_start()
 void
 devrw(struct buf *b)
 {
-    acquire(&card.host.lock);
+    acquire(&cardlock);
 
     /* Append to request queue. */
     list_push_back(&devque, &b->dlink);
@@ -106,9 +116,9 @@ devrw(struct buf *b)
 
     /* Wait for request to finish. */
     while ((b->flags & (B_VALID | B_DIRTY)) != B_VALID)
-        sleep(b, &card.host.lock);
+        dev_sleep(b);
 
-    release(&card.host.lock);
+    release(&cardlock);
 }
 
 /* Test SD card read/write speed. */

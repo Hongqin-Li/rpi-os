@@ -2,7 +2,11 @@
 #define INC_SDHOST_H
 
 #include "types.h"
-#include "spinlock.h"
+
+#if RASPI == 3
+// FIXME: Use sdhost and reserve sdhci for wifi.
+// #define USE_SDHOST
+#endif
 
 struct sg_mapping_iter
 {
@@ -108,7 +112,8 @@ struct mmc_request
 
 struct bcm2835_host
 {
-    struct spinlock lock;
+    void (*sleep_fn)(void *);       /* Callback function when waiting for interrupt. */
+    void *sleep_arg;                /* Argument passed with sleep_fn. */
     struct mmc_host mmc;
     uint32_t        pio_timeout;    /* In CLOCKHZ ticks */
     uint32_t        clock;          /* Current clock speed */
@@ -153,7 +158,7 @@ struct bcm2835_host
 //     uint32_t            sectors;    /* Cached card size in sectors */
 };
 
-int sdhost_init(struct bcm2835_host *host);
+int sdhost_init(struct bcm2835_host *host, void (*sleep_fn)(void *), void *sleep_arg);
 int sdhost_command(struct bcm2835_host *host, struct mmc_command *cmd, uint32_t nretries);
 void sdhost_set_clock(struct bcm2835_host *host, uint32_t clockhz);
 void sdhost_set_bus_width(struct bcm2835_host *host, uint32_t nbits);

@@ -1,7 +1,8 @@
 #include "timer.h"
 
 #include "arm.h"
-#include "bsp/base.h"
+#include "base.h"
+#include "irq.h"
 #include "console.h"
 #include "proc.h"
 
@@ -9,14 +10,20 @@
 #define CORE_TIMER_CTRL(i)      (LOCAL_BASE + 0x40 + 4*(i))
 #define CORE_TIMER_ENABLE       (1 << 1)        /* CNTPNSIRQ */
 
-static int dt = 19200000;
+static uint64_t dt;
+static uint64_t cnt;
 
 void
 timer_init()
 {
+    dt = timerfreq();
     asm volatile ("msr cntp_ctl_el0, %[x]"::[x] "r"(1));
     asm volatile ("msr cntp_tval_el0, %[x]"::[x] "r"(dt));
     put32(CORE_TIMER_CTRL(cpuid()), CORE_TIMER_ENABLE);
+#if RASPI == 4
+    irq_enable(IRQ_LOCAL_CNTPNS);
+    irq_register(IRQ_LOCAL_CNTPNS, timer_intr);
+#endif
 }
 
 static void
@@ -32,7 +39,7 @@ timer_reset()
 void
 timer_intr()
 {
-    debug("t");
+    trace("t: %d", ++cnt);
     timer_reset();
     yield();
 }

@@ -1,6 +1,6 @@
 /* See https://github.com/raspberrypi/firmware/wiki. */
-#include "bsp/mbox.h"
-#include "bsp/base.h"
+#include "mbox.h"
+#include "base.h"
 
 #include "arm.h"
 #include "console.h"
@@ -20,7 +20,9 @@
 #define MBOX_RESP_ERR   0x80000001
 
 #define MBOX_TAG_GET_ARM_MEMORY     0x00010005
+#define MBOX_TAG_SET_POWER_STATE    0x00028001
 #define MBOX_TAG_GET_CLOCK_RATE     0x00030002
+#define MBOX_TAG_SET_GPIO_STATE     0x00038041
 #define MBOX_TAG_SET_SDHOST_CLOCK   0x00038042
 #define MBOX_TAG_END                0x0
 #define MBOX_TAG_REQUEST            0x0
@@ -109,6 +111,9 @@ mbox_get_arm_memory()
     return buf[6];
 }
 
+/*
+ * Return -1 if failed. Otherwise, return the clock rate in Hz.
+ */
 int
 mbox_get_clock_rate(int clock_id)
 {
@@ -155,6 +160,54 @@ mbox_set_sdhost_clock(uint32_t msg[3])
         return 0;
     }
     return 0;
+}
+
+/* Undocumented. Return -1 if failed. */
+int
+mbox_set_gpio_state(uint32_t gpio, uint32_t state)
+{
+    __attribute__((aligned(16)))
+    volatile uint32_t buf[] =
+        { 0, 0, MBOX_TAG_SET_GPIO_STATE, 8, MBOX_TAG_REQUEST, gpio,
+        state, MBOX_TAG_END
+    };
+    buf[0] = sizeof(buf);
+
+    if (mbox_send(buf, sizeof(buf)) < 0)
+        return -1;
+    if ((buf[4] >> 31) == 0 || (buf[4] & 0x3FFFFFFF) != 8) {
+        debug("unexpected tag resp 0x%x, normal for qemu", buf[4]);
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * Power on/off specific device with/without waiting for the power to become stable.
+ * Return -1 if failed. Otherwise, return 1 if power on else 0.
+ */
+int
+mbox_set_power_state(uint32_t devid, uint32_t on, uint32_t wait)
+{
+    uint32_t state = on ? 1 : 0;
+    if (wait)
+        state |= 2;
+    __attribute__((aligned(16)))
+    volatile uint32_t buf[] =
+        { 0, 0, MBOX_TAG_SET_POWER_STATE, 8, MBOX_TAG_REQUEST, devid,
+        state, MBOX_TAG_END
+    };
+    buf[0] = sizeof(buf);
+    if (mbox_send(buf, sizeof(buf)) < 0)
+        return -1;
+    if ((buf[4] >> 31) == 0 || (buf[4] & 0x3FFFFFFF) != 8) {
+        return -1;
+    }
+    if (buf[6] & 2) {
+        debug("device %d not exists", devid);
+        return -1;
+    }
+    return buf[6] & 1;
 }
 
 void

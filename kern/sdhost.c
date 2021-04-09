@@ -24,11 +24,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "bsp/gpio.h"
-#include "bsp/mbox.h"
+#include "gpio.h"
+#include "mbox.h"
 #include "sdhost.h"
 
-#include "proc.h"
 #include "arm.h"
 #include "string.h"
 #include "console.h"
@@ -169,10 +168,13 @@ static void sdhost_tasklet_finish(struct bcm2835_host *host);
 static int sdhost_probe(struct bcm2835_host *host);
 
 int
-sdhost_init(struct bcm2835_host *host)
+sdhost_init(struct bcm2835_host *host, void (*sleep_fn)(void *),
+            void *sleep_arg)
 {
     sdhost_init_gpio();
     int ret = sdhost_probe(host);
+    host->sleep_fn = sleep_fn;
+    host->sleep_arg = sleep_arg;
     if (ret != 0)
         return 0;
     return 1;
@@ -258,7 +260,7 @@ sdhost_request_sync(struct bcm2835_host *host, struct mmc_request *req)
 
     // Caller must hold host->lock.
     while (!req->done) {
-        sleep(host, &host->lock);
+        host->sleep_fn(host->sleep_arg);
         disb();
     }
 }
@@ -1483,7 +1485,6 @@ sdhost_probe(struct bcm2835_host *host)
 {
     int ret = 0;
     memset(host, 0, sizeof(*host));
-    initlock(&host->lock);
 
     // host->debug = SDHOST_DEBUG;
     // pr_debug("probe");

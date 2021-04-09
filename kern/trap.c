@@ -3,7 +3,7 @@
 #include "arm.h"
 #include "sysregs.h"
 #include "mmu.h"
-#include "bsp/irq.h"
+#include "irq.h"
 
 #include "memlayout.h"
 #include "console.h"
@@ -23,7 +23,8 @@ void
 trap(struct trapframe *tf)
 {
     int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
-    lesr(0);                    /* Clear esr. */
+    /* Clear esr. */
+    lesr(0);
     switch (ec) {
     case EC_UNKNOWN:
         irq_handler();

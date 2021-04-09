@@ -6,7 +6,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "console.h"
-#include "bsp/mbox.h"
+#include "mbox.h"
 
 #ifdef DEBUG
 

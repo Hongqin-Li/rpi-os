@@ -3,8 +3,8 @@
  * while Pi 4 use a standard GIC-400.
  */
 
-#include "bsp/irq.h"
-#include "bsp/base.h"
+#include "irq.h"
+#include "base.h"
 #include "arm.h"
 #include "timer.h"
 #include "clock.h"
@@ -26,9 +26,9 @@
 #define GPU_IRQ2CORE(i)         (i)
 
 #define IRQ_SRC_CORE(i)         (LOCAL_BASE + 0x60 + 4*(i))
-#define IRQ_TIMER               (1 << 11)       /* Local Timer */
-#define IRQ_GPU                 (1 << 8)
-#define IRQ_CNTPNSIRQ           (1 << 1)        /* Core Timer */
+#define IRQ_SRC_TIMER               (1 << 11)   /* Local Timer */
+#define IRQ_SRC_GPU                 (1 << 8)
+#define IRQ_SRC_CNTPNSIRQ           (1 << 1)    /* Core Timer */
 
 /*
  * The following definitions are valid for non-secure access,
@@ -101,9 +101,10 @@ irq_init()
 {
     for (int i = 0; i < IRQ_LINES; i++)
         handler[i] = 0;
-#if RASPI == 3
+
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
-#elif RASPI == 4
+
+#if RASPI == 4
     put32(GICD_CTLR, GICD_CTLR_DISABLE);
 
     /* Disable, acknowledge and deactivate all interrupts. */
@@ -127,7 +128,7 @@ irq_init()
 
     /* Set all interrupts to level triggered. */
     for (int n = 0; n < IRQ_LINES / 16; n++) {
-        put32(GICD_ICFGR0 + 4 * n, 0);
+        put32(GICD_ICFGR0 + 4 * n, GICD_ICFGR_LEVEL_SENSITIVE);
     }
 
     put32(GICD_CTLR, GICD_CTLR_ENABLE);
@@ -169,36 +170,38 @@ irq_register(int i, void (*f)())
     handler[i] = f;
 }
 
-/*
- * Timer and clock are special.
- */
 static int
-irq_handle1()
+handle1(int i)
 {
-    int nack = 0;
-    int src = get32(IRQ_SRC_CORE(cpuid()));
-    if (src & IRQ_CNTPNSIRQ) {
-        timer_intr();
-        nack++;
+    if (handler[i]) {
+        handler[i] ();
+        return 1;
+    } else {
+        debug("no handler for irq %d", i);
     }
-    if (src & IRQ_TIMER) {
-        clock_intr();
-        nack++;
-    }
-    return nack;
+    return 0;
 }
 
 void
 irq_handler()
 {
-    int nack = irq_handle1();
+    int nack = 0;
 #if RASPI == 3
+    int src = get32(IRQ_SRC_CORE(cpuid()));
+    assert(!(src & ~(IRQ_SRC_CNTPNSIRQ | IRQ_SRC_GPU | IRQ_SRC_TIMER)));
+    if (src & IRQ_SRC_CNTPNSIRQ) {
+        timer_intr();
+        nack++;
+    }
+    if (src & IRQ_SRC_TIMER) {
+        clock_intr();
+        nack++;
+    }
     uint64_t irq =
         get32(IRQ_PENDING_1) | (((uint64_t) get32(IRQ_PENDING_2)) << 32);
     for (int i = 0; i < IRQ_LINES && irq; i++) {
-        if ((irq & 1) && handler[i] != 0) {
-            handler[i] ();
-            nack += 1;
+        if (irq & 1) {
+            nack += handle1(i);
         }
         irq >>= 1;
     }
@@ -208,24 +211,22 @@ irq_handler()
     if (i < IRQ_LINES) {
         if (i > 15) {
             /* Peripheral interrupts (PPI and SPI). */
-            if (handler[i] != 0) {
-                handler[i] ();
-                nack++;
-            } else {
-                warn("unexpected interrupt");
-            }
+            nack += handle1(i);
         } else {
             /* Software generated interrupts (SGI). */
             uint32_t core =
                 (iar & GICC_IAR_CPUID__MASK) >> GICC_IAR_CPUID__SHIFT;
 
-            nack++;
             panic("unimplemented, irq %d, core %d", i, core);
         }
         put32(GICC_EOIR, iar);
+    } else {
+        assert(i >= 1020);
+        trace("spurious interrupt %u, src 0x%x", i,
+              get32(IRQ_SRC_CORE(cpuid())));
     }
 #endif
     if (nack == 0) {
-        debug("unexpected interrupt, maybe sdhost or EC_UNKNOWN");
+        trace("unexpected interrupt, maybe sdhost or EC_UNKNOWN");
     }
 }

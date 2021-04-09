@@ -3,6 +3,31 @@
 
 #include <stdint.h>
 
+/* Prevent compiler from reordering. */
+static inline void
+barrier()
+{
+    asm volatile("" ::: "memory");
+}
+
+static inline uint64_t
+timerfreq()
+{
+    uint64_t f;
+    asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
+    return f;
+}
+
+static inline uint64_t
+timestamp()
+{
+    uint64_t t;
+    barrier();
+    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
+    barrier();
+    return t;
+}
+
 /* Wait n CPU cycles. */
 static inline void
 delay(uint32_t n)
@@ -15,31 +40,12 @@ delay(uint32_t n)
 static inline void
 delayus(uint32_t n)
 {
-    uint64_t f, t, r;
-    /* Get the current counter frequency */
-    asm volatile ("mrs %[freq], cntfrq_el0" : [freq]"=r"(f));
-    /* Read the current counter. */
-    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
-    /* Calculate expire value for counter */
+    uint64_t f = timerfreq(), t = timestamp(), r;
+    /* Calculate expire value for counter. */
     t += f / 1000000 * n;
     do {
-        asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(r));
+        r = timestamp();
     } while (r < t);
-}
-
-static inline uint64_t
-timestamp()
-{
-    uint64_t t;
-    asm volatile ("mrs %[cnt], cntpct_el0" : [cnt]"=r"(t));
-    return t;
-}
-
-/* Prevent compiler from reordering. */
-static inline void
-barrier()
-{
-    asm volatile("" ::: "memory");
 }
 
 /* Instruction synchronization barrier. */

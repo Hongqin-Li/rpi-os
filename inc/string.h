@@ -33,7 +33,8 @@ memmove(void *dst, const void *src, size_t n)
 static inline int
 memcmp(const void *v1, const void *v2, size_t n)
 {
-    for (const uint8_t *s1 = (const uint8_t*)v1, *s2 = (const uint8_t*)v2; n-- > 0; s1++, s2++)
+    for (const uint8_t *s1 = (const uint8_t*)v1, *s2 = (const uint8_t*)v2;
+         n-- > 0; s1++, s2++)
         if  (*s1 != *s2)
             return *s1 - *s2;
     return 0;

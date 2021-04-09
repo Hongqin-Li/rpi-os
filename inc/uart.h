@@ -1,5 +1,5 @@
-#ifndef INC_BSP_UART_H
-#define INC_BSP_UART_H
+#ifndef INC_UART_H
+#define INC_UART_H
 
 void uart_init();
 void uart_intr();

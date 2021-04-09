@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 #include "arm.h"
-#include "bsp/uart.h"
-#include "bsp/irq.h"
+#include "uart.h"
+#include "irq.h"
 #include "spinlock.h"
 #include "file.h"
 #include "mm.h"

@@ -92,7 +92,7 @@ el1:
     and     x0, x0, #3
 
     /* sp = _start - cpuid() * PGSIZE; */
-    mov     x10, #PGSIZE
+    mov     x10, #KSTACKSIZE
     mul     x10, x10, x0
     ldr     x9, =_start
     sub     x9, x9, x10

@@ -1,6 +1,6 @@
-#include "bsp/base.h"
-#include "bsp/gpio.h"
-#include "bsp/uart.h"
+#include "base.h"
+#include "gpio.h"
+#include "uart.h"
 
 #include "arm.h"
 
@@ -50,14 +50,14 @@ uart_getchar()
 void
 uart_init()
 {
-    // uint32_t sel;
+    uint32_t sel;
 
-    // sel = get32(GPFSEL1);
-    // sel &= ~(7<<12);                   /* Clean GPIO14. */
-    // sel |= 2<<12;                      /* Set alt5 for GPIO14. */
-    // sel &= ~(7<<15);                   /* Clean GPIO15. */
-    // sel |= 2<<15;                      /* Set alt5 for GPIO15. */
-    // put32(GPFSEL1, sel);
+    sel = get32(GPFSEL1);
+    sel &= ~(7 << 12);          /* Clean GPIO14. */
+    sel |= 2 << 12;             /* Set alt5 for GPIO14. */
+    sel &= ~(7 << 15);          /* Clean GPIO15. */
+    sel |= 2 << 15;             /* Set alt5 for GPIO15. */
+    put32(GPFSEL1, sel);
 
     put32(GPPUD, 0);
     delayus(5);

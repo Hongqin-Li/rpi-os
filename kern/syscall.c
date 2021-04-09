@@ -108,7 +108,7 @@ argu64(int n, uint64_t * ip)
 int
 argptr(int n, char **pp, size_t size)
 {
-    uint64_t i;
+    uint64_t i = 0;
     if (argu64(n, &i) < 0) {
         return -1;
     }
@@ -129,7 +129,7 @@ argptr(int n, char **pp, size_t size)
 int
 argstr(int n, char **pp)
 {
-    uint64_t addr;
+    uint64_t addr = 0;
     if (argu64(n, &addr) < 0)
         return -1;
     int r = fetchstr(addr, pp);

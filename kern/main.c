@@ -12,8 +12,8 @@
 #include "proc.h"
 #include "emmc.h"
 #include "buf.h"
-#include "bsp/mbox.h"
-#include "bsp/irq.h"
+#include "mbox.h"
+#include "irq.h"
 
 /*
  * Keep it in data segment by explicitly initializing by zero,
@@ -27,6 +27,10 @@ static struct {
 void
 main()
 {
+#if RASPI == 4
+    // FIXME: Other cores will receive large amount of spurious interrupts.
+    while (cpuid()) ;
+#endif
     extern char edata[], end[];
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
@@ -37,7 +41,7 @@ main()
         mm_init();
         clock_init();
         proc_init();
-        // user_init();
+        user_init();
         binit();
 
         // Tests
