@@ -57,6 +57,7 @@ struct emmc {
 	// static const uint32_t sd_acommands[];
 };
 
+void emmc_clear_interrupt();
 void emmc_intr(struct emmc *self);
 int emmc_init(struct emmc *self, void (*sleep_fn)(void *), void *sleep_arg);
 size_t emmc_read(struct emmc *self, void *buf, size_t cnt);

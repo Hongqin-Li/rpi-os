@@ -1,3 +1,9 @@
 arm_64bit=1
 enable_uart=1
 # disable_l2cache=1
+
+[pi4]
+device_tree=
+enable_gic=0
+core_freq_min=250
+armstub=armstub8-rpi4.bin

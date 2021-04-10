@@ -19,12 +19,11 @@
 #define AUX_MU_STAT_REG     (AUX_BASE + 0x64)
 #define AUX_MU_BAUD_REG     (AUX_BASE + 0x68)
 
-#if RASPI <= 3
+// #if RASPI <= 3
 #define AUX_UART_CLOCK      250000000
-#elif RASPI == 4
-#define AUX_UART_CLOCK      500000000
-#else
-#endif
+// #elif RASPI == 4
+// #define AUX_UART_CLOCK      500000000
+// #endif
 
 #define AUX_MU_BAUD(baud)   ((AUX_UART_CLOCK/(baud*8))-1)
 
@@ -50,14 +49,14 @@ uart_getchar()
 void
 uart_init()
 {
-    uint32_t sel;
+    // uint32_t sel;
 
-    sel = get32(GPFSEL1);
-    sel &= ~(7 << 12);          /* Clean GPIO14. */
-    sel |= 2 << 12;             /* Set alt5 for GPIO14. */
-    sel &= ~(7 << 15);          /* Clean GPIO15. */
-    sel |= 2 << 15;             /* Set alt5 for GPIO15. */
-    put32(GPFSEL1, sel);
+    // sel = get32(GPFSEL1);
+    // sel &= ~(7 << 12);          /* Clean GPIO14. */
+    // sel |= 2 << 12;             /* Set alt5 for GPIO14. */
+    // sel &= ~(7 << 15);          /* Clean GPIO15. */
+    // sel |= 2 << 15;             /* Set alt5 for GPIO15. */
+    // put32(GPFSEL1, sel);
 
     put32(GPPUD, 0);
     delayus(5);

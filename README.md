@@ -1,8 +1,8 @@
-# Raspberry Pi 3 Operating System
+# Raspberry Pi Operating System
 
-Yet another unix-like toy operating system running on Raspberry Pi 3, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
+Yet another unix-like toy operating system running on Raspberry Pi 3/4, which is built when I was preparing [labs](https://github.com/FDUCSLG/OS-2020Fall-Fudan/) for operating system course at Fudan University, following the classic framework of [xv6](https://github.com/mit-pdos/xv6-public/).
 
-Tested on Raspberry Pi 3A+, 3B+.
+Tested on Raspberry Pi 3A+, 3B+, 4B.
 
 ## Related works
 
@@ -19,6 +19,7 @@ Tested on Raspberry Pi 3A+, 3B+.
 
 ## Features
 
+- [x] AArch64 only
 - [x] Basic multi-core support
 - [x] Memory management
 - [x] Virtual memory without swapping
@@ -32,12 +33,19 @@ Tested on Raspberry Pi 3A+, 3B+.
 
 ## Development
 
-Requires Ubuntu 20.04 or higher.
+If you are not using Ubuntu, `make init` won't work, please manually install the toolchain
+according to `init:` target in Makefile. aarch-linux-gnu-xxx >= 9.3.0 is required.
+Otherwise, you may need to remove `-mno-outline-atomics` from Makefile.
 
-- `make init`: Install toolchains and download libc.
+- `make init`: Install toolchains and download libc. For Ubuntu < 20.04, please remove `-mno-outline-atomics` from Makefile.
 - `make qemu`: Emulate the kernel at `obj/kernel8.img`.
 - `make`: Create a bootable sd card image at `obj/sd.img` for Raspberry Pi 3, which can be burned to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 - `make lint`: Lint source code of kernel and user programs.
+
+### Raspberry Pi 4
+
+It works on Pi 4 as well. Change `RASPI := 3` to `RASPI := 4` in Makefile, run `make clean && make`
+and have fun with your Pi 4.
 
 ### Logging level
 

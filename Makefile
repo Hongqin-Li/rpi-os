@@ -21,7 +21,7 @@ CFLAGS += -mlittle-endian -mcmodel=small -mno-outline-atomics
 ifeq ($(strip $(RASPI)), 3)
 CFLAGS += -mcpu=cortex-a53 -mtune=cortex-a53
 else ifeq ($(strip $(RASPI)), 4)
-CFLAGS += -mcpu=cortex-a72
+CFLAGS += -mcpu=cortex-a72 -mtune=cortex-a72
 else
 $(error RASPI must be set to 3 or 4)
 endif

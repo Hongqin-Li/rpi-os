@@ -486,6 +486,14 @@ emmc_intr(struct emmc *self)
 #endif
 }
 
+void
+emmc_clear_interrupt()
+{
+    uint32_t irpts = get32(EMMC_INTERRUPT);
+    debug("irpts: 0x%x", irpts);
+    put32(EMMC_INTERRUPT, irpts);
+}
+
 int
 emmc_init(struct emmc *self, void (*sleep_fn)(void *), void *sleep_arg)
 {
@@ -504,7 +512,7 @@ emmc_init(struct emmc *self, void (*sleep_fn)(void *), void *sleep_arg)
 
 #else
 
-    if(!sdhost_init(&self->host, sleep_fn, sleep_arg)) {
+    if (!sdhost_init(&self->host, sleep_fn, sleep_arg)) {
         return -1;
     }
 

@@ -66,5 +66,6 @@ trapret:
     ldr     q0, [sp], #16
 
     ic      iallu
-    dsb     sy; isb
+    dsb     sy
+    isb
     eret

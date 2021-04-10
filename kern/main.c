@@ -27,10 +27,6 @@ static struct {
 void
 main()
 {
-#if RASPI == 4
-    // FIXME: Other cores will receive large amount of spurious interrupts.
-    while (cpuid()) ;
-#endif
     extern char edata[], end[];
     acquire(&mp.lock);
     if (mp.cnt++ == 0) {
@@ -53,7 +49,6 @@ main()
 
     timer_init();
     trap_init();
-
     info("cpu %d init finished", cpuid());
 
     scheduler();

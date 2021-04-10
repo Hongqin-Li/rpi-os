@@ -20,7 +20,7 @@ timer_init()
     asm volatile ("msr cntp_ctl_el0, %[x]"::[x] "r"(1));
     asm volatile ("msr cntp_tval_el0, %[x]"::[x] "r"(dt));
     put32(CORE_TIMER_CTRL(cpuid()), CORE_TIMER_ENABLE);
-#if RASPI == 4
+#ifdef USE_GIC
     irq_enable(IRQ_LOCAL_CNTPNS);
     irq_register(IRQ_LOCAL_CNTPNS, timer_intr);
 #endif

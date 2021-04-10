@@ -22,12 +22,16 @@ trap_init()
 void
 trap(struct trapframe *tf)
 {
-    int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK;
+    int ec = resr() >> EC_SHIFT, iss = resr() & ISS_MASK, il =
+        resr() & IR_MASK;
     /* Clear esr. */
     lesr(0);
     switch (ec) {
     case EC_UNKNOWN:
-        irq_handler();
+        if (il) {
+            panic("unknown error");
+        } else
+            irq_handler();
         break;
 
     case EC_SVC64:

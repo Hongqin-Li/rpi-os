@@ -110,6 +110,9 @@ proc_initx(char *name, char *code, size_t len)
     memmove(va, code, len);
     assert(len <= PGSIZE);
 
+    // Flush dcache to memory so that icache can retrieve the correct one.
+    dccivac(va, len);
+
     p->stksz = 0;
     p->sz = PGSIZE;
     p->base = 0;

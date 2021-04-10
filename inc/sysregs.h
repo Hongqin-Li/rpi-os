@@ -44,5 +44,6 @@
 #define EC_DABORT                   0x24
 
 #define ISS_MASK                    0xFFFFFF
+#define IR_MASK                     (1 << 25)
 
 #endif

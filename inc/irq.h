@@ -1,14 +1,19 @@
 #ifndef INC_IRQ_H
 #define INC_IRQ_H
 
-#if RASPI == 3
+#if RASPI == 4
+// #define USE_GIC
+#endif
+
+#ifndef USE_GIC
 
 #define IRQ_AUX             29
 #define IRQ_SDIO            56
+#define IRQ_ARASANSDIO      62
 
 #define IRQ_LINES           64
 
-#elif RASPI == 4
+#else
 
 /* See 6.3 https://datasheets.raspberrypi.org/bcm2711/bcm2711-peripherals.pdf */
 #define GIC_PPI(n)          (16 + (n))  // Private per core
@@ -25,6 +30,7 @@
 
 void irq_init();
 void irq_enable(int);
+void irq_disable(int);
 void irq_register(int, void (*)());
 void irq_handler();
 

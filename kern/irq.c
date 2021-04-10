@@ -1,6 +1,6 @@
 /*
- * Raspberry Pi 3 has its own interrupt controller(see BCM2837 ARM Peripherals and QA7_rev3.4),
- * while Pi 4 use a standard GIC-400.
+ * For Pi 3, see BCM2837 ARM Peripherals and QA7_rev3.4.
+ * For Pi 4, we can use either GIC-400 or legacy interrupt controller, see BCM2711.
  */
 
 #include "irq.h"
@@ -21,15 +21,42 @@
 #define DISABLE_IRQS_2          (MMIO_BASE + 0xB220)
 #define DISABLE_BASIC_IRQS      (MMIO_BASE + 0xB224)
 
+#if RASPI == 4
+#define IRQ0_PENDING0           (MMIO_BASE + 0xB200)
+#define IRQ0_PENDING1           (MMIO_BASE + 0xB204)
+#define IRQ0_PENDING2           (MMIO_BASE + 0xB208)
+#define IRQ1_PENDING0           (MMIO_BASE + 0xB240)
+#define IRQ1_PENDING1           (MMIO_BASE + 0xB244)
+#define IRQ1_PENDING2           (MMIO_BASE + 0xB248)
+#define IRQ2_PENDING0           (MMIO_BASE + 0xB280)
+#define IRQ2_PENDING1           (MMIO_BASE + 0xB284)
+#define IRQ2_PENDING2           (MMIO_BASE + 0xB288)
+#define IRQ3_PENDING0           (MMIO_BASE + 0xB2C0)
+#define IRQ3_PENDING1           (MMIO_BASE + 0xB2C4)
+#define IRQ3_PENDING2           (MMIO_BASE + 0xB2C8)
+
+#define IRQ0_CLR_EN0            (MMIO_BASE + 0xB220)
+
+#define IRQ_STATUS0             (MMIO_BASE + 0xB230)
+#define IRQ_STATUS1             (MMIO_BASE + 0xB234)
+#define IRQ_STATUS2             (MMIO_BASE + 0xB238)
+#endif
+
 /* ARM Local Peripherals */
 #define GPU_INT_ROUTE           (LOCAL_BASE + 0xC)
+#if RASPI <= 3
 #define GPU_IRQ2CORE(i)         (i)
+#elif RASPI == 4
+#define GPU_IRQ2CORE(i)         ((i) << 4)
+#endif
 
 #define IRQ_SRC_CORE(i)         (LOCAL_BASE + 0x60 + 4*(i))
-#define IRQ_SRC_TIMER               (1 << 11)   /* Local Timer */
-#define IRQ_SRC_GPU                 (1 << 8)
-#define IRQ_SRC_CNTPNSIRQ           (1 << 1)    /* Core Timer */
+#define IRQ_SRC_TIMER           (1 << 11)       /* Local Timer */
+#define IRQ_SRC_GPU             (1 << 8)
+#define IRQ_SRC_CNTPNSIRQ       (1 << 1)        /* Core Timer */
+#define FIQ_SRC_CORE(i)         (LOCAL_BASE + 0x70 + 4*(i))
 
+#ifdef USE_GIC
 /*
  * The following definitions are valid for non-secure access,
  * if not labeled otherwise.
@@ -93,18 +120,42 @@
 #define GICC_EOIR_CPUID__SHIFT      10
 #define GICC_EOIR_CPUID__MASK       (3 << 10)
 
+#endif
+
 static void (*handler[IRQ_LINES])();
 
-/* Route all interrupt to cpu 0. */
+static void
+irq_debug()
+{
+#if RASPI == 4
+    debug("irq status 0x%x, 0x%x, 0x%x", get32(IRQ_STATUS0),
+          get32(IRQ_STATUS1), get32(IRQ_STATUS2));
+    debug("irq0 pending 0x%x, 0x%x, 0x%x", get32(IRQ0_PENDING0),
+          get32(IRQ0_PENDING1), get32(IRQ0_PENDING2));
+    debug("irq1 pending 0x%x, 0x%x, 0x%x", get32(IRQ1_PENDING0),
+          get32(IRQ1_PENDING1), get32(IRQ1_PENDING2));
+    debug("irq2 pending 0x%x, 0x%x, 0x%x", get32(IRQ2_PENDING0),
+          get32(IRQ2_PENDING1), get32(IRQ2_PENDING2));
+    debug("irq3 pending 0x%x, 0x%x, 0x%x", get32(IRQ3_PENDING0),
+          get32(IRQ3_PENDING1), get32(IRQ3_PENDING2));
+
+    for (int i = 0; i < 4; i++)
+        debug("irq/fiq src%d 0x%x, 0x%x", i, get32(IRQ_SRC_CORE(i)),
+              get32(FIQ_SRC_CORE(i)));
+#endif
+}
+
+/* Route all global interrupt to cpu 0. */
 void
 irq_init()
 {
     for (int i = 0; i < IRQ_LINES; i++)
         handler[i] = 0;
 
+#ifndef USE_GIC
     put32(GPU_INT_ROUTE, GPU_IRQ2CORE(0));
 
-#if RASPI == 4
+#else
     put32(GICD_CTLR, GICD_CTLR_DISABLE);
 
     /* Disable, acknowledge and deactivate all interrupts. */
@@ -136,6 +187,7 @@ irq_init()
     /* Initialize core 0 CPU interface. */
     put32(GICC_PMR, GICC_PMR_PRIORITY);
     put32(GICC_CTLR, GICC_CTLR_ENABLE);
+
 #endif
 }
 
@@ -143,9 +195,9 @@ irq_init()
 void
 irq_enable(int i)
 {
-#if RASPI == 3
+#ifndef USE_GIC
     put32(ENABLE_IRQS_1 + 4 * (i / 32), 1 << (i % 32));
-#elif RASPI == 4
+#else
     put32(GICD_ISENABLER0 + 4 * (i / 32), 1 << (i % 32));
 #endif
 }
@@ -153,9 +205,9 @@ irq_enable(int i)
 void
 irq_disable(int i)
 {
-#if RASPI == 3
-
-#elif RASPI == 4
+#ifndef USE_GIC
+    panic("todo");
+#else
     put32(GICD_ICENABLER0 + 4 * (i / 32), 1 << (i % 32));
 #endif
 }
@@ -186,7 +238,7 @@ void
 irq_handler()
 {
     int nack = 0;
-#if RASPI == 3
+#ifndef USE_GIC
     int src = get32(IRQ_SRC_CORE(cpuid()));
     assert(!(src & ~(IRQ_SRC_CNTPNSIRQ | IRQ_SRC_GPU | IRQ_SRC_TIMER)));
     if (src & IRQ_SRC_CNTPNSIRQ) {
@@ -197,15 +249,20 @@ irq_handler()
         clock_intr();
         nack++;
     }
+#if RASPI == 4
+    uint64_t irq =
+        get32(IRQ0_PENDING0) | (((uint64_t) get32(IRQ0_PENDING1)) << 32);
+#else
     uint64_t irq =
         get32(IRQ_PENDING_1) | (((uint64_t) get32(IRQ_PENDING_2)) << 32);
+#endif
     for (int i = 0; i < IRQ_LINES && irq; i++) {
         if (irq & 1) {
             nack += handle1(i);
         }
         irq >>= 1;
     }
-#elif RASPI == 4
+#else
     uint32_t iar = get32(GICC_IAR);
     uint32_t i = iar & GICC_IAR_INTERRUPT_ID__MASK;
     if (i < IRQ_LINES) {
