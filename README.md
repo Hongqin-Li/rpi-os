@@ -31,13 +31,45 @@ Tested on Raspberry Pi 3A+, 3B+, 4B.
   - [x] Support argc, envp
   - [x] Support pipe
 
+## Prerequisite
+
+For Ubuntu 20.04 on x86, just run `make init` and skip this section.
+
+### GCC toolchain
+
+If your Linux is running natively on ARMv8 CPU, change `CROSS := aarch64-linux-gnu-`
+in config.mk to `CROSS := ` to use local gcc.
+
+If your aarch-linux-gnu-gcc(or gcc) version is less than 9.3.0, remove `-mno-outline-atomics` from Makefile.
+
+### QEMU
+
+You can install QEMU from your package manager or compile it from source such as
+
+```
+git clone https://github.com/qemu/qemu.git
+mkdir -p qemu/build
+(cd qemu/build && ../configure --target-list=aarch64-softmmu && make -j8)
+```
+
+On some OS such as CentOS, you may also need to install the following dependencies
+
+```
+yum install ninja-build
+yum install pixman-devel.aarch64
+```
+
+Then add the generated `qemu-system-aarch64` to PATH or just modify the `QEMU` variable in config.mk.
+
+### Build musl
+
+First, fetch musl by `git submodule update --init --recursive`.
+
+Then if you are cross compiling, run `(cd libc && export CROSS_COMPILE=aarch64-linux-gnu- && ./configure --target=aarch64)`.
+Otherwise, run `(cd libc && ./configure)`.
+
 ## Development
 
-If you are not using Ubuntu, `make init` won't work, please manually install the toolchain
-according to `init:` target in Makefile. aarch-linux-gnu-xxx >= 9.3.0 is required.
-Otherwise, you may need to remove `-mno-outline-atomics` from Makefile.
-
-- `make init`: Install toolchains and download libc. For Ubuntu < 20.04, please remove `-mno-outline-atomics` from Makefile.
 - `make qemu`: Emulate the kernel at `obj/kernel8.img`.
 - `make`: Create a bootable sd card image at `obj/sd.img` for Raspberry Pi 3, which can be burned to a tf card using [Raspberry Pi Imager](https://www.raspberrypi.org/software/).
 - `make lint`: Lint source code of kernel and user programs.

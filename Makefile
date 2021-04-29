@@ -1,10 +1,4 @@
-RASPI := 3
-ARCH := aarch64
-CROSS := aarch64-linux-gnu-
-CC := $(CROSS)gcc
-LD := $(CROSS)ld
-OBJDUMP := $(CROSS)objdump
-OBJCOPY := $(CROSS)objcopy
+-include config.mk
 
 CFLAGS := -Wall -g -O2 \
           -fno-pie -fno-pic -fno-stack-protector \
@@ -61,12 +55,12 @@ $(KERN_IMG): $(KERN_ELF)
 
 -include mksd.mk
 
-QEMU := qemu-system-aarch64 -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
+QEMU_CMD ?= $(QEMU) -M raspi3 -nographic -serial null -serial mon:stdio -drive file=$(SD_IMG),if=sd,format=raw
 
 qemu: all
-	$(QEMU) -kernel $(KERN_IMG)
+	$(QEMU_CMD) -kernel $(KERN_IMG)
 qemu-gdb: all
-	$(QEMU) -kernel $(KERN_IMG) -S -gdb tcp::1234
+	$(QEMU_CMD) -kernel $(KERN_IMG) -S -gdb tcp::1234
 gdb: 
 	gdb-multiarch -n -x .gdbinit
 
@@ -80,14 +74,15 @@ init:
 
 LINT_SRC := $(shell find $(SRC_DIRS) usr -name *.c)
 LINT_TMP := $(LINT_SRC:%=%~)
+
 lint:
 	indent -kr -psl -ss -nut -ncs $(LINT_SRC)
 	rm $(LINT_TMP)
 
 clean:
 	$(MAKE) -C usr clean
-	# $(MAKE) -C libc clean
-	# $(MAKE) -C boot clean
+	$(MAKE) -C libc clean
+	$(MAKE) -C boot clean
 	rm -rf $(BUILD_DIR)
 
 .PHONY: init all lint clean qemu qemu-gdb gdb
