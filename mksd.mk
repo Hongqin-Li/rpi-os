@@ -18,9 +18,9 @@ FS_SECTORS := $$(($(SECTORS)-$(FS_OFFSET)))
 # TODO: Detect img size automatically
 $(BOOT_IMG): $(KERN_IMG) $(shell find boot/*)
 	dd if=/dev/zero of=$@ seek=$$(($(BOOT_SECTORS) - 1)) bs=$(SECTOR_SIZE) count=1
-	# -F 32 specify FAT32
-	# -s 1 specify one sector per cluster so that we can create a smaller one
-	mkfs.vfat -F 32 -s 1 $@
+	# -F specify FAT32
+	# -c 1 specify one sector per cluster so that we can create a smaller one
+	mformat -F -c 1 -i $@ ::
 	# Copy files into boot partition
 	$(foreach x, $^, mcopy -i $@ $(x) ::$(notdir $(x));)
 

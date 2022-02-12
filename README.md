@@ -37,14 +37,19 @@ For Ubuntu 20.04 on x86, just run `make init` and skip this section.
 
 ### GCC toolchain
 
-If your Linux is running natively on ARMv8 CPU, change `CROSS := aarch64-linux-gnu-`
-in config.mk to `CROSS := ` to use local gcc.
+If you are cross compiling on macOS,
 
-If your aarch-linux-gnu-gcc(or gcc) version is less than 9.3.0, remove `-mno-outline-atomics` from Makefile.
+1. run `brew install zstd`,
+2. install aarch64-unknown-linux-gnu by [macos-cross-toolchains](https://github.com/messense/homebrew-macos-cross-toolchains),
+3. change the prefix such as `CROSS := aarch64-unknown-linux-gnu-` in config.mk.
+
+If you are native compiling, i.e., running natively on ARMv8, set `CROSS := ` in config.mk to use local gcc.
+
+If `$(CROSS)gcc --version` gives out version less than 9.3.0, remove `-mno-outline-atomics` from Makefile.
 
 ### QEMU
 
-You can install QEMU from your package manager or compile it from source such as
+You can install QEMU (>= 6.0) by package manager or compile it from source such as
 
 ```
 git clone https://github.com/qemu/qemu.git
@@ -65,8 +70,16 @@ Then add the generated `qemu-system-aarch64` to PATH or just modify the `QEMU` v
 
 First, fetch musl by `git submodule update --init --recursive`.
 
-Then if you are cross compiling, run `(cd libc && export CROSS_COMPILE=aarch64-linux-gnu- && ./configure --target=aarch64)`.
-Otherwise, run `(cd libc && ./configure)`.
+Then if you are cross compiling, run `(cd libc && export CROSS_COMPILE=X && ./configure --target=aarch64)`, where `X` is the `CROSS` variable in config.mk. Otherwise, run `(cd libc && ./configure)`.
+
+### File system tools
+
+mtools is used to build our fat32 file system image, which can be installed by package manager, e.g, `sudo apt install mtools` on Ubuntu and `brew install mtools` on macOS.
+
+sfdisk is used to create MBR-partitioned disk images. It has already been installed on most Linux distributions. But for macOS,
+
+1. run `brew install util-linux` to install sfdisk,
+2. modify the PATH according to the instructions given by brew.
 
 ## Development
 
@@ -76,8 +89,7 @@ Otherwise, run `(cd libc && ./configure)`.
 
 ### Raspberry Pi 4
 
-It works on Pi 4 as well. Change `RASPI := 3` to `RASPI := 4` in Makefile, run `make clean && make`
-and have fun with your Pi 4.
+It works on Pi 4 as well. Change `RASPI := 3` to `RASPI := 4` in Makefile, run `make clean && make` and have fun with your Pi 4.
 
 ### Logging level
 

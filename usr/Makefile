@@ -43,6 +43,7 @@ $(BIN)/%: $$(addsuffix .o, $$(addprefix $(OBJ)/, $$(shell find $(SRC)/% -name "*
 	$(USR_CC) $(CFLAGS) -o $@ $^
 	$(OBJDUMP) -S -d $@ > $(OBJ)/src/$(notdir $@)/$(notdir $@).asm
 	$(OBJDUMP) -x $@ > $(OBJ)/src/$(notdir $@)/$(notdir $@).hdr
+	$(STRIP) --strip-debug $@
 
 clean:
 	rm -rf $(OBJ) $(BIN)
