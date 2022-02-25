@@ -105,7 +105,7 @@ Defaults to `-DLOG_INFO`.
 
 ### Debug mode
 
-Enabling debug mode via compiler option `-DDEBUG` in Makefile will incorportate runtime assertions,
+Enabling debug mode via compiler option `-DDEBUG` in Makefile will incorporate runtime assertions,
 testing and memory usage profiling(see below). Defaults to `-DNOT_DEBUG`.
 
 ### Profile
